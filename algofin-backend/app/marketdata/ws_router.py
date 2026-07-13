@@ -90,12 +90,14 @@ async def marketdata_ws(ws: WebSocket) -> None:
     #  2. algofin:order_events:<user_id> — private order updates, all relayed
     from app.database import get_redis_client  # type: ignore[import]
     from app.marketdata.binance_user_stream import order_event_channel
+    from app.risk.engine import risk_event_channel  # v2 Phase D
 
     redis  = await get_redis_client()
     pubsub = redis.pubsub()
     await pubsub.subscribe(
         REDIS_CHANNEL,
         order_event_channel(user_id),
+        risk_event_channel(user_id),    # v2 Phase D
     )
 
     # ── Async tasks ───────────────────────────────────────────────────────────
@@ -119,8 +121,8 @@ async def marketdata_ws(ws: WebSocket) -> None:
                 # Filter: only send symbols the user subscribed to
                 if data.get("symbol") in subscribed_symbols:
                     await ws.send_text(json.dumps(data))
-            elif msg_type == "order_event":
-                # Always relay — channel is already user-scoped
+            elif msg_type in ("order_event", "risk_event"):
+                # Always relay — channels are already user-scoped
                 await ws.send_text(json.dumps(data))
 
     async def heartbeat() -> None:
@@ -195,8 +197,10 @@ async def marketdata_ws(ws: WebSocket) -> None:
     finally:
         try:
             from app.marketdata.binance_user_stream import order_event_channel as _oec
-            await pubsub.unsubscribe(REDIS_CHANNEL, _oec(user_id))
+            from app.risk.engine import risk_event_channel as _rec
+            await pubsub.unsubscribe(REDIS_CHANNEL, _oec(user_id), _rec(user_id))
             await pubsub.close()
         except Exception:
             pass
         logger.info(f"[MarketDataWS] User {user_id} disconnected.")
+

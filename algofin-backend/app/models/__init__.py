@@ -12,7 +12,8 @@ from app.models.trading import Balance, Position, Trade
 from app.models.events import EconomicEvent
 from app.models.assistant import ChatThread, ChatMessage
 from app.models.billing import UserProfitPeriod, BillingPeriodRecord
-from app.models.order import Order  # v2 Phase B
+from app.models.order import Order          # v2 Phase B
+from app.models.risk import RiskRule, RiskViolation  # v2 Phase D
 
 __all__ = [
     "User",
@@ -30,5 +31,7 @@ __all__ = [
     "ChatMessage",
     "UserProfitPeriod",
     "BillingPeriodRecord",
-    "Order",  # v2 Phase B
+    "Order",          # v2 Phase B
+    "RiskRule",       # v2 Phase D
+    "RiskViolation",  # v2 Phase D
 ]

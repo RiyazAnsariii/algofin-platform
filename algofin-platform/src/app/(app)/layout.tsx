@@ -49,6 +49,16 @@ const NAV_ITEMS = [
     ),
   },
   {
+    href:  "/risk",
+    label: "Risk Controls",
+    icon:  (active: boolean) => (
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 2 : 1.5}>
+        <path d="M12 2L3 7v6c0 4.97 3.84 9.63 9 11 5.16-1.37 9-6.03 9-11V7L12 2z" />
+        <path d="M9 12l2 2 4-4" />
+      </svg>
+    ),
+  },
+  {
     href:  "/events",
     label: "Economic Calendar",
     icon:  (active: boolean) => (

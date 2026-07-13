@@ -120,23 +120,40 @@ class OrderEvent(BaseRealtimeEvent):
         }
 
 
-# ── Phase D stub: RiskEvent ───────────────────────────────────────────────────
+# ── Phase D: RiskEvent (fully implemented) ────────────────────────────────────
 @dataclass
 class RiskEvent(BaseRealtimeEvent):
-    """Stubbed for Phase D."""
-    rule_id:   str = ""
-    triggered: str = ""
+    """
+    Emitted when a risk rule triggers.
+    Published to Redis algofin:risk_events:<user_id>.
+    Relayed to the authenticated user's WebSocket connection.
+    """
+    rule_id:        str   = ""     # AlgoFin risk rule UUID
+    rule_name:      str   = ""     # human-readable name
+    rule_type:      str   = ""     # MAX_DAILY_LOSS | MAX_POSITION_SIZE | ...
+    threshold:      float = 0.0    # the configured limit
+    current_value:  float = 0.0    # the value that breached the limit
+    action_taken:   str   = ""     # "order_rejected" | "alert_only"
+    symbol:         str   = ""     # symbol context (empty if global)
+    user_id:        str   = ""     # for Redis channel routing
+    violation_id:   str   = ""     # RiskViolation DB UUID
 
     def to_dict(self) -> dict[str, Any]:
         return {
-            "type":      self.type,
-            "version":   self.version,
-            "sequence":  self.sequence,
-            "exchange":  self.exchange,
-            "ruleId":    self.rule_id,
-            "triggered": self.triggered,
-            "eventTime": self.event_time,
-            "meta":      self.meta,
+            "type":         self.type,
+            "version":      self.version,
+            "sequence":     self.sequence,
+            "exchange":     self.exchange,
+            "ruleId":       self.rule_id,
+            "ruleName":     self.rule_name,
+            "ruleType":     self.rule_type,
+            "threshold":    self.threshold,
+            "currentValue": self.current_value,
+            "actionTaken":  self.action_taken,
+            "symbol":       self.symbol,
+            "violationId":  self.violation_id,
+            "eventTime":    self.event_time,
+            "meta":         self.meta,
         }
 
 

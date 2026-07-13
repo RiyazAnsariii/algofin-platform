@@ -21,6 +21,7 @@ from app.exchanges.service import get_decrypted_credentials
 from app.models.exchange import UserExchangeAccount
 from app.models.order import Order
 from app.orders.schemas import AmendOrderRequest, PlaceOrderRequest
+from app.risk.engine import RiskViolationError, evaluate_rules  # v2 Phase D
 
 logger = logging.getLogger(__name__)
 
@@ -80,7 +81,30 @@ async def place_order(
     if account is None:
         raise PermissionError("Exchange account not found or not authorized")
 
-    # Step 2: Decrypt credentials
+    # Step 2: Evaluate risk rules BEFORE touching credentials or exchange
+    try:
+        from app.database import get_redis_client  # avoid circular at module level
+        redis = await get_redis_client()
+        # Collect all active account IDs for this user (needed for daily PnL calc)
+        from sqlalchemy import select as sa_select
+        acct_result = await db.execute(
+            sa_select(UserExchangeAccount.id).where(
+                UserExchangeAccount.user_id == user_id,
+                UserExchangeAccount.is_active == True,  # noqa: E712
+            )
+        )
+        all_account_ids = [str(r) for r in acct_result.scalars().all()]
+        await evaluate_rules(
+            db,
+            user_id=user_id,
+            req=req,
+            account_ids=all_account_ids,
+            redis_client=redis,
+        )
+    except RiskViolationError as exc:
+        raise ValueError(str(exc)) from exc
+
+    # Step 3: Decrypt credentials
     creds = await get_decrypted_credentials(db, exchange_account_id=account_id)
     if not creds.get("api_key") or not creds.get("api_secret"):
         raise ValueError("Exchange account has no valid API credentials")
