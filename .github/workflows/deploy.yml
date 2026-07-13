@@ -1,0 +1,120 @@
+name: AlgoFin — Deploy to Production
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:      # Allow manual trigger from GitHub UI
+
+jobs:
+  # ── 1. Lint + Type check ───────────────────────────────────────
+  check:
+    name: Type check & lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: algofin-platform/package-lock.json
+
+      - name: Install frontend deps
+        working-directory: algofin-platform
+        run: npm ci
+
+      - name: TypeScript check
+        working-directory: algofin-platform
+        run: npx tsc --noEmit
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install backend deps
+        working-directory: algofin-backend
+        run: pip install -r requirements.txt
+
+      - name: Ruff lint
+        working-directory: algofin-backend
+        run: |
+          pip install ruff
+          ruff check app/ --select E,W,F --ignore E501
+
+  # ── 2. Build Docker images ─────────────────────────────────────
+  build:
+    name: Build & push images
+    needs: check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build + push backend image
+        uses: docker/build-push-action@v5
+        with:
+          context: algofin-backend
+          file: algofin-backend/Dockerfile
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/algofin-api:latest
+            ghcr.io/${{ github.repository_owner }}/algofin-api:${{ github.sha }}
+
+      - name: Build + push frontend image
+        uses: docker/build-push-action@v5
+        with:
+          context: algofin-platform
+          file: algofin-platform/Dockerfile
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/algofin-frontend:latest
+            ghcr.io/${{ github.repository_owner }}/algofin-frontend:${{ github.sha }}
+          build-args: |
+            NEXT_PUBLIC_API_URL=https://${{ secrets.PRODUCTION_DOMAIN }}/api/v1
+
+  # ── 3. Deploy to VPS ──────────────────────────────────────────
+  deploy:
+    name: Deploy to VPS
+    needs: build
+    runs-on: ubuntu-latest
+    environment: production    # Requires manual approval if configured
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host:     ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key:      ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            set -e
+            cd /opt/algofin
+
+            # Pull latest images
+            docker pull ghcr.io/${{ github.repository_owner }}/algofin-api:latest
+            docker pull ghcr.io/${{ github.repository_owner }}/algofin-frontend:latest
+
+            # Apply DB migrations (zero-downtime: runs before restart)
+            docker-compose -f docker-compose.prod.yml exec -T api \
+              alembic upgrade head || true
+
+            # Rolling restart (no-downtime)
+            docker-compose -f docker-compose.prod.yml up -d \
+              --no-build \
+              --remove-orphans \
+              api worker beat nginx frontend
+
+            # Health check
+            sleep 10
+            curl -f https://${{ secrets.PRODUCTION_DOMAIN }}/health || exit 1
+
+            echo "✅ Deploy complete — ${{ github.sha }}"

@@ -1,0 +1,61 @@
+# AlgoFin — Root .gitignore
+
+# ── Secrets — NEVER commit these ────────────────────────────────
+**/.env
+**/.env.production
+**/.env.local
+**/.env.*.local
+**/secrets/
+**/*.pem
+**/*.key
+**/*.crt
+
+# ── Python ───────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+ENV/
+*.egg-info/
+dist/
+build/
+.mypy_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+*.sqlite3
+*.db
+
+# ── Node.js ──────────────────────────────────────────────────────
+node_modules/
+.npm
+.next/
+out/
+*.tsbuildinfo
+
+# ── Logs ─────────────────────────────────────────────────────────
+*.log
+logs/
+npm-debug.log*
+
+# ── OS ───────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+*.swp
+*~
+
+# ── Docker ───────────────────────────────────────────────────────
+# Keep docker-compose files but ignore generated volumes
+**/postgres_data/
+**/redis_data/
+
+# ── IDE ──────────────────────────────────────────────────────────
+.vscode/settings.json
+.idea/
+
+# ── Celery ───────────────────────────────────────────────────────
+celerybeat-schedule
+celerybeat.pid

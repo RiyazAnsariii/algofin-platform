@@ -1,0 +1,51 @@
+# AlgoFin Backend — Python Dependencies
+
+# Web framework
+fastapi==0.115.5
+uvicorn[standard]==0.32.1
+
+# Database
+sqlalchemy==2.0.36
+asyncpg==0.30.0
+alembic==1.14.0
+psycopg2-binary==2.9.10
+
+# Pydantic (v2)
+pydantic==2.10.3
+pydantic-settings==2.6.1
+email-validator==2.2.0
+
+# Auth / Security
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+cryptography==43.0.3
+python-multipart==0.0.17
+
+# Redis / Celery
+redis==5.2.1
+celery==5.4.0
+celery[redis]==5.4.0
+
+# Exchange integration
+ccxt==4.4.40
+
+# HTTP client
+httpx==0.28.1
+
+# AI / LLM — Gemini (free tier via Google AI Studio)
+google-generativeai==0.8.3
+
+# SSE streaming for assistant responses
+sse-starlette==2.1.3
+
+# Rate limiting
+slowapi==0.1.9
+
+# Utilities
+python-dateutil==2.9.0
+pytz==2024.2
+
+# Dev / testing
+pytest==8.3.4
+pytest-asyncio==0.24.0
+httpx==0.28.1
