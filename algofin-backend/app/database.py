@@ -1,5 +1,5 @@
 # app/database.py
-# AlgoFin v1 — Async SQLAlchemy database setup
+# AlgoFin v1/v2 — Async SQLAlchemy + async Redis setup
 # Supports both PostgreSQL (production) and SQLite (local dev/demo)
 
 from sqlalchemy.ext.asyncio import (
@@ -92,3 +92,30 @@ async def get_db() -> AsyncSession:  # type: ignore[misc]
             raise
         finally:
             await session.close()
+
+
+# ── Async Redis client (singleton) ────────────────────────────────
+# Used by: Market Data WebSocket (pub/sub) and future event streams
+import redis.asyncio as aioredis  # type: ignore[import]
+
+_redis_client: aioredis.Redis | None = None
+
+
+async def get_redis_client() -> aioredis.Redis:
+    """Return the singleton async Redis client, creating it on first call."""
+    global _redis_client
+    if _redis_client is None:
+        _redis_client = aioredis.from_url(
+            settings.redis_url,
+            encoding="utf-8",
+            decode_responses=True,
+        )
+    return _redis_client
+
+
+async def close_redis_client() -> None:
+    """Close the Redis client. Called on app shutdown."""
+    global _redis_client
+    if _redis_client:
+        await _redis_client.aclose()
+        _redis_client = None

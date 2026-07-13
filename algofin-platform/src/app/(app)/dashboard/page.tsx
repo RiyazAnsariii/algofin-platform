@@ -1,10 +1,12 @@
 "use client";
 // src/app/(app)/dashboard/page.tsx
-// AlgoFin v1 — Dashboard: portfolio summary + positions + data_freshness
+// AlgoFin v2 — Dashboard: portfolio summary + positions + live prices
+// Live prices are DISPLAY-ONLY (Est. Live PnL). All authoritative PnL = backend.
 
 import { useEffect, useState, useCallback } from "react";
 import api from "@/lib/api";
 import { relativeTime } from "@/lib/staleness";
+import { useLivePrices } from "@/hooks/useLivePrices";
 
 // ── API response types ────────────────────────────────────────────
 interface FreshnessItem {
@@ -46,6 +48,35 @@ const fmtPnl = (n: number) => {
   const sign = n >= 0 ? "+" : "";
   return `${sign}$${fmt(Math.abs(n))}`;
 };
+
+// ── Live status badge ─────────────────────────────────────────────
+function LiveBadge({ status }: { status: string }) {
+  if (status === "connected") {
+    return (
+      <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold
+        bg-emerald-500/15 text-emerald-400 border border-emerald-500/20">
+        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+        LIVE
+      </span>
+    );
+  }
+  if (status === "reconnecting" || status === "auth" || status === "connecting") {
+    return (
+      <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold
+        bg-amber-500/15 text-amber-400 border border-amber-500/20">
+        <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+        RECONNECTING
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold
+      bg-rose-500/10 text-rose-400 border border-rose-500/20">
+      <span className="w-1.5 h-1.5 rounded-full bg-rose-400" />
+      OFFLINE
+    </span>
+  );
+}
 
 // ── Staleness badge ───────────────────────────────────────────────
 function FreshnessBadge({ item, label }: { item: FreshnessItem; label: string }) {
@@ -97,9 +128,22 @@ function StatCard({
   );
 }
 
-// ── Position row ──────────────────────────────────────────────────
-function PositionRow({ pos }: { pos: Position }) {
-  const pnlColor = pos.unrealized_pnl >= 0 ? "pnl-positive" : "pnl-negative";
+// ── Position row (with live price + Est. Live PnL) ────────────────
+function PositionRow({
+  pos,
+  livePnl,
+  liveMarkPrice,
+}: {
+  pos: Position;
+  livePnl: number | null;
+  liveMarkPrice: number | null;
+}) {
+  // Prefer live PnL for display; fall back to last-synced
+  const displayPnl  = livePnl ?? pos.unrealized_pnl;
+  const displayMark = liveMarkPrice ?? pos.mark_price;
+  const isLive      = livePnl !== null;
+  const pnlColor    = displayPnl >= 0 ? "pnl-positive" : "pnl-negative";
+
   return (
     <div className="flex items-center justify-between px-4 py-3 text-sm border-b border-white/4 last:border-0">
       <div className="flex items-center gap-3 min-w-0">
@@ -121,9 +165,21 @@ function PositionRow({ pos }: { pos: Position }) {
         <span className="text-xs text-muted-foreground hidden md:inline">
           Entry ${fmt(pos.entry_price)}
         </span>
-        <span className={`font-semibold ${pnlColor}`}>
-          {fmtPnl(pos.unrealized_pnl)}
+        {/* Live mark price */}
+        <span className="text-xs text-muted-foreground hidden lg:inline">
+          Mark ${fmt(displayMark)}
         </span>
+        {/* Est. Live PnL — display only */}
+        <div className="text-right">
+          <span className={`font-semibold ${pnlColor}`}>
+            {fmtPnl(displayPnl)}
+          </span>
+          {isLive && (
+            <p className="text-[9px] text-muted-foreground/60 leading-none mt-0.5">
+              Est. Live PnL
+            </p>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -183,6 +239,17 @@ export default function DashboardPage() {
   const [noExchange, setNoExchange] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
+  // ── Live prices (Phase A) ─────────────────────────────────────────
+  const positionSymbols = positions.map((p) => p.symbol);
+  const { prices, status: wsStatus, subscribe, calcEstLivePnl } = useLivePrices(positionSymbols);
+
+  // Subscribe to any new symbols that appear after initial load
+  useEffect(() => {
+    if (positionSymbols.length > 0) {
+      subscribe(positionSymbols);
+    }
+  }, [positionSymbols.join(",")]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const fetchData = useCallback(async () => {
     try {
       const [summaryRes, posRes] = await Promise.allSettled([
@@ -212,7 +279,7 @@ export default function DashboardPage() {
 
   useEffect(() => {
     fetchData();
-    // Auto-refresh every 30 seconds
+    // Auto-refresh every 30 seconds (Celery sync cadence)
     const interval = setInterval(fetchData, 30_000);
     return () => clearInterval(interval);
   }, [fetchData]);
@@ -236,6 +303,8 @@ export default function DashboardPage() {
                 · Updated {relativeTime(lastUpdated.toISOString())}
               </span>
             )}
+            {/* v2: Live WebSocket status badge */}
+            {!noExchange && <LiveBadge status={wsStatus} />}
           </div>
         </div>
         <button
@@ -313,7 +382,14 @@ export default function DashboardPage() {
             </div>
           ) : positions.length > 0 ? (
             <div className="divide-y divide-white/4">
-              {positions.map((p) => <PositionRow key={p.id} pos={p} />)}
+              {positions.map((p) => (
+                <PositionRow
+                  key={p.id}
+                  pos={p}
+                  liveMarkPrice={prices[p.symbol]?.markPrice ?? null}
+                  livePnl={calcEstLivePnl(p.symbol, p.entry_price, p.size, p.side)}
+                />
+              ))}
             </div>
           ) : (
             <div className="px-4 py-8 text-center text-sm text-muted-foreground">
