@@ -18,6 +18,7 @@ from app.config import settings
 from app.events.router import router as events_router
 from app.exchanges.router import router as exchanges_router
 from app.marketdata.ws_router import router as marketdata_router
+from app.orders.router import router as orders_router  # v2 Phase B
 from app.portfolio.router import router as portfolio_router
 
 logging.basicConfig(level=logging.INFO)
@@ -71,6 +72,7 @@ app.include_router(events_router,     prefix=API_PREFIX)
 app.include_router(assistant_router,  prefix=API_PREFIX)
 app.include_router(admin_router,      prefix=API_PREFIX)
 app.include_router(marketdata_router, prefix=API_PREFIX)  # v2: real-time WS
+app.include_router(orders_router,     prefix=API_PREFIX)  # v2 Phase B: order management
 
 # ── Health check ──────────────────────────────────────────────────
 @app.get("/health", tags=["health"])
