@@ -5,7 +5,7 @@
 //   - Named marketDataSocket (not priceSocket) — exchange-agnostic
 //   - First-message auth: sends {type:"auth", token} right after connect
 //   - Server-only heartbeat: server sends ping, client responds pong
-//   - Stale update guard: tracks lastSequence[symbol], drops ≤ last seen
+//   - Stale update guard: tracks lastSequence per symbol/order, drops ≤ last seen
 //   - Exponential backoff reconnect: 1s → 2s → 4s → max 30s
 //   - Dynamic subscriptions via subscribe(symbols) — no reconnect needed
 //   - Status: connecting → auth → connected → reconnecting → closed
@@ -20,6 +20,26 @@ type PriceUpdateHandler = (data: {
   eventTime: number;
 }) => void;
 
+// Phase C: Order event handler
+export type OrderUpdate = {
+  orderId:        string;    // Binance order ID
+  algofinOrderId: string;    // AlgoFin internal UUID (if placed through us)
+  clientOrderId:  string;
+  symbol:         string;
+  side:           string;    // BUY | SELL
+  orderType:      string;    // MARKET | LIMIT | ...
+  status:         string;    // NEW | PARTIALLY_FILLED | FILLED | CANCELLED | EXPIRED
+  quantity:       number;
+  filledQty:      number;
+  avgPrice:       number;
+  price:          number;
+  reduceOnly:     boolean;
+  exchange:       string;
+  eventTime:      number;
+  sequence:       number;
+};
+
+type OrderUpdateHandler = (data: OrderUpdate) => void;
 type StatusChangeHandler = (status: SocketStatus) => void;
 
 const WS_URL =
@@ -53,6 +73,7 @@ class MarketDataSocket {
 
   // Event listeners
   private priceHandlers: Set<PriceUpdateHandler> = new Set();
+  private orderHandlers: Set<OrderUpdateHandler> = new Set();
   private statusHandlers: Set<StatusChangeHandler> = new Set();
 
   // ── Public API ──────────────────────────────────────────────────────────────
@@ -92,17 +113,21 @@ class MarketDataSocket {
   }
 
   on(event: "price_update", handler: PriceUpdateHandler): void;
-  on(event: "status", handler: StatusChangeHandler): void;
-  on(event: string, handler: PriceUpdateHandler | StatusChangeHandler): void {
+  on(event: "order_event",  handler: OrderUpdateHandler): void;
+  on(event: "status",       handler: StatusChangeHandler): void;
+  on(event: string, handler: PriceUpdateHandler | OrderUpdateHandler | StatusChangeHandler): void {
     if (event === "price_update") this.priceHandlers.add(handler as PriceUpdateHandler);
-    if (event === "status") this.statusHandlers.add(handler as StatusChangeHandler);
+    if (event === "order_event")  this.orderHandlers.add(handler as OrderUpdateHandler);
+    if (event === "status")       this.statusHandlers.add(handler as StatusChangeHandler);
   }
 
   off(event: "price_update", handler: PriceUpdateHandler): void;
-  off(event: "status", handler: StatusChangeHandler): void;
-  off(event: string, handler: PriceUpdateHandler | StatusChangeHandler): void {
+  off(event: "order_event",  handler: OrderUpdateHandler): void;
+  off(event: "status",       handler: StatusChangeHandler): void;
+  off(event: string, handler: PriceUpdateHandler | OrderUpdateHandler | StatusChangeHandler): void {
     if (event === "price_update") this.priceHandlers.delete(handler as PriceUpdateHandler);
-    if (event === "status") this.statusHandlers.delete(handler as StatusChangeHandler);
+    if (event === "order_event")  this.orderHandlers.delete(handler as OrderUpdateHandler);
+    if (event === "status")       this.statusHandlers.delete(handler as StatusChangeHandler);
   }
 
   getStatus(): SocketStatus {
@@ -196,6 +221,36 @@ class MarketDataSocket {
             sequence:  seq,
             exchange:  msg.exchange as string,
             eventTime: msg.eventTime as number,
+          })
+        );
+        break;
+      }
+
+      case "order_event": {
+        const oe = msg as Record<string, unknown>;
+        const seqKey = `order_${oe.algofinOrderId || oe.orderId}`;
+        const oSeq   = oe.sequence as number;
+        if (this.lastSequence[seqKey] !== undefined && oSeq <= this.lastSequence[seqKey]) {
+          return;
+        }
+        this.lastSequence[seqKey] = oSeq;
+        this.orderHandlers.forEach((h) =>
+          h({
+            orderId:        oe.orderId        as string,
+            algofinOrderId: oe.algofinOrderId as string,
+            clientOrderId:  oe.clientOrderId  as string,
+            symbol:         oe.symbol         as string,
+            side:           oe.side           as string,
+            orderType:      oe.orderType      as string,
+            status:         oe.status         as string,
+            quantity:       oe.quantity       as number,
+            filledQty:      oe.filledQty      as number,
+            avgPrice:       oe.avgPrice       as number,
+            price:          oe.price          as number,
+            reduceOnly:     oe.reduceOnly     as boolean,
+            exchange:       oe.exchange       as string,
+            eventTime:      oe.eventTime      as number,
+            sequence:       oSeq,
           })
         );
         break;

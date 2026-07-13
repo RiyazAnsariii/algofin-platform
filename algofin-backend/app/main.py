@@ -80,29 +80,41 @@ async def health() -> dict:
     return {"status": "ok", "version": "2.0.0"}
 
 
-# ── Startup event ─────────────────────────────────────────────────
+# ── Startup event ──────────────────────────────────────────
 @app.on_event("startup")
 async def startup() -> None:
     logger.info("AlgoFin API starting up...")
     logger.info(f"Environment: {settings.environment}")
     logger.info(f"CORS origins: {settings.cors_origins}")
 
-    # v2: start real-time Binance WebSocket stream
+    # v2 Phase A: start real-time Binance mark price stream
     try:
         from app.database import get_redis_client
         from app.marketdata.binance_stream import start_binance_stream
         redis = await get_redis_client()
         await start_binance_stream(redis)
-        logger.info("[MarketData] Binance stream started.")
+        logger.info("[MarketData] Binance mark price stream started.")
     except Exception as exc:
-        logger.warning(f"[MarketData] Binance stream could not start: {exc} (no positions yet or Redis unavailable)")
+        logger.warning(f"[MarketData] Mark price stream could not start: {exc}")
+
+    # v2 Phase C: start Binance user data streams (order event streaming)
+    try:
+        from app.database import get_redis_client, AsyncSessionLocal
+        from app.marketdata.binance_user_stream import start_all_user_streams
+        redis = await get_redis_client()
+        await start_all_user_streams(redis, AsyncSessionLocal)
+        logger.info("[UserStream] User data streams started.")
+    except Exception as exc:
+        logger.warning(f"[UserStream] User streams could not start: {exc}")
 
 
-# ── Shutdown event ─────────────────────────────────────────────────
+# ── Shutdown event ──────────────────────────────────────────
 @app.on_event("shutdown")
 async def shutdown() -> None:
     from app.database import close_redis_client
     from app.marketdata.binance_stream import stop_binance_stream
+    from app.marketdata.binance_user_stream import stop_all_user_streams
+    await stop_all_user_streams()
     await stop_binance_stream()
     await close_redis_client()
     logger.info("AlgoFin API shut down cleanly.")

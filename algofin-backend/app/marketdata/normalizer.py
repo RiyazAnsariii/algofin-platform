@@ -72,33 +72,51 @@ class MarketDataEvent(BaseRealtimeEvent):
         }
 
 
-# ── Phase C stub: OrderEvent ──────────────────────────────────────────────────
+# ── Phase C: OrderEvent (fully implemented) ───────────────────────────────
 @dataclass
 class OrderEvent(BaseRealtimeEvent):
     """
-    Live order status update.
-    Stubbed here so the WS transport works for all event types from Phase A.
-    Full implementation in Phase C.
+    Live order status update from Binance user data stream.
+    Published to Redis algofin:order_events:<user_id>.
+    Relayed to the authenticated user's WebSocket connection.
     """
-    order_id:   str   = ""
-    symbol:     str   = ""
-    status:     str   = ""   # NEW | PARTIALLY_FILLED | FILLED | CANCELLED | EXPIRED
-    filled_qty: float = 0.0
-    avg_price:  float = 0.0
+    order_id:        str   = ""    # Binance order ID (string)
+    algofin_order_id: str  = ""    # Our internal UUID (if placed through AlgoFin)
+    client_order_id: str   = ""    # algofin_<hex> if placed through us
+    symbol:          str   = ""    # e.g. "BTCUSDT"
+    side:            str   = ""    # "BUY" | "SELL"
+    order_type:      str   = ""    # "MARKET" | "LIMIT" | ...
+    status:          str   = ""    # NEW | PARTIALLY_FILLED | FILLED | CANCELLED | EXPIRED
+    quantity:        float = 0.0   # original order quantity
+    filled_qty:      float = 0.0   # cumulative filled quantity
+    avg_price:       float = 0.0   # average fill price (0 for unfilled)
+    price:           float = 0.0   # limit price (0 for MARKET)
+    reduce_only:     bool  = False
+    # user_id is NOT in the payload (user data stream is already user-scoped)
+    # included here for Redis channel routing only, stripped before sending to client
+    user_id:         str   = ""
 
     def to_dict(self) -> dict[str, Any]:
+        """JSON payload sent over WebSocket to the frontend."""
         return {
-            "type":      self.type,
-            "version":   self.version,
-            "sequence":  self.sequence,
-            "exchange":  self.exchange,
-            "orderId":   self.order_id,
-            "symbol":    self.symbol,
-            "status":    self.status,
-            "filledQty": self.filled_qty,
-            "avgPrice":  self.avg_price,
-            "eventTime": self.event_time,
-            "meta":      self.meta,
+            "type":           self.type,
+            "version":        self.version,
+            "sequence":       self.sequence,
+            "exchange":       self.exchange,
+            "orderId":        self.order_id,
+            "algofinOrderId": self.algofin_order_id,
+            "clientOrderId":  self.client_order_id,
+            "symbol":         self.symbol,
+            "side":           self.side,
+            "orderType":      self.order_type,
+            "status":         self.status,
+            "quantity":       self.quantity,
+            "filledQty":      self.filled_qty,
+            "avgPrice":       self.avg_price,
+            "price":          self.price,
+            "reduceOnly":     self.reduce_only,
+            "eventTime":      self.event_time,
+            "meta":           self.meta,
         }
 
 
@@ -175,6 +193,89 @@ class BinanceNormalizer:
                 event_time=int(data["E"]),
                 symbol=str(data["s"]),
                 mark_price=float(data["p"]),
+            )
+        except (KeyError, TypeError, ValueError):
+            return None
+
+
+# ── Binance user data stream normalizer ──────────────────────────────────────
+class BinanceUserStreamNormalizer:
+    """
+    Converts raw Binance user data stream events to OrderEvent.
+
+    Binance ORDER_TRADE_UPDATE payload (USDT-M Futures):
+    {
+      "e": "ORDER_TRADE_UPDATE",
+      "E": 1721234567891,     # event time ms
+      "T": 1721234567890,     # transaction time ms
+      "o": {
+        "s": "BTCUSDT",       # symbol
+        "c": "algofin_abc123",# client order ID
+        "S": "BUY",           # side
+        "o": "LIMIT",         # order type
+        "f": "GTC",           # time in force
+        "q": "0.01000000",    # original quantity
+        "p": "60000.00",      # original price
+        "ap": "0.00",         # average price
+        "X": "NEW",           # order status
+        "i": 123456789,       # order ID
+        "l": "0.00000000",    # last filled quantity
+        "z": "0.00000000",    # cumulative filled quantity
+        "R": false,           # reduce only
+        "T": 1721234567890,   # order trade time
+      }
+    }
+    """
+
+    EXCHANGE = "binance"
+    # Binance status → our canonical status
+    STATUS_MAP = {
+        "NEW":              "NEW",
+        "PARTIALLY_FILLED": "PARTIALLY_FILLED",
+        "FILLED":           "FILLED",
+        "CANCELED":         "CANCELLED",
+        "CANCELLED":        "CANCELLED",
+        "EXPIRED":          "EXPIRED",
+        "NEW_INSURANCE":    "NEW",
+        "NEW_ADL":          "NEW",
+    }
+
+    @classmethod
+    def normalize(
+        cls,
+        raw: dict[str, Any],
+        user_id: str,
+    ) -> OrderEvent | None:
+        try:
+            if raw.get("e") != "ORDER_TRADE_UPDATE":
+                return None
+            o = raw["o"]
+            status = cls.STATUS_MAP.get(o.get("X", ""), o.get("X", ""))
+            client_order_id = str(o.get("c", ""))
+            # Extract AlgoFin internal order ID from client_order_id if present
+            # client_order_id format: algofin_<hex16>
+            algofin_order_id = ""
+            # (resolved later via DB lookup in user stream manager)
+
+            return OrderEvent(
+                type="order_event",
+                version=1,
+                sequence=_next_seq(f"{cls.EXCHANGE}_user_{user_id}"),
+                exchange=cls.EXCHANGE,
+                event_time=int(raw.get("E", 0)),
+                order_id=str(o.get("i", "")),
+                algofin_order_id=algofin_order_id,
+                client_order_id=client_order_id,
+                symbol=str(o.get("s", "")),
+                side=str(o.get("S", "")),
+                order_type=str(o.get("o", "")),
+                status=status,
+                quantity=float(o.get("q", 0)),
+                filled_qty=float(o.get("z", 0)),
+                avg_price=float(o.get("ap", 0)),
+                price=float(o.get("p", 0)),
+                reduce_only=bool(o.get("R", False)),
+                user_id=user_id,
             )
         except (KeyError, TypeError, ValueError):
             return None

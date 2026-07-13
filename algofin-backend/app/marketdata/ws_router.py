@@ -5,7 +5,8 @@
 #   - First-message auth: client sends {type:"auth", token:...} within 5s
 #   - Server-only heartbeat: server sends ping every 30s, client responds pong
 #   - Dynamic subscriptions: {type:"subscribe", symbols:[...]} at any time
-#   - Single Redis channel algofin:prices, filtered per user's subscribed symbols
+#   - algofin:prices single channel, filtered by user's subscribed symbols
+#   - algofin:order_events:<user_id> per-user channel, all events relayed
 #   - All messages: {type, version, ...}
 
 from __future__ import annotations
@@ -80,19 +81,29 @@ async def marketdata_ws(ws: WebSocket) -> None:
         await ws.close(code=4001, reason="malformed_auth")
         return
 
-    # ── Session state ─────────────────────────────────────────────────────────
+    # ── Session state ────────────────────────────────────────────
     subscribed_symbols: set[str] = set()   # user's current symbol filter
 
-    # ── Redis pub/sub ─────────────────────────────────────────────────────────
-    # Import redis here to avoid circular imports; client is app-level singleton
+    # ── Redis pub/sub ────────────────────────────────────────────
+    # Two channels:
+    #  1. algofin:prices           — public mark prices, filtered by subscribed symbols
+    #  2. algofin:order_events:<user_id> — private order updates, all relayed
     from app.database import get_redis_client  # type: ignore[import]
-    redis = await get_redis_client()
+    from app.marketdata.binance_user_stream import order_event_channel
+
+    redis  = await get_redis_client()
     pubsub = redis.pubsub()
-    await pubsub.subscribe(REDIS_CHANNEL)
+    await pubsub.subscribe(
+        REDIS_CHANNEL,
+        order_event_channel(user_id),
+    )
 
     # ── Async tasks ───────────────────────────────────────────────────────────
     async def stream_prices() -> None:
-        """Relay Redis pub/sub messages to the client, filtered by subscription."""
+        """Relay Redis pub/sub messages to the client.
+        - price_update: filtered by subscribed symbols
+        - order_event:  always relayed (already user-scoped channel)
+        """
         async for message in pubsub.listen():
             if ws.client_state != WebSocketState.CONNECTED:
                 break
@@ -102,8 +113,14 @@ async def marketdata_ws(ws: WebSocket) -> None:
                 data = json.loads(message["data"])
             except (json.JSONDecodeError, TypeError):
                 continue
-            # Filter: only send symbols the user subscribed to
-            if data.get("symbol") in subscribed_symbols:
+
+            msg_type = data.get("type")
+            if msg_type == "price_update":
+                # Filter: only send symbols the user subscribed to
+                if data.get("symbol") in subscribed_symbols:
+                    await ws.send_text(json.dumps(data))
+            elif msg_type == "order_event":
+                # Always relay — channel is already user-scoped
                 await ws.send_text(json.dumps(data))
 
     async def heartbeat() -> None:
@@ -165,7 +182,7 @@ async def marketdata_ws(ws: WebSocket) -> None:
                     reason=f"unknown message type: {msg_type}",
                 ))
 
-    # ── Run all tasks concurrently ────────────────────────────────────────────
+    # ── Run all tasks concurrently ──────────────────────────────────────────
     try:
         await asyncio.gather(
             stream_prices(),
@@ -177,7 +194,8 @@ async def marketdata_ws(ws: WebSocket) -> None:
         logger.exception(f"[MarketDataWS] Unhandled error for user {user_id}: {exc}")
     finally:
         try:
-            await pubsub.unsubscribe(REDIS_CHANNEL)
+            from app.marketdata.binance_user_stream import order_event_channel as _oec
+            await pubsub.unsubscribe(REDIS_CHANNEL, _oec(user_id))
             await pubsub.close()
         except Exception:
             pass

@@ -1,10 +1,13 @@
 "use client";
 // src/app/(app)/orders/page.tsx
-// AlgoFin v2 — Phase B: Order Management
-// Place, view, cancel, and amend Binance USDT-M Futures orders.
+// AlgoFin v2 — Phase B+C: Order Management + Live Order Event Streaming
+// Orders placed through AlgoFin show live FILLED/CANCELLED status via WebSocket.
 
 import { useEffect, useState, useCallback } from "react";
 import api from "@/lib/api";
+import { useOrderEvents } from "@/hooks/useOrderEvents";
+import marketDataSocket from "@/lib/marketDataSocket";
+import { useAuthStore } from "@/stores/auth.store";
 
 // ── Types ─────────────────────────────────────────────────────────
 interface Order {
@@ -269,9 +272,21 @@ function PlaceOrderForm({
 }
 
 // ── Order row ──────────────────────────────────────────────────────
-function OrderRow({ order, onCancel }: { order: Order; onCancel: (id: string) => void }) {
+function OrderRow({
+  order,
+  onCancel,
+  liveStatus,
+}: {
+  order: Order;
+  onCancel: (id: string) => void;
+  liveStatus?: string;
+}) {
   const [cancelling, setCancelling] = useState(false);
-  const canCancel = order.status === "NEW" || order.status === "PARTIALLY_FILLED";
+  // Use live status from WebSocket if available, fall back to last polled
+  const displayStatus = liveStatus ?? order.status;
+  const isLiveUpdate  = liveStatus !== undefined && liveStatus !== order.status;
+  const canCancel = (liveStatus ?? order.status) === "NEW" ||
+                    (liveStatus ?? order.status) === "PARTIALLY_FILLED";
 
   const handleCancel = async () => {
     setCancelling(true);
@@ -285,9 +300,15 @@ function OrderRow({ order, onCancel }: { order: Order; onCancel: (id: string) =>
   return (
     <div className="flex items-center justify-between px-4 py-3 text-sm border-b border-white/4 last:border-0 gap-3">
       <div className="flex items-center gap-3 min-w-0">
-        <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold border ${statusColor(order.status)}`}>
-          {order.status}
-        </span>
+        <div className="flex items-center gap-1.5">
+          <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold border ${statusColor(displayStatus)}`}>
+            {displayStatus}
+          </span>
+          {/* Live pulse indicator when WS delivered a new status */}
+          {isLiveUpdate && (
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" title="Live update" />
+          )}
+        </div>
         <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
           order.side === "BUY"
             ? "bg-emerald-500/15 text-emerald-400"
@@ -319,12 +340,23 @@ function OrderRow({ order, onCancel }: { order: Order; onCancel: (id: string) =>
   );
 }
 
-// ── Main Orders page ───────────────────────────────────────────────
+// ── Main Orders page ──────────────────────────────────────────────────
 export default function OrdersPage() {
   const [orders, setOrders]     = useState<Order[]>([]);
   const [accounts, setAccounts] = useState<ExchangeAccount[]>([]);
   const [loading, setLoading]   = useState(true);
   const [statusFilter, setStatusFilter] = useState<string>("open");
+  const accessToken = useAuthStore((s) => s.accessToken);
+
+  // Phase C: live order status overlays from WebSocket
+  const { liveOrders } = useOrderEvents();
+
+  // Ensure WS is connected on this page too
+  useEffect(() => {
+    if (accessToken) marketDataSocket.connect(accessToken);
+  }, [accessToken]);
+
+  const wsStatus = marketDataSocket.getStatus();
 
   const fetchOrders = useCallback(async () => {
     try {
@@ -368,11 +400,23 @@ export default function OrdersPage() {
   return (
     <div className="p-6 space-y-6 max-w-5xl">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">Orders</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Place and manage Binance USDT-M Futures orders
-        </p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">Orders</h1>
+          <div className="flex items-center gap-3 mt-1">
+            <p className="text-sm text-muted-foreground">
+              Place and manage Binance USDT-M Futures orders
+            </p>
+            {/* Phase C: Live WS status */}
+            {wsStatus === "connected" && (
+              <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold
+                bg-emerald-500/15 text-emerald-400 border border-emerald-500/20">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                LIVE
+              </span>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* No account */}
@@ -432,7 +476,12 @@ export default function OrdersPage() {
             ) : (
               <div>
                 {orders.map((o) => (
-                  <OrderRow key={o.id} order={o} onCancel={handleCancel} />
+                  <OrderRow
+                    key={o.id}
+                    order={o}
+                    onCancel={handleCancel}
+                    liveStatus={liveOrders[o.id]?.status}
+                  />
                 ))}
               </div>
             )}
