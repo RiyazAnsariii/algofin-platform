@@ -1,19 +1,25 @@
 #!/usr/bin/env pwsh
 # AlgoFin — Local Development Launcher
-# Usage:  .\dev.ps1
 #
-# Starts both the FastAPI backend (port 8000) and Next.js frontend (port 3000)
-# in separate PowerShell windows and opens the browser automatically.
+# HOW TO RUN (from ANY directory):
+#   powershell -ExecutionPolicy Bypass -File "C:\Users\DELL\Documents\AlgoFin\dev.ps1"
 #
-# Prerequisites (run once):
-#   pip install -r algofin-backend\requirements.txt
-#   npm install  (inside algofin-platform\)
+# Or just double-click dev.bat — it handles everything automatically.
+#
+# If you get "not recognized" or "cannot be loaded":
+#   Run this once in an admin PowerShell:
+#   Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
 
 $ErrorActionPreference = "Stop"
 
+# ── Auto-navigate to script directory ────────────────────────────────────────
+# Works regardless of which directory the terminal started in.
+$scriptDir = if ($PSScriptRoot) { $PSScriptRoot } else { Split-Path -Parent $MyInvocation.MyCommand.Path }
+Set-Location $scriptDir
+
 # ── Resolve paths ─────────────────────────────────────────────────────────────
-$root    = $PSScriptRoot
-$backend = Join-Path $root "algofin-backend"
+$root     = $scriptDir
+$backend  = Join-Path $root "algofin-backend"
 $frontend = Join-Path $root "algofin-platform"
 
 # ── Check required tools ──────────────────────────────────────────────────────

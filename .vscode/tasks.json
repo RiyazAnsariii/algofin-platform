@@ -9,7 +9,8 @@
     {
       "label": "Backend: FastAPI (uvicorn --reload)",
       "type": "shell",
-      "command": "uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload --reload-dir app",
+      // python -m uvicorn works even if uvicorn isn't on PATH directly
+      "command": "python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload --reload-dir app",
       "options": {
         "cwd": "${workspaceFolder}/algofin-backend",
         "env": {
@@ -33,7 +34,8 @@
     {
       "label": "Frontend: Next.js (next dev --turbopack)",
       "type": "shell",
-      "command": "npm run dev:open",
+      // npx next avoids needing next on PATH — uses the local node_modules version
+      "command": "npx next dev --port 3000 --open",
       "options": {
         "cwd": "${workspaceFolder}/algofin-platform"
       },
