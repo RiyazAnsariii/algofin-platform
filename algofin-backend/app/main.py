@@ -22,6 +22,7 @@ from app.orders.router import router as orders_router  # v2 Phase B
 from app.risk.router import router as risk_router      # v2 Phase D
 from app.alerts.router import router as alerts_router  # v2 Phase E
 from app.strategy.router import router as strategy_router  # v2 Phase F
+from app.journal.router import router as journal_router    # v2 Phase G
 from app.portfolio.router import router as portfolio_router
 
 logging.basicConfig(level=logging.INFO)
@@ -79,6 +80,7 @@ app.include_router(orders_router,     prefix=API_PREFIX)  # v2 Phase B: order ma
 app.include_router(risk_router,       prefix=API_PREFIX)  # v2 Phase D: risk controls
 app.include_router(alerts_router,     prefix=API_PREFIX)  # v2 Phase E: Telegram alerts
 app.include_router(strategy_router,   prefix=API_PREFIX)  # v2 Phase F: strategy engine
+app.include_router(journal_router,    prefix=API_PREFIX)  # v2 Phase G: journal & analytics
 
 # ── Health check ──────────────────────────────────────────────────
 @app.get("/health", tags=["health"])

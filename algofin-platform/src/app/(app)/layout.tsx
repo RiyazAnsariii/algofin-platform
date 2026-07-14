@@ -78,6 +78,17 @@ const NAV_ITEMS = [
     ),
   },
   {
+    href:  "/journal",
+    label: "Journal",
+    icon:  (active: boolean) => (
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 2 : 1.5}>
+        <path d="M4 19.5A2.5 2.5 0 016.5 17H20" />
+        <path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z" />
+        <path d="M9 7h6M9 11h6M9 15h4" />
+      </svg>
+    ),
+  },
+  {
     href:  "/events",
     label: "Economic Calendar",
     icon:  (active: boolean) => (
