@@ -93,6 +93,9 @@ class UserExchangeAccount(Base):
     trades: Mapped[list["Trade"]] = relationship(  # type: ignore[name-defined]
         back_populates="exchange_account", cascade="all, delete-orphan"
     )
+    orders: Mapped[list["Order"]] = relationship(  # type: ignore[name-defined]  # v2 Phase B
+        back_populates="exchange_account", cascade="all, delete-orphan"
+    )
 
 
 class EncryptedApiCredential(Base):
