@@ -1,0 +1,36 @@
+{
+  // AlgoFin — Recommended VS Code Extensions
+  // When you open this workspace, VS Code will prompt to install these.
+  "recommendations": [
+    // Python
+    "ms-python.python",
+    "ms-python.debugpy",
+    "ms-python.vscode-pylance",
+
+    // FastAPI / Pydantic
+    "42crunch.vscode-openapi",
+
+    // JavaScript / TypeScript / React
+    "dbaeumer.vscode-eslint",
+    "esbenp.prettier-vscode",
+    "bradlc.vscode-tailwindcss",
+
+    // Next.js
+    "foxundermoon.next-js",
+
+    // Git
+    "eamodio.gitlens",
+    "mhutchie.git-graph",
+
+    // REST API testing
+    "humao.rest-client",
+
+    // Env files
+    "mikestead.dotenv",
+
+    // Utilities
+    "formulahendry.auto-rename-tag",
+    "christian-kohler.path-intellisense",
+    "streetsidesoftware.code-spell-checker"
+  ]
+}

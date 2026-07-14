@@ -3,7 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev --port 3000",
+    "dev:open": "next dev --port 3000 --open",
+    "dev:turbo": "next dev --port 3000 --turbopack",
     "build": "next build",
     "start": "next start",
     "lint": "eslint"

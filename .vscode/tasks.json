@@ -1,0 +1,131 @@
+{
+  // AlgoFin — VS Code / Antigravity Tasks
+  // Runs the FastAPI backend and Next.js frontend in parallel.
+  // Use "AlgoFin: Dev (Full Stack)" as the default launch task.
+  "version": "2.0.0",
+  "tasks": [
+
+    // ── 1. Backend: FastAPI with auto-reload ──────────────────────────
+    {
+      "label": "Backend: FastAPI (uvicorn --reload)",
+      "type": "shell",
+      "command": "uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload --reload-dir app",
+      "options": {
+        "cwd": "${workspaceFolder}/algofin-backend",
+        "env": {
+          "PYTHONPATH": "${workspaceFolder}/algofin-backend"
+        }
+      },
+      "presentation": {
+        "group": "algofin-dev",
+        "panel": "dedicated",
+        "reveal": "always",
+        "label": "Backend (FastAPI :8000)"
+      },
+      "problemMatcher": [],
+      "isBackground": true,
+      "runOptions": {
+        "instanceLimit": 1
+      }
+    },
+
+    // ── 2. Frontend: Next.js with HMR (auto-opens browser) ────────────
+    {
+      "label": "Frontend: Next.js (next dev --turbopack)",
+      "type": "shell",
+      "command": "npm run dev:open",
+      "options": {
+        "cwd": "${workspaceFolder}/algofin-platform"
+      },
+      "presentation": {
+        "group": "algofin-dev",
+        "panel": "dedicated",
+        "reveal": "always",
+        "label": "Frontend (Next.js :3000)"
+      },
+      "problemMatcher": [],
+      "isBackground": true,
+      "runOptions": {
+        "instanceLimit": 1
+      }
+    },
+
+    // ── 3. Compound: Start both together ─────────────────────────────
+    {
+      "label": "AlgoFin: Dev (Full Stack)",
+      "dependsOn": [
+        "Backend: FastAPI (uvicorn --reload)",
+        "Frontend: Next.js (next dev --turbopack)"
+      ],
+      "dependsOrder": "parallel",
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "presentation": {
+        "reveal": "always"
+      },
+      "problemMatcher": []
+    },
+
+    // ── 4. Stop all dev servers ───────────────────────────────────────
+    {
+      "label": "AlgoFin: Stop Dev Servers",
+      "type": "shell",
+      "command": "Get-Process -Name 'uvicorn','node' -ErrorAction SilentlyContinue | Stop-Process -Force",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "presentation": {
+        "reveal": "silent",
+        "panel": "shared"
+      },
+      "problemMatcher": []
+    },
+
+    // ── 5. Install Python deps ────────────────────────────────────────
+    {
+      "label": "Backend: Install Python deps",
+      "type": "shell",
+      "command": "pip install -r requirements.txt",
+      "options": {
+        "cwd": "${workspaceFolder}/algofin-backend"
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      },
+      "problemMatcher": []
+    },
+
+    // ── 6. Install Node deps ──────────────────────────────────────────
+    {
+      "label": "Frontend: Install Node deps",
+      "type": "shell",
+      "command": "npm install",
+      "options": {
+        "cwd": "${workspaceFolder}/algofin-platform"
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      },
+      "problemMatcher": []
+    },
+
+    // ── 7. Run DB migrations ──────────────────────────────────────────
+    {
+      "label": "Backend: Create/Update DB Tables",
+      "type": "shell",
+      "command": "python create_tables.py",
+      "options": {
+        "cwd": "${workspaceFolder}/algofin-backend"
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      },
+      "problemMatcher": []
+    }
+  ]
+}

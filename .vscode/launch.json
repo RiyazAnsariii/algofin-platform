@@ -1,0 +1,77 @@
+{
+  // AlgoFin — VS Code Launch Configuration
+  // Clicking the ▶ Run button or pressing F5 starts the full dev stack.
+  "version": "0.2.0",
+  "configurations": [
+
+    // ── Full-stack dev (default) ───────────────────────────────────────
+    // Runs tasks.json "AlgoFin: Dev (Full Stack)" and
+    // opens the browser at http://localhost:3000 once Next.js is ready.
+    {
+      "name": "▶ AlgoFin Dev (Full Stack)",
+      "type": "node",
+      "request": "launch",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "cwd": "${workspaceFolder}/algofin-platform",
+      "preLaunchTask": "Backend: FastAPI (uvicorn --reload)",
+      "serverReadyAction": {
+        "pattern": "Local:\\s+(https?://\\S+)",
+        "uriFormat": "%s",
+        "action": "openExternally"
+      },
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen"
+    },
+
+    // ── Backend only (FastAPI debugger) ───────────────────────────────
+    // Full Python debugger: breakpoints, step-through, variable inspection.
+    {
+      "name": "🐍 Backend Only (FastAPI debugger)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "uvicorn",
+      "args": [
+        "app.main:app",
+        "--host", "0.0.0.0",
+        "--port", "8000",
+        "--reload",
+        "--reload-dir", "app"
+      ],
+      "cwd": "${workspaceFolder}/algofin-backend",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}/algofin-backend"
+      },
+      "jinja": true,
+      "justMyCode": false,
+      "console": "integratedTerminal"
+    },
+
+    // ── Frontend only ─────────────────────────────────────────────────
+    {
+      "name": "⚡ Frontend Only (Next.js HMR)",
+      "type": "node",
+      "request": "launch",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "cwd": "${workspaceFolder}/algofin-platform",
+      "serverReadyAction": {
+        "pattern": "Local:\\s+(https?://\\S+)",
+        "uriFormat": "%s",
+        "action": "openExternally"
+      },
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen"
+    }
+  ],
+
+  // ── Compounds ─────────────────────────────────────────────────────────
+  "compounds": [
+    {
+      "name": "▶▶ AlgoFin: Full Stack (Tasks)",
+      "configurations": [],
+      "preLaunchTask": "AlgoFin: Dev (Full Stack)",
+      "stopAll": true
+    }
+  ]
+}
