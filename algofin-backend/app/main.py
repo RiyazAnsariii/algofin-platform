@@ -21,6 +21,7 @@ from app.marketdata.ws_router import router as marketdata_router
 from app.orders.router import router as orders_router  # v2 Phase B
 from app.risk.router import router as risk_router      # v2 Phase D
 from app.alerts.router import router as alerts_router  # v2 Phase E
+from app.strategy.router import router as strategy_router  # v2 Phase F
 from app.portfolio.router import router as portfolio_router
 
 logging.basicConfig(level=logging.INFO)
@@ -77,6 +78,7 @@ app.include_router(marketdata_router, prefix=API_PREFIX)  # v2 Phase A: real-tim
 app.include_router(orders_router,     prefix=API_PREFIX)  # v2 Phase B: order management
 app.include_router(risk_router,       prefix=API_PREFIX)  # v2 Phase D: risk controls
 app.include_router(alerts_router,     prefix=API_PREFIX)  # v2 Phase E: Telegram alerts
+app.include_router(strategy_router,   prefix=API_PREFIX)  # v2 Phase F: strategy engine
 
 # ── Health check ──────────────────────────────────────────────────
 @app.get("/health", tags=["health"])
@@ -119,14 +121,24 @@ async def startup() -> None:
     except Exception as exc:
         logger.warning(f"[AlertEngine] Could not start dispatcher: {exc}")
 
+    # v2 Phase F: start Strategy Engine
+    try:
+        from app.strategy.engine import start_strategy_engine
+        start_strategy_engine()
+        logger.info("[StrategyEngine] Strategy engine started.")
+    except Exception as exc:
+        logger.warning(f"[StrategyEngine] Could not start engine: {exc}")
+
 
 # ── Shutdown event ──────────────────────────────────────────
 @app.on_event("shutdown")
 async def shutdown() -> None:
     from app.alerts.engine import stop_alert_dispatcher
+    from app.strategy.engine import stop_strategy_engine
     from app.database import close_redis_client
     from app.marketdata.binance_stream import stop_binance_stream
     from app.marketdata.binance_user_stream import stop_all_user_streams
+    stop_strategy_engine()           # v2 Phase F
     stop_alert_dispatcher()          # v2 Phase E
     await stop_all_user_streams()
     await stop_binance_stream()

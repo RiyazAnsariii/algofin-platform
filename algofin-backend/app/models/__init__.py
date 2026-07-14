@@ -15,6 +15,7 @@ from app.models.billing import UserProfitPeriod, BillingPeriodRecord
 from app.models.order import Order          # v2 Phase B
 from app.models.risk import RiskRule, RiskViolation  # v2 Phase D
 from app.models.alert import TelegramConfig, AlertRule, AlertDelivery  # v2 Phase E
+from app.models.strategy import Strategy, StrategyExecution  # v2 Phase F
 
 __all__ = [
     "User",
@@ -38,4 +39,6 @@ __all__ = [
     "TelegramConfig",  # v2 Phase E
     "AlertRule",       # v2 Phase E
     "AlertDelivery",   # v2 Phase E
+    "Strategy",          # v2 Phase F
+    "StrategyExecution", # v2 Phase F
 ]
