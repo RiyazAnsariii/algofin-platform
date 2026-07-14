@@ -88,7 +88,7 @@ while (-not $ready -and $attempts -lt 30) {
     Start-Sleep -Seconds 2
     $attempts++
     try {
-        $r = Invoke-WebRequest -Uri "http://localhost:3000" -TimeoutSec 2 -ErrorAction SilentlyContinue
+        $r = Invoke-WebRequest -Uri "http://localhost:3000" -UseBasicParsing -TimeoutSec 2 -ErrorAction SilentlyContinue
         if ($r.StatusCode -eq 200) { $ready = $true }
     } catch { }
 }
