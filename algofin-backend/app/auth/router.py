@@ -47,12 +47,12 @@ def _set_refresh_cookie(response: Response, raw_token: str) -> None:
         secure=settings.environment != "development",
         samesite="lax",
         max_age=REFRESH_COOKIE_MAX_AGE,
-        path="/api/v1/auth",
+        path="/",  # Must be "/" so browser sends it on ALL requests incl. /api/v1/auth/refresh
     )
 
 
 def _clear_refresh_cookie(response: Response) -> None:
-    response.delete_cookie(key=REFRESH_COOKIE_NAME, path="/api/v1/auth")
+    response.delete_cookie(key=REFRESH_COOKIE_NAME, path="/")
 
 
 def _user_to_response(user: User) -> UserResponse:

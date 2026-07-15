@@ -439,8 +439,20 @@ export default function ExchangesPage() {
     try {
       const res = await api.get<{ data: ExchangeAccount[] }>("/exchanges");
       setAccounts(res.data.data);
-    } catch {
-      setError("Failed to load exchange accounts.");
+      setError(null);
+    } catch (err: any) {
+      const status = err?.response?.status;
+      const detail = err?.response?.data?.detail;
+      if (status === 401) {
+        // Token expired and refresh failed — redirect to login
+        window.location.href = "/login";
+        return;
+      }
+      setError(
+        detail
+          ? `${detail} (${status})`
+          : `Failed to load exchange accounts (${status ?? "network error"}).`
+      );
     } finally {
       setLoading(false);
     }
