@@ -18,7 +18,7 @@ from app.models.events import EconomicEvent
 router = APIRouter(prefix="/events", tags=["events"])
 
 
-@router.get("/", response_model=SuccessResponse[list[dict]])
+@router.get("", response_model=SuccessResponse[list[dict]])
 async def list_events(
     current_user: CurrentUser,
     db: DbSession,

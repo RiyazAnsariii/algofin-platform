@@ -191,11 +191,17 @@ export default function EventsPage() {
     try {
       const params = new URLSearchParams({ days_ahead: String(daysAhead) });
       if (impact) params.set("impact", impact);
-      const res = await api.get<{ data: EconomicEvent[] }>(`/events/?${params}`);
+      const res = await api.get<{ data: EconomicEvent[] }>(`/events?${params}`);
       setEvents(res.data.data);
       setLastUpdated(new Date());
-    } catch {
-      setError("Failed to load economic events. Is the backend running?");
+    } catch (err: any) {
+      const status = err?.response?.status;
+      const detail = err?.response?.data?.detail;
+      setError(
+        detail
+          ? `${detail} (HTTP ${status})`
+          : `Failed to load economic events (${status ?? "network error"}).`
+      );
     } finally {
       setLoading(false);
     }
