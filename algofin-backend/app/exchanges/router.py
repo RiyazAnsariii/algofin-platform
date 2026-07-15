@@ -117,7 +117,7 @@ async def connect(
     return SuccessResponse(data=_account_to_response(account))
 
 
-@router.get("/", response_model=SuccessResponse[list[ExchangeAccountResponse]])
+@router.get("", response_model=SuccessResponse[list[ExchangeAccountResponse]])
 async def list_accounts(
     current_user: CurrentUser,
     db: DbSession,

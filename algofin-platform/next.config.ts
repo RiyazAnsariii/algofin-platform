@@ -5,6 +5,11 @@ const nextConfig: NextConfig = {
   // Required for the production Dockerfile (stage 3: runner)
   output: process.env.NODE_ENV === "production" ? "standalone" : undefined,
 
+  // Prevent Next.js from issuing 308 redirects on trailing-slash mismatches
+  // for API proxy routes. Without this, Authorization headers get dropped
+  // on redirect, causing 401 errors on valid sessions.
+  skipTrailingSlashRedirect: true,
+
   // API rewrites: /api/* → backend
   // Dev: http://localhost:8000  |  Prod: Nginx proxies directly, no rewrite needed
   async rewrites() {

@@ -437,7 +437,7 @@ export default function ExchangesPage() {
 
   const fetchAccounts = useCallback(async () => {
     try {
-      const res = await api.get<{ data: ExchangeAccount[] }>("/exchanges/");
+      const res = await api.get<{ data: ExchangeAccount[] }>("/exchanges");
       setAccounts(res.data.data);
     } catch {
       setError("Failed to load exchange accounts.");
