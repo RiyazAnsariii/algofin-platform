@@ -418,8 +418,8 @@ export default function StrategyPage() {
 
   async function loadAccounts() {
     try {
-      const res = await api.get<{ data: { accounts: ExchangeAccount[] } }>("/exchanges/accounts");
-      setAccounts(res.data.data.accounts || []);
+      const res = await api.get<{ data: ExchangeAccount[] }>("/exchanges/");
+      setAccounts(res.data.data || []);
     } catch { /* ignore */ }
   }
 

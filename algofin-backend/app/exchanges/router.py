@@ -12,6 +12,7 @@ from app.common.schemas import SuccessResponse
 from app.exchanges.schemas import (
     ConnectExchangeRequest,
     ExchangeAccountResponse,
+    ExchangeDefinitionResponse,
     TriggerSyncRequest,
 )
 from app.exchanges.service import (
@@ -19,9 +20,35 @@ from app.exchanges.service import (
     get_user_exchange_accounts,
     revoke_exchange_account,
 )
+from app.exchanges.registry import ALL_VISIBLE
 from app.models.exchange import UserExchangeAccount
 
 router = APIRouter(prefix="/exchanges", tags=["exchanges"])
+
+
+# ── Supported exchanges (public — no auth needed) ─────────────────────────
+
+@router.get("/supported", response_model=SuccessResponse[list[ExchangeDefinitionResponse]])
+async def list_supported() -> SuccessResponse:
+    """
+    Returns all exchanges that are visible in the UI, including
+    'coming_soon' entries. Does NOT require authentication.
+    """
+    defs = [
+        ExchangeDefinitionResponse(
+            id=ex.id,
+            name=ex.name,
+            display_name=ex.display_name,
+            status=ex.status,
+            markets=list(ex.markets),
+            requires_passphrase=ex.requires_passphrase,
+            logo_letter=ex.logo_letter,
+            description=ex.description,
+            api_docs_url=ex.api_docs_url,
+        )
+        for ex in ALL_VISIBLE.values()
+    ]
+    return SuccessResponse(data=defs)
 
 
 def _account_to_response(account: UserExchangeAccount) -> ExchangeAccountResponse:
@@ -55,6 +82,18 @@ async def connect(
     """
     ip = request.client.host if request.client else None
     ua = request.headers.get("user-agent")
+
+    # Phase H guard: block non-live exchanges until their integration is ready
+    from app.exchanges.registry import EXCHANGE_REGISTRY
+    exc_def = EXCHANGE_REGISTRY.get(body.exchange_id)
+    if exc_def and exc_def.status != "live":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                f"{exc_def.display_name} integration is coming soon. "
+                "You can save your API keys here once the integration is live."
+            ),
+        )
 
     account = await connect_exchange(
         db,

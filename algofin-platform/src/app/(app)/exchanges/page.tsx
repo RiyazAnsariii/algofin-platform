@@ -1,10 +1,10 @@
 "use client";
 // src/app/(app)/exchanges/page.tsx
-// AlgoFin v1 — Exchange accounts: list connected + connect new
+// AlgoFin v2 — Phase H: Multi-Exchange support
 //
-// Billing consent is MANDATORY — displayed as modal before form submission.
-// Exact consent text from plan.md Section 9.
-// Dual-record rule is enforced on the backend.
+// Shows exchange picker with live/coming-soon status.
+// Only Binance is fully live; Bybit, OKX, Coinbase show "Coming Soon".
+// Billing consent is MANDATORY for all live exchanges.
 
 import { useEffect, useState, useCallback } from "react";
 import api from "@/lib/api";
@@ -21,12 +21,51 @@ interface ExchangeAccount {
   created_at: string;
 }
 
+interface ExchangeDef {
+  id: string;
+  name: string;
+  display_name: string;
+  status: "live" | "coming_soon";
+  markets: string[];
+  requires_passphrase: boolean;
+  logo_letter: string;
+  description: string;
+  api_docs_url: string;
+}
+
 // ── Billing consent text (locked — plan.md Section 9) ────────────
 const CONSENT_TEXT =
   "AlgoFin calculates and displays an estimated performance fee of 20% of my " +
   "monthly realized profit from this Binance Futures account for beta evaluation " +
   "purposes. This is not a charge. All manual trades on this account are included " +
   "regardless of whether AlgoFin placed them.";
+
+// ── Exchange logo placeholder ─────────────────────────────────────
+function ExchangeLogo({ letter, live }: { letter: string; live: boolean }) {
+  return (
+    <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-base font-bold flex-shrink-0 ${
+      live
+        ? "bg-primary/15 border border-primary/25 text-primary"
+        : "bg-white/5 border border-white/10 text-muted-foreground"
+    }`}>
+      {letter}
+    </div>
+  );
+}
+
+// ── Status badge ──────────────────────────────────────────────────
+function StatusBadge({ status }: { status: string }) {
+  if (status === "live") return (
+    <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+      Live
+    </span>
+  );
+  return (
+    <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20">
+      Coming Soon
+    </span>
+  );
+}
 
 // ── Sync status badge ─────────────────────────────────────────────
 function SyncBadge({ status }: { status: ExchangeAccount["sync_status"] }) {
@@ -46,20 +85,23 @@ function SyncBadge({ status }: { status: ExchangeAccount["sync_status"] }) {
   );
 }
 
-// ── Account card ─────────────────────────────────────────────────
+// ── Connected account card ────────────────────────────────────────
 function AccountCard({
-  account,
-  onSync,
-  onRevoke,
-  loading,
+  account, onSync, onRevoke, loading,
 }: {
   account: ExchangeAccount;
   onSync: (id: string) => void;
   onRevoke: (id: string) => void;
   loading: boolean;
 }) {
-  const fmt = (iso: string | null) =>
-    iso ? new Date(iso).toLocaleString() : "Never";
+  const fmt = (iso: string | null) => iso ? new Date(iso).toLocaleString() : "Never";
+
+  const exchangeLabels: Record<string, string> = {
+    binance_usdtm:     "Binance USDT-M Futures",
+    bybit_linear:      "Bybit Linear Perpetuals",
+    okx_swap:          "OKX Perpetual Swaps",
+    coinbase_advanced: "Coinbase Advanced Trade",
+  };
 
   return (
     <div className="surface-card p-5 space-y-4">
@@ -70,10 +112,9 @@ function AccountCard({
             <SyncBadge status={account.sync_status} />
           </div>
           <p className="text-xs text-muted-foreground">
-            Binance USDT-M Futures · Last synced: {fmt(account.last_sync_at)}
+            {exchangeLabels[account.exchange_id] || account.exchange_id} · Last synced: {fmt(account.last_sync_at)}
           </p>
         </div>
-        {/* Billing consent indicator */}
         <div className="shrink-0 flex items-center gap-1.5 text-xs text-muted-foreground">
           <span className={`w-1.5 h-1.5 rounded-full ${account.billing_consent ? "bg-emerald-400" : "bg-rose-400"}`} />
           {account.billing_consent ? "Fee tracking on" : "No consent"}
@@ -81,20 +122,14 @@ function AccountCard({
       </div>
 
       <div className="flex items-center gap-2 pt-1">
-        <button
-          onClick={() => onSync(account.id)}
-          disabled={loading}
+        <button onClick={() => onSync(account.id)} disabled={loading}
           className="flex-1 py-1.5 rounded-lg border border-white/10 text-xs font-medium text-muted-foreground
-            hover:border-white/20 hover:text-foreground hover:bg-white/5 transition-all disabled:opacity-50"
-        >
+            hover:border-white/20 hover:text-foreground hover:bg-white/5 transition-all disabled:opacity-50">
           Force sync
         </button>
-        <button
-          onClick={() => onRevoke(account.id)}
-          disabled={loading}
+        <button onClick={() => onRevoke(account.id)} disabled={loading}
           className="py-1.5 px-3 rounded-lg border border-rose-500/20 text-xs font-medium text-rose-400
-            hover:bg-rose-500/10 hover:border-rose-500/40 transition-all disabled:opacity-50"
-        >
+            hover:bg-rose-500/10 hover:border-rose-500/40 transition-all disabled:opacity-50">
           Revoke
         </button>
       </div>
@@ -103,19 +138,12 @@ function AccountCard({
 }
 
 // ── Billing consent modal ─────────────────────────────────────────
-function ConsentModal({
-  onAgree,
-  onCancel,
-}: {
-  onAgree: () => void;
-  onCancel: () => void;
-}) {
+function ConsentModal({ onAgree, onCancel }: { onAgree: () => void; onCancel: () => void }) {
   const [accepted, setAccepted] = useState(false);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
       <div className="w-full max-w-lg glass-strong rounded-2xl border border-white/10 shadow-2xl p-6 space-y-5 animate-fade-up">
-        {/* Header */}
         <div className="space-y-1">
           <div className="flex items-center gap-2 text-primary">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -129,12 +157,10 @@ function ConsentModal({
           </p>
         </div>
 
-        {/* Consent text box — exact wording from plan.md Section 9 */}
         <div className="bg-surface-1 rounded-xl border border-white/8 p-4 text-sm leading-relaxed text-foreground/90">
           {CONSENT_TEXT}
         </div>
 
-        {/* Key points */}
         <ul className="space-y-2 text-sm">
           {[
             "20% of profitable months only — zero fee in loss months",
@@ -149,17 +175,12 @@ function ConsentModal({
           ))}
         </ul>
 
-        {/* Checkbox */}
         <label className="flex items-start gap-3 cursor-pointer group">
           <div
-            className={`mt-0.5 w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 transition-all
-              ${accepted
-                ? "bg-primary border-primary"
-                : "border-white/20 group-hover:border-primary/50"
-              }`}
-            onClick={() => setAccepted((p) => !p)}
-            role="checkbox"
-            aria-checked={accepted}
+            className={`mt-0.5 w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 transition-all ${
+              accepted ? "bg-primary border-primary" : "border-white/20 group-hover:border-primary/50"
+            }`}
+            onClick={() => setAccepted(p => !p)} role="checkbox" aria-checked={accepted}
           >
             {accepted && (
               <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
@@ -172,22 +193,15 @@ function ConsentModal({
           </span>
         </label>
 
-        {/* Actions */}
         <div className="flex gap-3 pt-1">
-          <button
-            onClick={onCancel}
+          <button onClick={onCancel}
             className="flex-1 py-2.5 rounded-xl border border-white/10 text-sm font-medium text-muted-foreground
-              hover:border-white/20 hover:text-foreground transition-all"
-          >
+              hover:border-white/20 hover:text-foreground transition-all">
             Cancel
           </button>
-          <button
-            onClick={onAgree}
-            disabled={!accepted}
+          <button onClick={onAgree} disabled={!accepted}
             className="flex-1 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold
-              hover:bg-primary/90 transition-all glow-cyan-sm
-              disabled:opacity-40 disabled:cursor-not-allowed"
-          >
+              hover:bg-primary/90 transition-all glow-cyan-sm disabled:opacity-40 disabled:cursor-not-allowed">
             I agree — connect account
           </button>
         </div>
@@ -198,14 +212,19 @@ function ConsentModal({
 
 // ── Connect form ─────────────────────────────────────────────────
 function ConnectForm({
+  exchange,
   onConnected,
+  onCancel,
 }: {
+  exchange: ExchangeDef;
   onConnected: () => void;
+  onCancel: () => void;
 }) {
   const [step, setStep] = useState<"form" | "consent" | "connecting">("form");
   const [label, setLabel] = useState("");
   const [apiKey, setApiKey] = useState("");
   const [apiSecret, setApiSecret] = useState("");
+  const [passphrase, setPassphrase] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [apiError, setApiError] = useState<string | null>(null);
 
@@ -214,6 +233,7 @@ function ConnectForm({
     if (!label.trim()) e.label = "Account label is required";
     if (!apiKey.trim()) e.apiKey = "API key is required";
     if (!apiSecret.trim()) e.apiSecret = "API secret is required";
+    if (exchange.requires_passphrase && !passphrase.trim()) e.passphrase = "Passphrase is required";
     return e;
   };
 
@@ -230,10 +250,11 @@ function ConnectForm({
     setApiError(null);
     try {
       await api.post("/exchanges/connect", {
-        exchange_id: "binance_usdtm",
+        exchange_id: exchange.id,
         label: label.trim(),
         api_key: apiKey.trim(),
         api_secret: apiSecret.trim(),
+        passphrase: passphrase.trim() || null,
         billing_consent: {
           consented: true,
           consent_version: "v1.0",
@@ -243,9 +264,7 @@ function ConnectForm({
       onConnected();
     } catch (err: any) {
       const detail = err?.response?.data?.detail;
-      setApiError(
-        typeof detail === "string" ? detail : "Failed to connect account. Check your API key and secret."
-      );
+      setApiError(typeof detail === "string" ? detail : "Failed to connect account. Check your API key and secret.");
       setStep("form");
     }
   };
@@ -259,100 +278,167 @@ function ConnectForm({
   return (
     <>
       {step === "consent" && (
-        <ConsentModal
-          onAgree={handleConsentAgree}
-          onCancel={() => setStep("form")}
-        />
+        <ConsentModal onAgree={handleConsentAgree} onCancel={() => setStep("form")} />
       )}
 
-      <form onSubmit={handleFormSubmit} className="space-y-4">
-        {apiError && (
-          <div className="px-4 py-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-sm text-rose-400">
-            {apiError}
+      <div className="bg-surface-1 border border-white/8 rounded-2xl p-6 space-y-5">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <ExchangeLogo letter={exchange.logo_letter} live={exchange.status === "live"} />
+            <div>
+              <h2 className="font-semibold text-foreground">Connect {exchange.name}</h2>
+              <p className="text-xs text-muted-foreground">{exchange.display_name}</p>
+            </div>
           </div>
-        )}
-
-        <div className="space-y-1.5">
-          <label className="block text-sm font-medium">Account label</label>
-          <input
-            value={label}
-            onChange={(e) => { setLabel(e.target.value); setErrors((p) => ({ ...p, label: "" })); }}
-            placeholder="e.g. My Futures Account"
-            className={fieldClass("label")}
-          />
-          {errors.label && <p className="text-xs text-rose-400">{errors.label}</p>}
+          <button onClick={onCancel} className="text-muted-foreground hover:text-foreground transition-colors text-xl leading-none">×</button>
         </div>
 
-        <div className="space-y-1.5">
-          <label className="block text-sm font-medium">Binance API key</label>
-          <input
-            value={apiKey}
-            onChange={(e) => { setApiKey(e.target.value); setErrors((p) => ({ ...p, apiKey: "" })); }}
-            placeholder="Paste your Binance API key"
-            className={fieldClass("apiKey")}
-            autoComplete="off"
-          />
-          {errors.apiKey && <p className="text-xs text-rose-400">{errors.apiKey}</p>}
-        </div>
-
-        <div className="space-y-1.5">
-          <label className="block text-sm font-medium">API secret</label>
-          <input
-            type="password"
-            value={apiSecret}
-            onChange={(e) => { setApiSecret(e.target.value); setErrors((p) => ({ ...p, apiSecret: "" })); }}
-            placeholder="Paste your API secret"
-            className={fieldClass("apiSecret")}
-            autoComplete="off"
-          />
-          {errors.apiSecret && <p className="text-xs text-rose-400">{errors.apiSecret}</p>}
-        </div>
-
-        {/* Security note */}
-        <div className="px-4 py-3 rounded-xl bg-primary/5 border border-primary/15 text-xs text-muted-foreground space-y-1">
-          <p className="font-medium text-foreground">Security</p>
-          <ul className="space-y-0.5 list-disc pl-3">
-            <li>AlgoFin only needs <strong>Futures Read</strong> permission</li>
-            <li>Enable <strong>Restrict access to trusted IPs</strong> for extra security</li>
-            <li>Your credentials are encrypted with AES-256 and never shown again</li>
-            <li>AlgoFin cannot execute trades on your behalf</li>
-          </ul>
-        </div>
-
-        <button
-          type="submit"
-          disabled={step === "connecting"}
-          className="w-full py-2.5 rounded-xl bg-primary text-primary-foreground font-semibold text-sm
-            hover:bg-primary/90 transition-all glow-cyan-sm
-            disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-        >
-          {step === "connecting" ? (
-            <>
-              <span className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
-              Connecting…
-            </>
-          ) : (
-            "Connect account"
+        <form onSubmit={handleFormSubmit} className="space-y-4">
+          {apiError && (
+            <div className="px-4 py-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-sm text-rose-400">
+              {apiError}
+            </div>
           )}
-        </button>
-      </form>
+
+          <div className="space-y-1.5">
+            <label className="block text-sm font-medium">Account label</label>
+            <input value={label} onChange={e => { setLabel(e.target.value); setErrors(p => ({ ...p, label: "" })); }}
+              placeholder={`e.g. My ${exchange.name} Account`} className={fieldClass("label")} />
+            {errors.label && <p className="text-xs text-rose-400">{errors.label}</p>}
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="block text-sm font-medium">{exchange.name} API Key</label>
+            <input value={apiKey} onChange={e => { setApiKey(e.target.value); setErrors(p => ({ ...p, apiKey: "" })); }}
+              placeholder={`Paste your ${exchange.name} API key`} className={fieldClass("apiKey")} autoComplete="off" />
+            {errors.apiKey && <p className="text-xs text-rose-400">{errors.apiKey}</p>}
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="block text-sm font-medium">API Secret</label>
+            <input type="password" value={apiSecret} onChange={e => { setApiSecret(e.target.value); setErrors(p => ({ ...p, apiSecret: "" })); }}
+              placeholder="Paste your API secret" className={fieldClass("apiSecret")} autoComplete="off" />
+            {errors.apiSecret && <p className="text-xs text-rose-400">{errors.apiSecret}</p>}
+          </div>
+
+          {exchange.requires_passphrase && (
+            <div className="space-y-1.5">
+              <label className="block text-sm font-medium">API Passphrase</label>
+              <input type="password" value={passphrase} onChange={e => { setPassphrase(e.target.value); setErrors(p => ({ ...p, passphrase: "" })); }}
+                placeholder="Paste your API passphrase" className={fieldClass("passphrase")} autoComplete="off" />
+              {errors.passphrase && <p className="text-xs text-rose-400">{errors.passphrase}</p>}
+            </div>
+          )}
+
+          {/* API docs link */}
+          {exchange.api_docs_url && (
+            <a href={exchange.api_docs_url} target="_blank" rel="noopener noreferrer"
+              className="flex items-center gap-1.5 text-xs text-primary hover:text-primary/80 transition-colors">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3" />
+              </svg>
+              How to create {exchange.name} API keys
+            </a>
+          )}
+
+          {/* Security note */}
+          <div className="px-4 py-3 rounded-xl bg-primary/5 border border-primary/15 text-xs text-muted-foreground space-y-1">
+            <p className="font-medium text-foreground">Security</p>
+            <ul className="space-y-0.5 list-disc pl-3">
+              <li>Enable <strong>Read-only</strong> permissions only — AlgoFin never places trades without your explicit approval</li>
+              <li>Restrict access to trusted IPs for extra security</li>
+              <li>Your credentials are encrypted with AES-256 and never shown again</li>
+            </ul>
+          </div>
+
+          <button type="submit" disabled={step === "connecting"}
+            className="w-full py-2.5 rounded-xl bg-primary text-primary-foreground font-semibold text-sm
+              hover:bg-primary/90 transition-all glow-cyan-sm
+              disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2">
+            {step === "connecting" ? (
+              <>
+                <span className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
+                Connecting…
+              </>
+            ) : "Connect account"}
+          </button>
+        </form>
+      </div>
     </>
   );
 }
 
-// ── Main page ────────────────────────────────────────────────────
+// ── Exchange picker card ──────────────────────────────────────────
+function ExchangeCard({
+  exchange,
+  connectedCount,
+  onSelect,
+}: {
+  exchange: ExchangeDef;
+  connectedCount: number;
+  onSelect: (ex: ExchangeDef) => void;
+}) {
+  const isLive = exchange.status === "live";
+
+  return (
+    <div className={`bg-surface-1 border rounded-2xl p-5 space-y-3 transition-all ${
+      isLive ? "border-white/8 hover:border-white/16 cursor-pointer" : "border-white/5 opacity-70"
+    }`}
+      onClick={() => isLive && onSelect(exchange)}
+    >
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <ExchangeLogo letter={exchange.logo_letter} live={isLive} />
+          <div>
+            <div className="flex items-center gap-2">
+              <h3 className="font-semibold text-foreground">{exchange.name}</h3>
+              <StatusBadge status={exchange.status} />
+            </div>
+            <p className="text-xs text-muted-foreground">{exchange.markets.join(" · ")}</p>
+          </div>
+        </div>
+        {connectedCount > 0 && (
+          <span className="text-xs text-primary bg-primary/10 border border-primary/20 px-2 py-0.5 rounded-full">
+            {connectedCount} connected
+          </span>
+        )}
+      </div>
+
+      <p className="text-xs text-muted-foreground">{exchange.description}</p>
+
+      <div className="pt-1">
+        {isLive ? (
+          <button
+            onClick={e => { e.stopPropagation(); onSelect(exchange); }}
+            className="w-full py-2 rounded-xl bg-primary/10 text-primary border border-primary/20 text-sm font-medium
+              hover:bg-primary/20 transition-all"
+          >
+            + Connect {exchange.name} account
+          </button>
+        ) : (
+          <div className="w-full py-2 rounded-xl bg-white/3 border border-white/8 text-sm text-muted-foreground text-center">
+            Integration coming soon — check back later
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Main Page ─────────────────────────────────────────────────────
 export default function ExchangesPage() {
-  const [accounts, setAccounts] = useState<ExchangeAccount[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [accounts, setAccounts]       = useState<ExchangeAccount[]>([]);
+  const [exchanges, setExchanges]     = useState<ExchangeDef[]>([]);
+  const [loading, setLoading]         = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
-  const [showForm, setShowForm] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [connecting, setConnecting]   = useState<ExchangeDef | null>(null);
+  const [error, setError]             = useState<string | null>(null);
 
   const fetchAccounts = useCallback(async () => {
     try {
       const res = await api.get<{ data: ExchangeAccount[] }>("/exchanges/");
       setAccounts(res.data.data);
-      if (res.data.data.length === 0) setShowForm(true);
     } catch {
       setError("Failed to load exchange accounts.");
     } finally {
@@ -360,53 +446,51 @@ export default function ExchangesPage() {
     }
   }, []);
 
-  useEffect(() => { fetchAccounts(); }, [fetchAccounts]);
+  const fetchExchanges = useCallback(async () => {
+    try {
+      const res = await api.get<{ data: ExchangeDef[] }>("/exchanges/supported");
+      setExchanges(res.data.data);
+    } catch { /* registry always returns 200 */ }
+  }, []);
+
+  useEffect(() => {
+    fetchAccounts();
+    fetchExchanges();
+  }, [fetchAccounts, fetchExchanges]);
 
   const handleSync = async (id: string) => {
     setActionLoading(true);
-    try {
-      await api.post(`/exchanges/${id}/sync`, { sync_type: "full" });
-      await fetchAccounts();
-    } catch { /* ignore */ }
-    finally { setActionLoading(false); }
+    try { await api.post(`/exchanges/${id}/sync`, { sync_type: "full" }); await fetchAccounts(); }
+    catch { /* ignore */ } finally { setActionLoading(false); }
   };
 
   const handleRevoke = async (id: string) => {
     if (!confirm("Revoke this exchange account? Billing consent will also be removed.")) return;
     setActionLoading(true);
-    try {
-      await api.delete(`/exchanges/${id}`);
-      await fetchAccounts();
-    } catch { /* ignore */ }
-    finally { setActionLoading(false); }
+    try { await api.delete(`/exchanges/${id}`); await fetchAccounts(); }
+    catch { /* ignore */ } finally { setActionLoading(false); }
   };
 
   const handleConnected = async () => {
-    setShowForm(false);
+    setConnecting(null);
     setLoading(true);
     await fetchAccounts();
   };
 
+  // Count connected accounts per exchange
+  const countByExchange = accounts.reduce<Record<string, number>>((acc, a) => {
+    acc[a.exchange_id] = (acc[a.exchange_id] || 0) + 1;
+    return acc;
+  }, {});
+
   return (
-    <div className="p-6 max-w-3xl space-y-6">
+    <div className="p-6 max-w-4xl space-y-8">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Exchange Accounts</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Connect your Binance USDT-M Futures account to start tracking.
-          </p>
-        </div>
-        {accounts.length > 0 && !showForm && (
-          <button
-            onClick={() => setShowForm(true)}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-medium
-              hover:bg-primary/90 transition-all glow-cyan-sm"
-          >
-            <span className="text-lg leading-none">+</span>
-            Connect
-          </button>
-        )}
+      <div>
+        <h1 className="text-2xl font-bold text-foreground">Exchange Accounts</h1>
+        <p className="text-sm text-muted-foreground mt-1">
+          Connect your exchange accounts to start tracking performance and placing orders.
+        </p>
       </div>
 
       {error && (
@@ -415,10 +499,19 @@ export default function ExchangesPage() {
         </div>
       )}
 
+      {/* Connect form (shown when an exchange is selected) */}
+      {connecting && (
+        <ConnectForm
+          exchange={connecting}
+          onConnected={handleConnected}
+          onCancel={() => setConnecting(null)}
+        />
+      )}
+
       {/* Connected accounts */}
-      {loading ? (
+      {(loading ? (
         <div className="space-y-3">
-          {[1, 2].map((i) => (
+          {[1, 2].map(i => (
             <div key={i} className="surface-card p-5 animate-pulse">
               <div className="h-4 w-48 bg-muted rounded mb-2" />
               <div className="h-3 w-32 bg-muted/60 rounded" />
@@ -427,54 +520,40 @@ export default function ExchangesPage() {
         </div>
       ) : accounts.length > 0 ? (
         <div className="space-y-3">
-          {accounts.map((acct) => (
-            <AccountCard
-              key={acct.id}
-              account={acct}
-              onSync={handleSync}
-              onRevoke={handleRevoke}
-              loading={actionLoading}
+          <h2 className="text-sm font-semibold text-foreground">Connected accounts ({accounts.length})</h2>
+          {accounts.map(acct => (
+            <AccountCard key={acct.id} account={acct}
+              onSync={handleSync} onRevoke={handleRevoke} loading={actionLoading} />
+          ))}
+        </div>
+      ) : null)}
+
+      {/* Exchange picker */}
+      <div className="space-y-4">
+        <div>
+          <h2 className="text-base font-semibold text-foreground">Supported Exchanges</h2>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Click a live exchange to connect. Coming Soon exchanges will be enabled in future updates.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {(exchanges.length > 0 ? exchanges : [
+            // Fallback if API call fails — hardcoded to always show the grid
+            { id: "binance_usdtm",     name: "Binance",  display_name: "Binance USDT-M Futures",   status: "live",        markets: ["USDT-M Futures"], requires_passphrase: false, logo_letter: "B", description: "The world's largest crypto exchange. Connect your USDT-M Futures account.", api_docs_url: "" },
+            { id: "bybit_linear",      name: "Bybit",    display_name: "Bybit Linear Perpetuals",   status: "coming_soon", markets: ["USDT Perpetuals"], requires_passphrase: false, logo_letter: "Y", description: "Bybit Linear Perpetuals. Full integration coming soon.", api_docs_url: "" },
+            { id: "okx_swap",          name: "OKX",      display_name: "OKX Perpetual Swaps",       status: "coming_soon", markets: ["USDT Perpetuals"], requires_passphrase: true,  logo_letter: "O", description: "OKX Perpetual Swaps (USDT-settled). Integration coming soon.", api_docs_url: "" },
+            { id: "coinbase_advanced",  name: "Coinbase", display_name: "Coinbase Advanced Trade",   status: "coming_soon", markets: ["Spot"],            requires_passphrase: false, logo_letter: "C", description: "Coinbase Advanced Trade (spot). API integration coming soon.", api_docs_url: "" },
+          ] as ExchangeDef[]).map(ex => (
+            <ExchangeCard
+              key={ex.id}
+              exchange={ex}
+              connectedCount={countByExchange[ex.id] || 0}
+              onSelect={setConnecting}
             />
           ))}
         </div>
-      ) : null}
-
-      {/* Connect form */}
-      {showForm && (
-        <div className="surface-card p-6 space-y-5">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="font-semibold text-foreground">Connect Binance Futures</h2>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                Read-only access · USDT-M Futures only
-              </p>
-            </div>
-            {accounts.length > 0 && (
-              <button
-                onClick={() => setShowForm(false)}
-                className="text-muted-foreground hover:text-foreground transition-colors p-1"
-              >
-                ✕
-              </button>
-            )}
-          </div>
-          <ConnectForm onConnected={handleConnected} />
-        </div>
-      )}
-
-      {/* Empty state */}
-      {!loading && accounts.length === 0 && !showForm && (
-        <div className="surface-card p-10 text-center space-y-3">
-          <div className="w-12 h-12 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center mx-auto">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-primary">
-              <rect x="2" y="3" width="20" height="14" rx="2" />
-              <path d="M8 21h8M12 17v4" />
-            </svg>
-          </div>
-          <p className="text-sm font-medium text-foreground">No exchange accounts connected</p>
-          <p className="text-xs text-muted-foreground">Connect your Binance Futures account to start tracking.</p>
-        </div>
-      )}
+      </div>
     </div>
   );
 }

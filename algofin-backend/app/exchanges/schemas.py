@@ -4,6 +4,8 @@
 
 from pydantic import BaseModel, field_validator
 
+from app.exchanges.registry import EXCHANGE_REGISTRY, VALID_EXCHANGE_IDS
+
 
 # ── Billing consent payload (per plan.md Section 9 spec) ─────────
 REQUIRED_CONSENT_TEXT = (
@@ -43,8 +45,9 @@ class ConnectExchangeRequest(BaseModel):
     @field_validator("exchange_id")
     @classmethod
     def validate_exchange_id(cls, v: str) -> str:
-        if v != "binance_usdtm":
-            raise ValueError("Only 'binance_usdtm' is supported in v1")
+        if v not in VALID_EXCHANGE_IDS:
+            valid = ", ".join(sorted(VALID_EXCHANGE_IDS))
+            raise ValueError(f"exchange_id must be one of: {valid}")
         return v
 
     @field_validator("label")
@@ -96,3 +99,16 @@ class TriggerSyncRequest(BaseModel):
         if v not in valid:
             raise ValueError(f"sync_type must be one of: {', '.join(valid)}")
         return v
+
+
+class ExchangeDefinitionResponse(BaseModel):
+    """Public metadata for one exchange — returned by GET /exchanges/supported."""
+    id: str
+    name: str
+    display_name: str
+    status: str          # "live" | "coming_soon"
+    markets: list[str]
+    requires_passphrase: bool
+    logo_letter: str
+    description: str
+    api_docs_url: str
