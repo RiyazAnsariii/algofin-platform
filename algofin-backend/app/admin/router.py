@@ -271,3 +271,110 @@ async def trigger_sync(
         })
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to trigger sync: {str(e)}")
+
+
+# ── Login activity ─────────────────────────────────────────────────
+
+from app.models.user import LoginActivity
+
+
+@router.get("/activity", response_model=SuccessResponse[list[dict]])
+async def platform_activity(
+    current_user: CurrentUser,
+    db: DbSession,
+) -> SuccessResponse[list[dict]]:
+    """Recent platform-wide login events (last 100)."""
+    require_admin(current_user)
+
+    result = await db.execute(
+        select(LoginActivity, User)
+        .join(User, LoginActivity.user_id == User.id)
+        .order_by(desc(LoginActivity.created_at))
+        .limit(100)
+    )
+    rows = result.all()
+
+    return SuccessResponse(data=[
+        {
+            "id":         str(a.id),
+            "user_email": u.email,
+            "user_id":    str(u.id),
+            "event":      a.event,
+            "ip_address": a.ip_address,
+            "user_agent": a.user_agent,
+            "created_at": a.created_at.isoformat(),
+        }
+        for a, u in rows
+    ])
+
+
+@router.get("/users/{user_id}/activity", response_model=SuccessResponse[list[dict]])
+async def user_activity(
+    user_id: str,
+    current_user: CurrentUser,
+    db: DbSession,
+) -> SuccessResponse[list[dict]]:
+    """Login activity for a specific user."""
+    require_admin(current_user)
+
+    result = await db.execute(
+        select(LoginActivity)
+        .where(LoginActivity.user_id == user_id)
+        .order_by(desc(LoginActivity.created_at))
+        .limit(50)
+    )
+    events = result.scalars().all()
+
+    return SuccessResponse(data=[
+        {
+            "id":         str(a.id),
+            "event":      a.event,
+            "ip_address": a.ip_address,
+            "user_agent": a.user_agent,
+            "created_at": a.created_at.isoformat(),
+        }
+        for a in events
+    ])
+
+
+# ── Role management ────────────────────────────────────────────────
+
+@router.post("/users/{user_id}/promote", response_model=SuccessResponse[dict])
+async def promote_to_admin(
+    user_id: str,
+    current_user: CurrentUser,
+    db: DbSession,
+) -> SuccessResponse[dict]:
+    """Promote a user to admin role."""
+    require_admin(current_user)
+
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    user.role = "admin"
+    await db.commit()
+    return SuccessResponse(data={"message": f"{user.email} promoted to admin"})
+
+
+@router.post("/users/{user_id}/demote", response_model=SuccessResponse[dict])
+async def demote_from_admin(
+    user_id: str,
+    current_user: CurrentUser,
+    db: DbSession,
+) -> SuccessResponse[dict]:
+    """Demote an admin to user role."""
+    require_admin(current_user)
+
+    if str(current_user.id) == user_id:
+        raise HTTPException(status_code=400, detail="Cannot demote yourself")
+
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    user.role = "user"
+    await db.commit()
+    return SuccessResponse(data={"message": f"{user.email} demoted to user"})
