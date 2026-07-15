@@ -228,6 +228,13 @@ async def change_password(
     """Change user password. Requires current_password verification."""
     from app.common.security import verify_password, hash_password
 
+    # Google OAuth users have no password — they must set one first
+    if current_user.hashed_password is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Your account uses Google sign-in and has no password. You cannot change password for OAuth accounts.",
+        )
+
     current_password = body.get("current_password", "")
     new_password     = body.get("new_password", "")
 
@@ -257,10 +264,6 @@ async def delete_account(
     db: DbSession,
 ) -> SuccessResponse[dict]:
     """Permanently delete the user account and all associated data."""
-    from sqlalchemy import delete as sql_delete
-    from app.models.exchange import UserExchangeAccount
-    from app.models.assistant import ChatThread
-
     # Soft-delete: mark inactive (hard delete in production would cascade)
     current_user.is_active = False
     await revoke_all_tokens(db, user_id=str(current_user.id))
@@ -268,4 +271,66 @@ async def delete_account(
 
     _clear_refresh_cookie(response)
     return SuccessResponse(data={"message": "Account deleted."})
+
+
+# ── Session management ────────────────────────────────────────────────
+
+from app.models.user import RefreshToken
+from datetime import datetime, timezone
+
+
+@router.get("/sessions", response_model=SuccessResponse[list[dict]])
+async def list_sessions(
+    current_user: CurrentUser,
+    db: DbSession,
+) -> SuccessResponse[list[dict]]:
+    """List all active (non-revoked, non-expired) refresh token sessions."""
+    now = datetime.now(timezone.utc)
+    result = await db.execute(
+        select(RefreshToken).where(
+            RefreshToken.user_id == current_user.id,
+            RefreshToken.revoked  == False,  # noqa: E712
+            RefreshToken.expires_at > now,
+        ).order_by(RefreshToken.created_at.desc())
+    )
+    tokens = result.scalars().all()
+
+    return SuccessResponse(data=[
+        {
+            "id":         str(t.id),
+            "created_at": t.created_at.isoformat(),
+            "expires_at": t.expires_at.isoformat(),
+        }
+        for t in tokens
+    ])
+
+
+@router.delete("/sessions/{token_id}", response_model=SuccessResponse[dict])
+async def revoke_session(
+    token_id: str,
+    current_user: CurrentUser,
+    db: DbSession,
+) -> SuccessResponse[dict]:
+    """Revoke a specific refresh token session."""
+    import uuid as _uuid
+    try:
+        tid = _uuid.UUID(token_id)
+    except ValueError:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid session ID")
+
+    result = await db.execute(
+        select(RefreshToken).where(
+            RefreshToken.id      == tid,
+            RefreshToken.user_id == current_user.id,
+        )
+    )
+    token = result.scalar_one_or_none()
+    if not token:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Session not found")
+
+    token.revoked    = True
+    token.revoked_at = datetime.now(timezone.utc)
+    await db.commit()
+
+    return SuccessResponse(data={"message": "Session revoked."})
 
