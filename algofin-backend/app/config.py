@@ -72,6 +72,11 @@ class Settings(BaseSettings):
     stale_trades_minutes: int = 30
     stale_events_minutes: int = 60
 
+    # ── Google OAuth ───────────────────────────────────────────────
+    google_client_id: str = ""
+    google_client_secret: str = ""
+    google_redirect_uri: str = "http://localhost:3000/api/v1/auth/google/callback"
+
 
 @lru_cache
 def get_settings() -> Settings:

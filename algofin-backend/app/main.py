@@ -12,6 +12,7 @@ from slowapi.util import get_remote_address
 
 from app.admin.router import router as admin_router
 from app.auth.router import router as auth_router
+from app.auth.google_oauth import router as google_oauth_router
 from app.assistant.router import router as assistant_router
 from app.billing.router import router as billing_router
 from app.config import settings
@@ -68,7 +69,8 @@ async def global_exception_handler(request: Request, exc: Exception) -> JSONResp
 # ── Routers ───────────────────────────────────────────────────────
 API_PREFIX = "/api/v1"
 
-app.include_router(auth_router,       prefix=API_PREFIX)
+app.include_router(auth_router,         prefix=API_PREFIX)
+app.include_router(google_oauth_router,  prefix=API_PREFIX)  # Google OAuth
 app.include_router(exchanges_router,  prefix=API_PREFIX)
 app.include_router(portfolio_router,  prefix=API_PREFIX)
 app.include_router(billing_router,    prefix=API_PREFIX)

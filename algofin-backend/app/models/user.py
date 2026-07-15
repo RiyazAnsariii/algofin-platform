@@ -18,8 +18,8 @@ from app.database import Base, UUIDType
 class User(Base):
     """
     Core user account.
-    v1: email + password auth only. Role: user | admin.
-    2FA is planned but deferred (plan.md Part 0-C).
+    v1: email + password auth. Google OAuth supported.
+    Role: user | admin.
     """
     __tablename__ = "users"
 
@@ -27,10 +27,14 @@ class User(Base):
         UUIDType, primary_key=True, default=uuid.uuid4
     )
     email: Mapped[str] = mapped_column(String(255), unique=True, nullable=False, index=True)
-    hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
+    hashed_password: Mapped[str | None] = mapped_column(String(255), nullable=True)  # None for OAuth-only users
     full_name: Mapped[str] = mapped_column(String(255), nullable=False)
     role: Mapped[str] = mapped_column(String(20), nullable=False, default="user")
     # role values: "user" | "admin"
+
+    # Google OAuth fields
+    google_id: Mapped[str | None] = mapped_column(String(255), nullable=True, unique=True, index=True)
+    avatar_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     created_at: Mapped[datetime] = mapped_column(
