@@ -43,12 +43,12 @@ EXCHANGE_REGISTRY: dict[str, ExchangeDefinition] = {
         id="bybit_linear",
         name="Bybit",
         display_name="Bybit Linear Perpetuals",
-        status="coming_soon",
+        status="live",
         markets=["USDT Perpetuals"],
         logo_letter="Y",
         description=(
-            "Bybit Linear Perpetuals. USDT-settled contracts. "
-            "Full integration coming soon — add your keys to be ready."
+            "Bybit Linear Perpetuals. USDT-settled perpetual contracts. "
+            "Connect with read-only API keys for balance, positions and trade sync."
         ),
         api_docs_url="https://www.bybit.com/en/help-center/article/How-to-create-API-Keys",
     ),
@@ -56,13 +56,13 @@ EXCHANGE_REGISTRY: dict[str, ExchangeDefinition] = {
         id="okx_swap",
         name="OKX",
         display_name="OKX Perpetual Swaps",
-        status="coming_soon",
+        status="live",
         markets=["USDT Perpetuals"],
         requires_passphrase=True,
         logo_letter="O",
         description=(
             "OKX Perpetual Swaps (USDT-settled). "
-            "Requires API Key + Secret + Passphrase. Integration coming soon."
+            "Requires API Key + Secret + Passphrase. Full balance, positions and trade sync."
         ),
         api_docs_url="https://www.okx.com/help/how-do-i-create-an-api-key",
     ),

@@ -96,3 +96,7 @@ async def _sync_all_accounts(sync_type: str):
 def sync_all_accounts(sync_type: str = "full"):
     """Scheduled task: queue sync for all active accounts."""
     asyncio.run(_sync_all_accounts(sync_type))
+
+
+# Alias used by admin panel trigger
+sync_full_account = sync_account

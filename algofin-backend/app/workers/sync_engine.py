@@ -1,49 +1,94 @@
 # app/workers/sync_engine.py
-# AlgoFin v1 — Core sync engine for Binance USDT-M Futures
+# AlgoFin v2 — Phase J: Multi-Exchange sync engine
 #
-# This module handles fetching and storing:
-#   - Balances (USDT wallet balance for USDTM futures)
-#   - Open positions
-#   - Trade history (with realized PnL — the billing basis)
+# Handles balances, positions, and trades for ALL supported exchanges:
+#   binance_usdtm  — Binance USDT-M Futures (live)
+#   bybit_linear   — Bybit Linear Perpetuals (live)
+#   okx_swap       — OKX Perpetual Swaps (live)
+#   coinbase_advanced — Coinbase Advanced Trade (coming soon — spot only)
+#
+# Exchange-agnostic: the CCXT client is selected by exchange_id.
+# Each sync function delegates to the right client via ccxt_adapter.
 #
 # BILLING CRITICAL (plan.md Section 5-A):
-#   realized_pnl in trades comes from Binance API "realizedPnl" field.
-#   Do NOT invent, derive, or double-subtract fees.
-#   Funding payments are NOT included in realized_pnl.
-#   If Binance API and CCXT values differ, log discrepancy and use Binance direct.
+#   realized_pnl = exchange API 'realizedPnl' field ONLY.
+#   Funding payments excluded. Fees not double-subtracted.
 
 import asyncio
 import logging
-from datetime import datetime, timezone
-from decimal import Decimal
+from datetime import datetime, timezone, timedelta
+from decimal import Decimal, InvalidOperation
 
-import ccxt.async_support as ccxt
-from sqlalchemy import select
-from sqlalchemy.dialects.postgresql import insert as pg_insert
+from sqlalchemy import select, delete, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.exchanges.ccxt_adapter import create_ccxt_client, get_market_filter, is_futures_exchange
 from app.exchanges.service import get_decrypted_credentials
 from app.models.exchange import ExchangeSyncRun, UserExchangeAccount
 from app.models.trading import Balance, Position, Trade
+from app.config import settings
 
 logger = logging.getLogger(__name__)
 
 
-# ── Binance CCXT client ───────────────────────────────────────────
+# ── Decimal helper ────────────────────────────────────────────────
 
-def _create_binance_futures_client(api_key: str, api_secret: str) -> ccxt.binanceusdm:
-    """
-    Create a Binance USDT-M Futures (binanceusdm) CCXT client.
-    v1: Binance USDT-M Futures ONLY (plan.md Part 0-A).
-    """
-    return ccxt.binanceusdm({
-        "apiKey":  api_key,
-        "secret":  api_secret,
-        "enableRateLimit": True,
-        "options": {
-            "defaultType": "future",
-        },
-    })
+def _dec(val, default: str = "0") -> Decimal:
+    """Safely convert to Decimal, returning default on failure."""
+    try:
+        return Decimal(str(val)) if val is not None else Decimal(default)
+    except (InvalidOperation, TypeError, ValueError):
+        return Decimal(default)
+
+
+# ── Upsert helper (SQLite + PostgreSQL compatible) ─────────────────
+
+async def _upsert_balance(db: AsyncSession, *, exchange_account_id, asset: str, **fields):
+    """Upsert a balance row — works on both SQLite (dev) and PostgreSQL (prod)."""
+    from sqlalchemy.dialects.sqlite import insert as sqlite_insert
+    from sqlalchemy.dialects.postgresql import insert as pg_insert
+
+    if "sqlite" in settings.database_url:
+        stmt = sqlite_insert(Balance).values(
+            exchange_account_id=exchange_account_id, asset=asset, **fields
+        ).on_conflict_do_update(
+            index_elements=["exchange_account_id", "asset"],
+            set_=fields,
+        )
+    else:
+        stmt = pg_insert(Balance).values(
+            exchange_account_id=exchange_account_id, asset=asset, **fields
+        ).on_conflict_do_update(
+            constraint="uq_balance_account_asset",
+            set_=fields,
+        )
+    await db.execute(stmt)
+
+
+async def _upsert_trade(db: AsyncSession, *, exchange_account_id, trade_id: str, **fields):
+    """Upsert a trade row — works on both SQLite (dev) and PostgreSQL (prod)."""
+    from sqlalchemy.dialects.sqlite import insert as sqlite_insert
+    from sqlalchemy.dialects.postgresql import insert as pg_insert
+
+    if "sqlite" in settings.database_url:
+        stmt = sqlite_insert(Trade).values(
+            exchange_account_id=exchange_account_id,
+            binance_trade_id=trade_id,
+            **fields,
+        ).on_conflict_do_update(
+            index_elements=["exchange_account_id", "binance_trade_id"],
+            set_={k: v for k, v in fields.items() if k in ("realized_pnl", "synced_at")},
+        )
+    else:
+        stmt = pg_insert(Trade).values(
+            exchange_account_id=exchange_account_id,
+            binance_trade_id=trade_id,
+            **fields,
+        ).on_conflict_do_update(
+            constraint="uq_trade_account_binance_id",
+            set_={k: v for k, v in fields.items() if k in ("realized_pnl", "synced_at")},
+        )
+    await db.execute(stmt)
 
 
 # ── Sync run ledger helpers ───────────────────────────────────────
@@ -55,7 +100,6 @@ async def _start_sync_run(
     sync_type: str,
     triggered_by: str = "scheduler",
 ) -> ExchangeSyncRun:
-    """Create and persist a sync run row with status='running'."""
     run = ExchangeSyncRun(
         exchange_account_id=exchange_account_id,
         sync_type=sync_type,
@@ -78,12 +122,11 @@ async def _finish_sync_run(
     error_message: str | None = None,
     error_code: str | None = None,
 ) -> None:
-    """Update sync run to success/error/partial with finish timestamp."""
-    run.status = status
-    run.finished_at = datetime.now(timezone.utc)
+    run.status         = status
+    run.finished_at    = datetime.now(timezone.utc)
     run.rows_processed = rows_processed
-    run.error_message = error_message
-    run.error_code = error_code
+    run.error_message  = error_message
+    run.error_code     = error_code
     await db.commit()
 
 
@@ -96,8 +139,9 @@ async def sync_balances(
     triggered_by: str = "scheduler",
 ) -> ExchangeSyncRun:
     """
-    Fetch and upsert USDT-M Futures wallet balance.
-    Updates account.sync_status and account.last_sync_at.
+    Fetch and upsert wallet balance for any supported exchange.
+    For futures: USDT balance + unrealized PnL.
+    For spot (Coinbase): per-asset balances.
     """
     run = await _start_sync_run(
         db,
@@ -107,67 +151,108 @@ async def sync_balances(
     )
 
     creds = await get_decrypted_credentials(db, exchange_account_id=str(account.id))
-    if not creds:
+    if not creds or not creds.get("api_key"):
         await _finish_sync_run(db, run, status="error", error_message="No credentials found")
         return run
 
-    client = _create_binance_futures_client(creds["api_key"], creds["api_secret"])
+    client = create_ccxt_client(
+        exchange_id=account.exchange_id,
+        api_key=creds["api_key"],
+        api_secret=creds["api_secret"],
+        passphrase=creds.get("passphrase"),
+    )
     now = datetime.now(timezone.utc)
+    rows = 0
 
     try:
-        raw = await client.fetch_balance({"type": "future"})
+        # Fetch balance — options differ by exchange
+        fetch_options: dict = {}
+        if account.exchange_id == "binance_usdtm":
+            fetch_options = {"type": "future"}
+        elif account.exchange_id == "bybit_linear":
+            fetch_options = {"type": "linear"}
 
-        # Binance USDT-M returns balance per asset
-        rows = 0
-        for asset, bal_data in raw.get("info", {}).get("assets", []) and {}:
-            pass  # handled below
+        raw = await client.fetch_balance(fetch_options)
+        info = raw.get("info", {})
 
-        # Use CCXT normalized structure
-        usdt_balance = raw.get("USDT", {})
-        if usdt_balance:
-            wallet_balance = Decimal(str(usdt_balance.get("total", 0)))
-            free_balance   = Decimal(str(usdt_balance.get("free", 0)))
-            used_balance   = Decimal(str(usdt_balance.get("used", 0)))
-
-            # Upsert USDT balance
-            stmt = pg_insert(Balance).values(
-                exchange_account_id=account.id,
-                asset="USDT",
-                wallet_balance=wallet_balance,
-                unrealized_pnl=Decimal(str(raw.get("info", {}).get("totalUnrealizedProfit", 0))),
-                margin_balance=wallet_balance + Decimal(str(raw.get("info", {}).get("totalUnrealizedProfit", 0))),
-                available_balance=free_balance,
+        if account.exchange_id == "binance_usdtm":
+            usdt = raw.get("USDT", {})
+            total_unrealized = _dec(info.get("totalUnrealizedProfit", 0))
+            fields = dict(
+                wallet_balance=_dec(usdt.get("total", 0)),
+                unrealized_pnl=total_unrealized,
+                margin_balance=_dec(usdt.get("total", 0)) + total_unrealized,
+                available_balance=_dec(usdt.get("free", 0)),
                 synced_at=now,
-            ).on_conflict_do_update(
-                constraint="uq_balance_account_asset",
-                set_={
-                    "wallet_balance":    wallet_balance,
-                    "unrealized_pnl":    Decimal(str(raw.get("info", {}).get("totalUnrealizedProfit", 0))),
-                    "margin_balance":    wallet_balance + Decimal(str(raw.get("info", {}).get("totalUnrealizedProfit", 0))),
-                    "available_balance": free_balance,
-                    "synced_at":         now,
-                },
             )
-            await db.execute(stmt)
+            await _upsert_balance(db, exchange_account_id=account.id, asset="USDT", **fields)
             rows = 1
 
-        # Update account sync state
-        account.sync_status = "connected"
+        elif account.exchange_id == "bybit_linear":
+            # Bybit: balance in info.result.list[].coin[]
+            accounts_list = (
+                info.get("result", {}).get("list", [])
+                or info.get("list", [])
+            )
+            for acct_info in accounts_list:
+                for coin in acct_info.get("coin", []):
+                    asset = coin.get("coin", "")
+                    if asset != "USDT":
+                        continue
+                    fields = dict(
+                        wallet_balance=_dec(coin.get("walletBalance", 0)),
+                        unrealized_pnl=_dec(coin.get("unrealisedPnl", 0)),
+                        margin_balance=_dec(coin.get("equity", 0)),
+                        available_balance=_dec(coin.get("availableToWithdraw", 0)),
+                        synced_at=now,
+                    )
+                    await _upsert_balance(db, exchange_account_id=account.id, asset="USDT", **fields)
+                    rows += 1
+
+        elif account.exchange_id == "okx_swap":
+            # OKX: balance in info.data[].details[] USDT
+            data = info.get("data", [])
+            for item in data:
+                for detail in item.get("details", []):
+                    if detail.get("ccy") != "USDT":
+                        continue
+                    eq = _dec(detail.get("eq", 0))
+                    fields = dict(
+                        wallet_balance=eq,
+                        unrealized_pnl=_dec(detail.get("upl", 0)),
+                        margin_balance=eq,
+                        available_balance=_dec(detail.get("availEq", 0)),
+                        synced_at=now,
+                    )
+                    await _upsert_balance(db, exchange_account_id=account.id, asset="USDT", **fields)
+                    rows += 1
+
+        else:
+            # Coinbase / other: upsert all non-zero USDT-adjacent assets
+            for asset, bal_data in raw.get("total", {}).items():
+                if _dec(bal_data) == 0:
+                    continue
+                fields = dict(
+                    wallet_balance=_dec(bal_data),
+                    unrealized_pnl=Decimal("0"),
+                    margin_balance=_dec(bal_data),
+                    available_balance=_dec(raw.get("free", {}).get(asset, 0)),
+                    synced_at=now,
+                )
+                await _upsert_balance(db, exchange_account_id=account.id, asset=asset, **fields)
+                rows += 1
+
+        account.sync_status  = "connected"
         account.last_sync_at = now
         await db.commit()
-
         await _finish_sync_run(db, run, status="success", rows_processed=rows)
-        logger.info(f"Balance sync complete for account {account.id}: {rows} rows")
+        logger.info(f"[{account.exchange_id}] Balance sync OK account={account.id} rows={rows}")
 
     except Exception as exc:
-        logger.exception(f"Balance sync failed for account {account.id}: {exc}")
+        logger.exception(f"[{account.exchange_id}] Balance sync FAILED account={account.id}: {exc}")
         account.sync_status = "error"
         await db.commit()
-        await _finish_sync_run(
-            db, run, status="error",
-            error_message=str(exc),
-            error_code=type(exc).__name__,
-        )
+        await _finish_sync_run(db, run, status="error", error_message=str(exc), error_code=type(exc).__name__)
     finally:
         await client.close()
 
@@ -183,9 +268,9 @@ async def sync_positions(
     triggered_by: str = "scheduler",
 ) -> ExchangeSyncRun:
     """
-    Fetch current open positions from Binance USDTM Futures.
-    Replaces all existing positions for the account (snapshot sync).
-    unrealized_pnl stored for display ONLY — excluded from billing.
+    Fetch and snapshot open positions for any futures exchange.
+    Spot exchanges (Coinbase) return an empty set — no positions.
+    unrealized_pnl stored for display ONLY — excluded from billing (plan.md 5-A).
     """
     run = await _start_sync_run(
         db,
@@ -194,64 +279,68 @@ async def sync_positions(
         triggered_by=triggered_by,
     )
 
+    if not is_futures_exchange(account.exchange_id):
+        # Spot account — no positions concept
+        await _finish_sync_run(db, run, status="success", rows_processed=0,
+                               error_message="Spot account — no positions")
+        return run
+
     creds = await get_decrypted_credentials(db, exchange_account_id=str(account.id))
-    if not creds:
+    if not creds or not creds.get("api_key"):
         await _finish_sync_run(db, run, status="error", error_message="No credentials found")
         return run
 
-    client = _create_binance_futures_client(creds["api_key"], creds["api_secret"])
+    client = create_ccxt_client(
+        exchange_id=account.exchange_id,
+        api_key=creds["api_key"],
+        api_secret=creds["api_secret"],
+        passphrase=creds.get("passphrase"),
+    )
     now = datetime.now(timezone.utc)
 
     try:
         positions_raw = await client.fetch_positions()
 
-        # Delete existing positions for this account (snapshot replacement)
-        from sqlalchemy import delete
-        await db.execute(
-            delete(Position).where(Position.exchange_account_id == account.id)
-        )
+        # Snapshot: delete existing positions for this account
+        await db.execute(delete(Position).where(Position.exchange_account_id == account.id))
 
         rows = 0
         for pos in positions_raw:
-            size = Decimal(str(abs(pos.get("contracts", 0) or 0)))
+            contracts = pos.get("contracts") or pos.get("info", {}).get("size", 0)
+            size = _dec(abs(float(contracts or 0)))
             if size == 0:
-                continue  # skip zero-size positions
+                continue
 
-            side = "long" if (pos.get("side") == "long" or float(pos.get("contracts", 0)) > 0) else "short"
+            side_raw = pos.get("side") or ("long" if float(contracts or 0) > 0 else "short")
+            side = "long" if side_raw in ("long", "buy") else "short"
 
             p = Position(
                 exchange_account_id=account.id,
                 symbol=pos.get("symbol", ""),
                 side=side,
                 size=size,
-                entry_price=Decimal(str(pos.get("entryPrice", 0) or 0)),
-                mark_price=Decimal(str(pos.get("markPrice", 0) or 0)),
-                unrealized_pnl=Decimal(str(pos.get("unrealizedPnl", 0) or 0)),
-                # unrealized_pnl: display only, NOT included in billing
-                leverage=Decimal(str(pos.get("leverage", 1) or 1)),
-                margin_type=pos.get("marginType", "cross"),
+                entry_price=_dec(pos.get("entryPrice") or pos.get("info", {}).get("avgPrice", 0)),
+                mark_price=_dec(pos.get("markPrice") or pos.get("info", {}).get("markPrice", 0)),
+                unrealized_pnl=_dec(pos.get("unrealizedPnl") or pos.get("info", {}).get("unrealisedPnl", 0)),
+                leverage=_dec(pos.get("leverage") or 1),
+                margin_type=pos.get("marginType") or pos.get("info", {}).get("tradeMode", "cross"),
                 last_updated_at=now,
                 synced_at=now,
             )
             db.add(p)
             rows += 1
 
-        account.sync_status = "connected"
+        account.sync_status  = "connected"
         account.last_sync_at = now
         await db.commit()
-
         await _finish_sync_run(db, run, status="success", rows_processed=rows)
-        logger.info(f"Position sync complete for account {account.id}: {rows} positions")
+        logger.info(f"[{account.exchange_id}] Position sync OK account={account.id} positions={rows}")
 
     except Exception as exc:
-        logger.exception(f"Position sync failed for account {account.id}: {exc}")
+        logger.exception(f"[{account.exchange_id}] Position sync FAILED account={account.id}: {exc}")
         account.sync_status = "error"
         await db.commit()
-        await _finish_sync_run(
-            db, run, status="error",
-            error_message=str(exc),
-            error_code=type(exc).__name__,
-        )
+        await _finish_sync_run(db, run, status="error", error_message=str(exc), error_code=type(exc).__name__)
     finally:
         await client.close()
 
@@ -268,14 +357,12 @@ async def sync_trades(
     since_ms: int | None = None,
 ) -> ExchangeSyncRun:
     """
-    Fetch trade history from Binance USDTM Futures.
-    Uses incremental sync (since last known trade_time).
+    Fetch trade history for any supported exchange.
+    Incremental sync — uses last known trade_time as cursor.
 
-    BILLING CRITICAL:
-      - realized_pnl = Binance API 'realizedPnl' field directly
-      - Do NOT deduct commission from realized_pnl
-      - Funding payments come via different endpoint — NOT included here
-      - plan.md Section 5-A Data Source Rules.
+    BILLING CRITICAL (plan.md Section 5-A):
+      - realized_pnl = exchange API realizedPnl / realizedPnl field ONLY
+      - No fee deduction. No funding rate inclusion.
     """
     run = await _start_sync_run(
         db,
@@ -285,103 +372,147 @@ async def sync_trades(
     )
 
     creds = await get_decrypted_credentials(db, exchange_account_id=str(account.id))
-    if not creds:
+    if not creds or not creds.get("api_key"):
         await _finish_sync_run(db, run, status="error", error_message="No credentials found")
         return run
 
-    client = _create_binance_futures_client(creds["api_key"], creds["api_secret"])
+    client = create_ccxt_client(
+        exchange_id=account.exchange_id,
+        api_key=creds["api_key"],
+        api_secret=creds["api_secret"],
+        passphrase=creds.get("passphrase"),
+    )
     now = datetime.now(timezone.utc)
 
     try:
-        # Determine since: use last known trade or go back 30 days
+        # Determine since timestamp
         if since_ms is None:
             from sqlalchemy import func as sqlfunc
             last_result = await db.execute(
-                select(sqlfunc.max(Trade.trade_time)).where(
-                    Trade.exchange_account_id == account.id
-                )
+                select(sqlfunc.max(Trade.trade_time)).where(Trade.exchange_account_id == account.id)
             )
             last_trade_time = last_result.scalar_one_or_none()
             if last_trade_time:
                 since_ms = int(last_trade_time.timestamp() * 1000) + 1
             else:
-                # First sync: go back 90 days
-                from datetime import timedelta
                 since_ms = int((now.timestamp() - 90 * 86400) * 1000)
 
-        # Fetch all active markets for this futures account
-        # We need to iterate symbols to get all trades
-        markets = await client.load_markets()
-        futures_symbols = [
-            s for s, m in markets.items()
-            if m.get("type") == "future" and m.get("settle") == "USDT"
-        ]
-
+        mkt_filter = get_market_filter(account.exchange_id)
+        is_futures = is_futures_exchange(account.exchange_id)
         total_rows = 0
-        for symbol in futures_symbols[:50]:  # cap per sync to avoid rate limits
-            try:
-                trades_raw = await client.fetch_my_trades(symbol, since=since_ms, limit=1000)
-                if not trades_raw:
+
+        if is_futures:
+            markets = await client.load_markets()
+            settle  = mkt_filter.get("settle")
+            mtype   = mkt_filter.get("market_type")
+
+            futures_symbols = [
+                s for s, m in markets.items()
+                if m.get("type") == mtype
+                and (settle is None or m.get("settle") == settle)
+            ]
+
+            # Limit to 50 symbols per sync to respect rate limits
+            for symbol in futures_symbols[:50]:
+                try:
+                    trades_raw = await client.fetch_my_trades(symbol, since=since_ms, limit=1000)
+                    if not trades_raw:
+                        continue
+
+                    for t in trades_raw:
+                        info        = t.get("info", {})
+                        trade_id    = str(t.get("id", ""))
+                        realized_pnl = _get_realized_pnl(account.exchange_id, t, info)
+                        trade_time  = datetime.fromtimestamp(t["timestamp"] / 1000, tz=timezone.utc)
+
+                        await _upsert_trade(
+                            db,
+                            exchange_account_id=account.id,
+                            trade_id=trade_id,
+                            order_id=str(info.get("orderId") or t.get("order") or ""),
+                            symbol=t.get("symbol", symbol),
+                            side=t.get("side", "buy"),
+                            price=_dec(t.get("price", 0)),
+                            qty=_dec(t.get("amount", 0)),
+                            realized_pnl=realized_pnl,
+                            commission=_dec((t.get("fee") or {}).get("cost", 0)),
+                            commission_asset=(t.get("fee") or {}).get("currency") or "USDT",
+                            is_maker=t.get("takerOrMaker") == "maker",
+                            trade_time=trade_time,
+                            synced_at=now,
+                        )
+                        total_rows += 1
+
+                except Exception as sym_exc:
+                    logger.warning(f"[{account.exchange_id}] Trade sync skipped {symbol}: {sym_exc}")
                     continue
 
+        else:
+            # Spot exchanges (Coinbase): fetch all trades without symbol iteration
+            try:
+                trades_raw = await client.fetch_my_trades(since=since_ms, limit=500)
                 for t in trades_raw:
-                    info = t.get("info", {})
-                    realized_pnl_raw = info.get("realizedPnl", "0") or "0"
-                    # Use Binance API realizedPnl field directly — plan.md Section 5-A
-                    realized_pnl = Decimal(str(realized_pnl_raw))
+                    info     = t.get("info", {})
+                    trade_id = str(t.get("id", ""))
 
-                    trade_time = datetime.fromtimestamp(
-                        t["timestamp"] / 1000, tz=timezone.utc
-                    )
-
-                    stmt = pg_insert(Trade).values(
+                    await _upsert_trade(
+                        db,
                         exchange_account_id=account.id,
-                        binance_trade_id=str(t.get("id", "")),
-                        order_id=str(info.get("orderId", t.get("order", ""))),
-                        symbol=t.get("symbol", symbol),
+                        trade_id=trade_id,
+                        order_id=str(t.get("order") or ""),
+                        symbol=t.get("symbol", ""),
                         side=t.get("side", "buy"),
-                        price=Decimal(str(t.get("price", 0) or 0)),
-                        qty=Decimal(str(t.get("amount", 0) or 0)),
-                        realized_pnl=realized_pnl,
-                        commission=Decimal(str(t.get("fee", {}).get("cost", 0) or 0)),
-                        commission_asset=t.get("fee", {}).get("currency", "USDT") or "USDT",
+                        price=_dec(t.get("price", 0)),
+                        qty=_dec(t.get("amount", 0)),
+                        realized_pnl=Decimal("0"),  # Spot: no realized PnL concept
+                        commission=_dec((t.get("fee") or {}).get("cost", 0)),
+                        commission_asset=(t.get("fee") or {}).get("currency") or "USD",
                         is_maker=t.get("takerOrMaker") == "maker",
-                        trade_time=trade_time,
+                        trade_time=datetime.fromtimestamp(t["timestamp"] / 1000, tz=timezone.utc),
                         synced_at=now,
-                    ).on_conflict_do_update(
-                        constraint="uq_trade_account_binance_id",
-                        set_={
-                            "realized_pnl": realized_pnl,
-                            "synced_at":    now,
-                        },
                     )
-                    await db.execute(stmt)
                     total_rows += 1
+            except Exception as exc:
+                logger.warning(f"[{account.exchange_id}] Spot trade fetch failed: {exc}")
 
-            except Exception as symbol_exc:
-                logger.warning(f"Trade sync skipped symbol {symbol}: {symbol_exc}")
-                continue
-
-        account.sync_status = "connected"
+        account.sync_status  = "connected"
         account.last_sync_at = now
         await db.commit()
-
         await _finish_sync_run(db, run, status="success", rows_processed=total_rows)
-        logger.info(f"Trade sync complete for account {account.id}: {total_rows} trades")
+        logger.info(f"[{account.exchange_id}] Trade sync OK account={account.id} trades={total_rows}")
 
     except Exception as exc:
-        logger.exception(f"Trade sync failed for account {account.id}: {exc}")
+        logger.exception(f"[{account.exchange_id}] Trade sync FAILED account={account.id}: {exc}")
         account.sync_status = "error"
         await db.commit()
-        await _finish_sync_run(
-            db, run, status="error",
-            error_message=str(exc),
-            error_code=type(exc).__name__,
-        )
+        await _finish_sync_run(db, run, status="error", error_message=str(exc), error_code=type(exc).__name__)
     finally:
         await client.close()
 
     return run
+
+
+def _get_realized_pnl(exchange_id: str, trade: dict, info: dict) -> Decimal:
+    """
+    Extract realized PnL from trade data — exchange-specific field names.
+    BILLING CRITICAL: use the exchange's own realizedPnl field. Never derive it.
+    """
+    if exchange_id == "binance_usdtm":
+        # Binance: info.realizedPnl (string, can be negative)
+        return _dec(info.get("realizedPnl", "0"))
+
+    elif exchange_id == "bybit_linear":
+        # Bybit: info.closedPnl or info.execPnl
+        val = info.get("closedPnl") or info.get("execPnl") or "0"
+        return _dec(val)
+
+    elif exchange_id == "okx_swap":
+        # OKX: info.pnl (realized PnL per trade fill)
+        return _dec(info.get("pnl", "0"))
+
+    else:
+        # Spot / unknown: no realized PnL concept
+        return Decimal("0")
 
 
 # ── Full sync ─────────────────────────────────────────────────────
@@ -392,7 +523,7 @@ async def sync_full(
     account: UserExchangeAccount,
     triggered_by: str = "scheduler",
 ) -> list[ExchangeSyncRun]:
-    """Run balances + positions + trades in sequence."""
+    """Run balances + positions + trades in sequence for any exchange."""
     runs = []
     runs.append(await sync_balances(db, account=account, triggered_by=triggered_by))
     runs.append(await sync_positions(db, account=account, triggered_by=triggered_by))
