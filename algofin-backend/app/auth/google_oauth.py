@@ -31,7 +31,8 @@ GOOGLE_USERINFO   = "https://www.googleapis.com/oauth2/v3/userinfo"
 _pending_states: dict[str, float] = {}
 
 
-@router.get("/")
+@router.get("")          # matches /api/v1/auth/google  (no trailing slash)
+@router.get("/")         # matches /api/v1/auth/google/ (with trailing slash)
 async def google_login() -> RedirectResponse:
     """
     Step 1: Redirect browser to Google consent screen.
@@ -153,16 +154,28 @@ async def google_callback(
     # Issue AlgoFin JWT pair
     ip = request.client.host if request.client else None
     ua = request.headers.get("user-agent")
-    algofin_access_token, _refresh_raw = await issue_tokens(
+    algofin_access_token, refresh_raw = await issue_tokens(
         db, user=user, ip_address=ip, user_agent=ua
     )
 
-    # Set refresh cookie and redirect to frontend success page
-    from fastapi.responses import HTMLResponse
+    # We use a tiny HTML bridge page to:
+    #   1. Write the access token + user to Zustand's localStorage key
+    #   2. Redirect to /dashboard
+    # This is necessary because:
+    #   - We can't set localStorage from a plain HTTP redirect
+    #   - The httpOnly refresh cookie is set via response headers below
+    import json
+    user_json = json.dumps({
+        "id":         str(user.id),
+        "email":      user.email,
+        "full_name":  user.full_name,
+        "role":       user.role,
+        "created_at": user.created_at.isoformat(),
+        "google_id":  user.google_id,
+        "avatar_url": user.avatar_url,
+    })
+    token_json = json.dumps(algofin_access_token)
 
-    # We use a tiny HTML page to set the access token in localStorage
-    # and then redirect — needed because cookies set by backend won't be
-    # accessible to frontend JS and localStorage can't be set from a redirect.
     html = f"""<!DOCTYPE html>
 <html>
 <head><title>Signing you in…</title></head>
@@ -171,11 +184,13 @@ async def google_callback(
   try {{
     var stored = localStorage.getItem('algofin-auth');
     var parsed = stored ? JSON.parse(stored) : {{}};
-    if (!parsed.state) parsed.state = {{}};
-    parsed.state.accessToken = {repr(algofin_access_token)};
-    parsed.state.isAuthenticated = true;
+    parsed.state = {{
+      accessToken:     {token_json},
+      user:            {user_json},
+      isAuthenticated: true
+    }};
     localStorage.setItem('algofin-auth', JSON.stringify(parsed));
-  }} catch(e) {{}}
+  }} catch(e) {{ console.error('AlgoFin OAuth bridge error:', e); }}
   window.location.replace('/dashboard');
 </script>
 <p>Signing you in…</p>
@@ -183,4 +198,19 @@ async def google_callback(
 </html>"""
 
     from starlette.responses import HTMLResponse as SR
-    return SR(content=html, status_code=200)
+    from datetime import timedelta
+    from app.config import settings as cfg
+
+    response = SR(content=html, status_code=200)
+    # Set httpOnly refresh cookie (same as regular login)
+    max_age = int(timedelta(days=cfg.jwt_refresh_expire_days).total_seconds())
+    response.set_cookie(
+        key="algofin_refresh_token",
+        value=refresh_raw,
+        httponly=True,
+        secure=cfg.environment != "development",
+        samesite="lax",
+        max_age=max_age,
+        path="/",
+    )
+    return response
