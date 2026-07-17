@@ -10,7 +10,7 @@ from fastapi.responses import JSONResponse
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
-from app.common.middleware import RequestBodySizeLimitMiddleware
+from app.common.middleware import RequestBodySizeLimitMiddleware, RequestLoggingMiddleware
 
 from app.admin.router import router as admin_router
 from app.auth.router import router as auth_router
@@ -29,8 +29,9 @@ from app.strategy.router import router as strategy_router  # v2 Phase F
 from app.journal.router import router as journal_router    # v2 Phase G
 from app.portfolio.router import router as portfolio_router
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s %(message)s")
 logger = logging.getLogger(__name__)
+logging.getLogger("access").setLevel(logging.INFO)
 
 # ── FastAPI app ───────────────────────────────────────────────────
 app = FastAPI(
@@ -59,6 +60,7 @@ app.add_middleware(
 
 # ── Security middleware ──────────────────────────────────────────
 app.add_middleware(RequestBodySizeLimitMiddleware, max_body_size=524_288)
+app.add_middleware(RequestLoggingMiddleware)
 app.add_middleware(
     TrustedHostMiddleware,
     allowed_hosts=settings.cors_origins + ["localhost", "127.0.0.1", "api.algofin.app", ".algofin.app"],
@@ -94,7 +96,29 @@ app.include_router(journal_router,    prefix=API_PREFIX)  # v2 Phase G: journal 
 # ── Health check ──────────────────────────────────────────────────
 @app.get("/health", tags=["health"])
 async def health() -> dict:
-    return {"status": "ok", "version": "2.0.0"}
+    db_ok = False
+    redis_ok = False
+    try:
+        from app.database import AsyncSessionLocal
+        async with AsyncSessionLocal() as session:
+            from sqlalchemy import text
+            await session.execute(text("SELECT 1"))
+            db_ok = True
+    except Exception:
+        pass
+    try:
+        from app.database import get_redis_client
+        r = await get_redis_client()
+        await r.ping()
+        redis_ok = True
+    except Exception:
+        pass
+    return {
+        "status": "ok",
+        "version": "2.0.0",
+        "database": "connected" if db_ok else "unreachable",
+        "redis": "connected" if redis_ok else "unreachable",
+    }
 
 
 # ── Startup event ──────────────────────────────────────────
