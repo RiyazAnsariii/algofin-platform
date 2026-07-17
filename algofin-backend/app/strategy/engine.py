@@ -141,7 +141,7 @@ async def _evaluate_price_breakout(symbol: str, price: Decimal) -> None:
 # ── Redis subscriber loop ──────────────────────────────────────────────────
 
 async def _run_engine() -> None:
-    from app.redis_client import get_redis
+    from app.database import get_redis_client as get_redis
 
     logger.info("[StrategyEngine] Starting...")
     try:
