@@ -4,7 +4,6 @@
 import uuid
 from datetime import datetime
 from sqlalchemy import (
-    UUID,
     Boolean,
     DateTime,
     Integer,
@@ -17,7 +16,7 @@ from sqlalchemy import (
 )
 
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from app.database import Base
+from app.database import Base, UUIDType
 
 
 class UserExchangeAccount(Base):
@@ -35,10 +34,10 @@ class UserExchangeAccount(Base):
     __tablename__ = "user_exchange_accounts"
 
     id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+        UUIDType, primary_key=True, default=uuid.uuid4
     )
     user_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+        UUIDType, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
     )
     exchange_id: Mapped[str] = mapped_column(
         String(50), nullable=False, default="binance_usdtm"
@@ -109,10 +108,10 @@ class EncryptedApiCredential(Base):
     __tablename__ = "encrypted_api_credentials"
 
     id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+        UUIDType, primary_key=True, default=uuid.uuid4
     )
     exchange_account_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+        UUIDType,
         ForeignKey("user_exchange_accounts.id", ondelete="CASCADE"),
         nullable=False,
         unique=True,
@@ -146,13 +145,13 @@ class ExchangeBillingConsent(Base):
     __tablename__ = "exchange_billing_consents"
 
     id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+        UUIDType, primary_key=True, default=uuid.uuid4
     )
     user_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+        UUIDType, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
     )
     exchange_account_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+        UUIDType,
         ForeignKey("user_exchange_accounts.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
@@ -182,10 +181,10 @@ class ExchangeSyncRun(Base):
     __tablename__ = "exchange_sync_runs"
 
     id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+        UUIDType, primary_key=True, default=uuid.uuid4
     )
     exchange_account_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+        UUIDType,
         ForeignKey("user_exchange_accounts.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
