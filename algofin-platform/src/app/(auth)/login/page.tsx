@@ -2,10 +2,9 @@
 // src/app/(auth)/login/page.tsx
 // AlgoFin v1 — Login page (Phase D: full form with real API)
 
-import type { Metadata } from "next";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useState, useEffect } from "react";
 import api from "@/lib/api";
 import { useAuthStore } from "@/stores/auth.store";
 import type { User } from "@/types";
@@ -75,15 +74,37 @@ function ErrorBanner({ message }: { message: string }) {
   );
 }
 
+// Maps raw Google error codes to user-friendly messages
+const OAUTH_ERROR_MESSAGES: Record<string, string> = {
+  access_denied:         "You cancelled the Google sign-in. Please try again or use email/password.",
+  token_exchange_failed: "Google sign-in failed — could not exchange the code for a token. Please try again.",
+  userinfo_failed:       "Google sign-in failed — could not fetch your Google profile. Please try again.",
+  missing_user_info:     "Google did not provide your email address. Please try again.",
+  invalid_state:         "Google sign-in session expired. Please start again.",
+  missing_params:        "Google sign-in failed — missing parameters. Please try again.",
+};
+
 export default function LoginPage() {
-  const router = useRouter();
-  const { login } = useAuthStore();
+  const router       = useRouter();
+  const searchParams = useSearchParams();
+  const { login }    = useAuthStore();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
   const [apiError, setApiError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  // Read ?error= from Google OAuth callback redirect
+  useEffect(() => {
+    const oauthError = searchParams.get("error");
+    if (oauthError) {
+      setApiError(
+        OAUTH_ERROR_MESSAGES[oauthError] ??
+        `Sign-in failed: ${oauthError.replace(/_/g, " ")}`
+      );
+    }
+  }, [searchParams]);
 
   const validate = () => {
     const e: { email?: string; password?: string } = {};

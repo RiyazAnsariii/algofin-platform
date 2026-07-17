@@ -64,17 +64,22 @@ async def google_login() -> RedirectResponse:
 async def google_callback(
     db: DbSession,
     request: Request,
-    code: str = Query(...),
-    state: str = Query(...),
+    code:  str | None = Query(default=None),
+    state: str | None = Query(default=None),
     error: str | None = Query(default=None),
 ) -> RedirectResponse:
     """
     Step 2: Google redirects here with ?code=...&state=...
+    OR with ?error=access_denied (user denied / consent error).
     Exchange code → tokens → verify user → issue AlgoFin JWT.
     """
     # Fail gracefully on OAuth errors (user denied access, etc.)
     if error:
         return RedirectResponse(url=f"http://localhost:3000/login?error={urllib.parse.quote(error)}")
+
+    # Missing code means something went wrong with the flow
+    if not code or not state:
+        return RedirectResponse(url="http://localhost:3000/login?error=missing_params")
 
     # Validate state (CSRF protection)
     now_ts = datetime.now(timezone.utc).timestamp()
