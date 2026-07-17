@@ -7,6 +7,7 @@
 # DELETE /orders/{id}     — cancel order
 # PATCH  /orders/{id}     — amend order (price / quantity)
 
+import logging
 from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Query, status
@@ -16,6 +17,7 @@ from app.common.schemas import SuccessResponse
 from app.orders import service
 from app.orders.schemas import AmendOrderRequest, OrderOut, PlaceOrderRequest
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/orders", tags=["Orders"])
 
 
@@ -36,10 +38,13 @@ async def place_order(
             user_id=str(current_user.id),
             req=req,
         )
-    except PermissionError as exc:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc))
-    except (ValueError, Exception) as exc:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+    except PermissionError:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized for this account")
+    except ValueError:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid order request")
+    except Exception as exc:
+        logger.exception(f"Order placement failed: {exc}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Order could not be placed")
 
     return SuccessResponse(data=OrderOut.model_validate(order))
 
@@ -110,10 +115,13 @@ async def cancel_order(
             user_id=str(current_user.id),
             order_id=str(order_id),
         )
-    except PermissionError as exc:
-        raise HTTPException(status_code=403, detail=str(exc))
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
+    except PermissionError:
+        raise HTTPException(status_code=403, detail="Not authorized for this order")
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Order could not be cancelled")
+    except Exception as exc:
+        logger.exception(f"Order cancel failed: {exc}")
+        raise HTTPException(status_code=500, detail="Order could not be cancelled")
 
     return SuccessResponse(data=OrderOut.model_validate(order))
 
@@ -134,9 +142,12 @@ async def amend_order(
             order_id=str(order_id),
             req=req,
         )
-    except PermissionError as exc:
-        raise HTTPException(status_code=403, detail=str(exc))
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
+    except PermissionError:
+        raise HTTPException(status_code=403, detail="Not authorized for this order")
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Order could not be amended")
+    except Exception as exc:
+        logger.exception(f"Order amend failed: {exc}")
+        raise HTTPException(status_code=500, detail="Order could not be amended")
 
     return SuccessResponse(data=OrderOut.model_validate(order))

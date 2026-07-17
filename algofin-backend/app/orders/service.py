@@ -162,7 +162,7 @@ async def place_order(
         )
     except ccxt.BaseError as exc:
         order.status = "REJECTED"
-        order.error_message = str(exc)[:500]
+        order.error_message = "Order rejected by exchange"
         logger.warning(f"[Orders] Binance rejected order: {exc}")
     finally:
         await client.close()
@@ -208,9 +208,9 @@ async def cancel_order(
         order.cancelled_at = datetime.now(timezone.utc)
         logger.info(f"[Orders] Cancelled order {order.id} ({order.binance_order_id})")
     except ccxt.BaseError as exc:
-        order.error_message = str(exc)[:500]
+        order.error_message = "Order cancellation failed"
         logger.warning(f"[Orders] Cancel failed: {exc}")
-        raise ValueError(f"Binance cancel failed: {exc}") from exc
+        raise ValueError("Order cancellation failed") from exc
     finally:
         await client.close()
 
@@ -271,9 +271,9 @@ async def amend_order(
         order.status = _map_status(raw.get("status", order.status))
         logger.info(f"[Orders] Amended order {order.id}")
     except ccxt.BaseError as exc:
-        order.error_message = str(exc)[:500]
+        order.error_message = "Order amendment failed"
         logger.warning(f"[Orders] Amend failed: {exc}")
-        raise ValueError(f"Binance amend failed: {exc}") from exc
+        raise ValueError("Order amendment failed") from exc
     finally:
         await client.close()
 

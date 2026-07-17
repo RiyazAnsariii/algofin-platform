@@ -26,6 +26,7 @@ from app.auth.service import (
     rotate_refresh_token,
 )
 from app.common.deps import CurrentUser, DbSession
+from app.common.rate_limit import limiter
 from app.common.schemas import SuccessResponse
 from app.config import settings
 from app.models.user import User
@@ -70,6 +71,7 @@ def _user_to_response(user: User) -> UserResponse:
     response_model=SuccessResponse[AuthDataResponse],
     status_code=status.HTTP_201_CREATED,
 )
+@limiter.limit("3/minute")
 async def signup(
     body: SignupRequest,
     request: Request,
@@ -109,6 +111,7 @@ async def signup(
 
 
 @router.post("/login", response_model=SuccessResponse[AuthDataResponse])
+@limiter.limit("5/minute")
 async def login(
     body: LoginRequest,
     request: Request,

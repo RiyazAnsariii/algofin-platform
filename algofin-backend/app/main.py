@@ -6,15 +6,15 @@ import logging
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
-from slowapi.util import get_remote_address
 
 from app.admin.router import router as admin_router
 from app.auth.router import router as auth_router
 from app.auth.google_oauth import router as google_oauth_router
 from app.assistant.router import router as assistant_router
 from app.billing.router import router as billing_router
+from app.common.rate_limit import limiter
 from app.config import settings
 from app.events.router import router as events_router
 from app.exchanges.router import router as exchanges_router
@@ -28,9 +28,6 @@ from app.portfolio.router import router as portfolio_router
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
-# ── Rate limiter ──────────────────────────────────────────────────
-limiter = Limiter(key_func=get_remote_address)
 
 # ── FastAPI app ───────────────────────────────────────────────────
 app = FastAPI(
