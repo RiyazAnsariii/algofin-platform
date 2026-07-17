@@ -15,7 +15,7 @@ from sqlalchemy import (
     CheckConstraint,
     UniqueConstraint,
 )
-from sqlalchemy.dialects.postgresql import INET
+
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.database import Base
 
@@ -166,7 +166,7 @@ class ExchangeBillingConsent(Base):
     consented_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
-    ip_address: Mapped[str | None] = mapped_column(INET, nullable=True)
+    ip_address: Mapped[str | None] = mapped_column(String(45), nullable=True)
     user_agent: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     # Relationships

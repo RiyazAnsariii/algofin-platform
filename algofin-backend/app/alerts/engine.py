@@ -227,7 +227,7 @@ async def _run_dispatcher() -> None:
     Long-running background task.
     Pattern-subscribes to order_events and risk_events channels.
     """
-    from app.redis_client import get_redis  # imported here to avoid circular
+    from app.database import get_redis_client as get_redis  # imported here to avoid circular
 
     logger.info("[AlertEngine] Starting dispatcher...")
     try:
