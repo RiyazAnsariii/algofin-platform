@@ -1,11 +1,11 @@
 # app/assistant/schemas.py
 # AlgoFin v1 — Assistant request/response schemas
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class SendMessageRequest(BaseModel):
-    message: str
+    message: str = Field(..., max_length=10000)
     stream: bool = True
 
 

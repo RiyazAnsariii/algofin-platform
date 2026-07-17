@@ -63,3 +63,35 @@ class RefreshResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
     user: UserResponse
+
+
+class UpdateProfileRequest(BaseModel):
+    full_name: str
+
+    @field_validator("full_name")
+    @classmethod
+    def full_name_not_empty(cls, v: str) -> str:
+        v = v.strip()
+        if not v:
+            raise ValueError("full_name is required")
+        return v
+
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str
+
+    @field_validator("new_password")
+    @classmethod
+    def password_strength(cls, v: str) -> str:
+        if len(v) < 8:
+            raise ValueError("New password must be at least 8 characters")
+        if not any(c.isupper() for c in v):
+            raise ValueError("New password must contain at least one uppercase letter")
+        if not any(c.islower() for c in v):
+            raise ValueError("New password must contain at least one lowercase letter")
+        if not any(c.isdigit() for c in v):
+            raise ValueError("New password must contain at least one digit")
+        if not any(c in "!@#$%^&*()_+-=[]{}|;':\",./<>?`~" for c in v):
+            raise ValueError("New password must contain at least one special character")
+        return v

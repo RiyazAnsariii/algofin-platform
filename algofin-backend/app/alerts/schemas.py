@@ -6,15 +6,15 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Literal
 
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 # ── Telegram Config ────────────────────────────────────────────────────────
 
 class TelegramConfigCreate(BaseModel):
     """Request body for saving / updating Telegram config."""
-    bot_token: str
-    chat_id: str
+    bot_token: str = Field(..., max_length=100, min_length=1)
+    chat_id: str = Field(..., max_length=100, min_length=1)
 
     @field_validator("bot_token")
     @classmethod
@@ -68,12 +68,14 @@ class AlertRuleCreate(BaseModel):
     def upper_symbol(cls, v):
         return v.upper().strip() if v else v
 
-    def validate_price_alert(self) -> None:
+    @model_validator(mode="after")
+    def validate_price_alert(self) -> "AlertRuleCreate":
         if self.alert_type == "PRICE_ALERT":
             if not self.symbol or self.threshold is None or not self.direction:
                 raise ValueError(
                     "PRICE_ALERT requires symbol, threshold, and direction"
                 )
+        return self
 
 
 class AlertRuleResponse(BaseModel):

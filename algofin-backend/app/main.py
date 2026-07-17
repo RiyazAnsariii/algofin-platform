@@ -5,9 +5,12 @@ import logging
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import JSONResponse
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
+
+from app.common.middleware import RequestBodySizeLimitMiddleware
 
 from app.admin.router import router as admin_router
 from app.auth.router import router as auth_router
@@ -52,6 +55,13 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+)
+
+# ── Security middleware ──────────────────────────────────────────
+app.add_middleware(RequestBodySizeLimitMiddleware, max_body_size=524_288)
+app.add_middleware(
+    TrustedHostMiddleware,
+    allowed_hosts=settings.cors_origins + ["localhost", "127.0.0.1", "api.algofin.app", ".algofin.app"],
 )
 
 # ── Global exception handler ──────────────────────────────────────
