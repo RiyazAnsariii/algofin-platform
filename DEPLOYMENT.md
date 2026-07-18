@@ -6,27 +6,28 @@
 Browser
     │  HTTPS
     ▼
-Vercel  (Next.js frontend — free hobby plan)
-    │  /api/v1/* proxied via next.config rewrite
-    ▼
-Render  (FastAPI backend — free web service, native Python runtime)
+Vercel  (Next.js — free hobby plan)
     │
-    ├──▶  Neon  (PostgreSQL — free serverless tier)
+    │  /api/v1/* → proxied via next.config rewrite
+    ▼
+Render  (FastAPI — free web service, native Python runtime)
+    │
+    ├──▶  Neon  (PostgreSQL — free serverless)
     └──▶  Upstash  (Redis — free, 10k req/day)
 ```
 
-### How deploys happen
+### Deploy flow on every `git push origin main`
 
 ```
 git push origin main
-        │
-        ▼
-GitHub Actions (.github/workflows/deploy.yml)
-        │
-        ├── backend-check   → ruff lint (all branches)
-        ├── frontend-check  → tsc + npm build (all branches)
-        ├── deploy-frontend → Vercel CLI --prod (main only)
-        └── deploy-backend  → curl Render deploy hook (main only)
+    │
+    └─▶ GitHub Actions
+            │
+            ├─▶ backend-check   — ruff lint
+            ├─▶ frontend-check  — tsc + npm run build
+            │
+            ├─▶ deploy-frontend — vercel --prod  (main only)
+            └─▶ deploy-backend  — curl Render deploy hook  (main only)
 
 Branch push / PR → Vercel Preview URL (automatic, no GitHub Actions needed)
 ```
@@ -35,7 +36,7 @@ Branch push / PR → Vercel Preview URL (automatic, no GitHub Actions needed)
 
 ## Minimum Required Versions
 
-| Tool | Minimum | Check with |
+| Tool | Minimum | Check |
 |---|---|---|
 | Python | 3.12 | `python --version` |
 | Node.js | 20.x | `node --version` |
@@ -46,13 +47,18 @@ Branch push / PR → Vercel Preview URL (automatic, no GitHub Actions needed)
 
 ## Free Services Used
 
-| Service | Plan | Purpose | Key Limits |
+| Service | Plan | Purpose | Limits |
 |---|---|---|---|
 | **Vercel** | Hobby (free) | Next.js frontend | 100GB bandwidth/month |
-| **Render** | Free web service | FastAPI backend (native Python) | 512MB RAM, spins down after 15 min idle |
+| **Render** | Free web service | FastAPI backend (native Python) | 512MB RAM, spins down 15 min idle |
 | **Neon** | Free serverless | PostgreSQL | 0.5GB storage, 190 compute hours/month |
 | **Upstash** | Free | Redis (Celery + cache) | 256MB, **10,000 commands/day** |
 | **GitHub** | Free | Source control + CI/CD | 2,000 Actions minutes/month |
+
+> **Note on Render runtime:** `render.yaml` uses `runtime: python` — Render builds
+> using `pip install` and runs `uvicorn` directly (no Docker). A `Dockerfile` is
+> included in the repo for self-hosting, VPS deployment, or container-based platforms.
+> Render's free Python service does not use it.
 
 ---
 
@@ -60,37 +66,39 @@ Branch push / PR → Vercel Preview URL (automatic, no GitHub Actions needed)
 
 | Limitation | Impact | Mitigation |
 |---|---|---|
-| **Render cold start: 30–90 seconds** | First request after 15 min idle is very slow | Use cron-job.org to ping `/health` every 14 min (uses free hours faster) |
-| **Upstash 10k commands/day** | Celery + cache + rate limiting can exhaust quickly | Monitor in Upstash console; upgrade to Pay-as-you-go ($10/mo) if needed |
-| **Upstash: no logical DB indices** | Cannot use `/1`, `/2` for Celery broker/backend | All three (`REDIS_URL`, `CELERY_BROKER_URL`, `CELERY_RESULT_BACKEND`) use the same URL |
-| **Neon 190 compute hours/month** | Serverless — scales to zero, counts only active query time | Fine for dev/low traffic |
-| **Render runtime: native Python** | render.yaml uses `runtime: python`, not Docker | Dockerfile exists but Render uses native build (`pip install` + `uvicorn`) |
-| **No Celery worker on free tier** | Background worker would need a separate Render service | Scheduled syncs run via `asyncio` tasks inside the main process |
+| **Render cold start: 30–90 sec** | First request after 15 min idle is slow | Ping `/health` every 14 min via cron-job.org |
+| **Upstash 10k commands/day** | Tight with Celery + cache + rate limiting | Monitor in Upstash console; upgrade Pay-as-you-go ($10/mo) if needed |
+| **Single Redis DB for Celery** | `CELERY_BROKER_URL` and `CELERY_RESULT_BACKEND` share same DB as `REDIS_URL` | This project uses one Upstash database for all three — no db-index suffixes |
+| **Neon 190 compute hours/month** | Serverless — counts active query time only | Fine for dev/low traffic; Neon pauses when idle (not deleted) |
+| **No Celery worker** | Background sync runs as asyncio tasks in main process | Add a second Render service for a dedicated worker if needed |
 
 ---
 
 ## Security Notes
 
-> **Never commit secrets.** The following files are git-ignored and must
-> never appear in your repository:
->
+> **Never commit secrets.** The following are git-ignored:
 > ```
 > algofin-backend/.env
 > algofin-backend/.env.production
 > algofin-platform/.env.local
-> algofin-platform/.env.production.local
 > ```
 >
-> Use `.env.example` files as templates. Put real secrets only in:
-> - Render environment variables dashboard
-> - Vercel environment variables dashboard
-> - GitHub repository secrets
+> Use `.env.example` files as templates only.
+> Put real secrets in Render's Environment dashboard, Vercel's Environment Variables,
+> and GitHub repository Secrets.
 
-Key security points:
-- `SECRET_KEY` is auto-generated by Render (`generateValue: true`) — never reuse dev key in production
-- `FERNET_KEY` encrypts exchange API credentials at rest — generate fresh for every environment
-- `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` are **optional** — the app works without them (Google login route returns 503 if unconfigured)
-- Rotate all secrets immediately if a `.env` file is accidentally committed
+Key security properties of this stack:
+
+| Property | Implementation |
+|---|---|
+| **HTTPS everywhere** | Enforced by Vercel and Render (TLS termination at edge) |
+| **JWT in httpOnly cookies** | Refresh token stored as httpOnly cookie; never in localStorage |
+| **Exchange keys encrypted** | Fernet (AES-256-CBC) encryption at rest; `FERNET_KEY` never in DB |
+| **Passwords hashed** | bcrypt with 12 rounds — never stored as plaintext |
+| **Secrets in env only** | All keys stored in platform env vars — not in source code |
+| **SECRET_KEY enforced** | `config.py` validator rejects startup if empty in production |
+
+> Rotate all secrets immediately if any `.env` file is accidentally committed.
 
 ---
 
@@ -98,24 +106,23 @@ Key security points:
 
 ### Backend — Required in Production
 
-| Variable | Required | Default | Description |
-|---|---|---|---|
-| `ENVIRONMENT` | ✅ | `development` | Must be `production` on Render |
-| `DATABASE_URL` | ✅ | — | Neon asyncpg connection string |
-| `REDIS_URL` | ✅ | — | Upstash `rediss://` URL |
-| `SECRET_KEY` | ✅ | — | JWT signing key, ≥32 chars (auto-generated by Render) |
-| `FERNET_KEY` | ✅ | — | Encrypts exchange API keys at rest |
-| `ALLOWED_ORIGINS` | ✅ | `http://localhost:3000` | Your Vercel frontend URL |
-| `CELERY_BROKER_URL` | ✅ | — | Same as `REDIS_URL` (Upstash: no db indices) |
-| `CELERY_RESULT_BACKEND` | ✅ | — | Same as `REDIS_URL` (Upstash: no db indices) |
-| `GEMINI_API_KEY` | ⚠️ optional | — | AI assistant disabled if blank |
-| `GEMINI_MODEL` | ⚠️ optional | `gemini-flash-latest` | Primary AI model |
-| `GEMINI_FALLBACK_MODELS` | ⚠️ optional | `gemini-flash-lite-latest,...` | Comma-separated fallback models |
-| `GOOGLE_CLIENT_ID` | ⚠️ optional | — | Google OAuth — login route returns 503 if blank |
-| `GOOGLE_CLIENT_SECRET` | ⚠️ optional | — | Google OAuth |
-| `GOOGLE_REDIRECT_URI` | ⚠️ optional | — | Must match Google Cloud Console |
-| `JWT_ACCESS_EXPIRE_MINUTES` | ⚠️ optional | `30` | Access token TTL |
-| `JWT_REFRESH_EXPIRE_DAYS` | ⚠️ optional | `30` | Refresh token TTL |
+| Variable | Required | Description |
+|---|---|---|
+| `ENVIRONMENT` | ✅ | Must be `production` on Render |
+| `DATABASE_URL` | ✅ | Neon asyncpg connection string (includes `?sslmode=require`) |
+| `REDIS_URL` | ✅ | Upstash `rediss://` URL (TLS required) |
+| `SECRET_KEY` | ✅ | JWT signing key ≥32 chars (auto-generated by Render) |
+| `FERNET_KEY` | ✅ | Encrypts exchange API keys at rest |
+| `ALLOWED_ORIGINS` | ✅ | Your Vercel URL — no trailing slash |
+| `CELERY_BROKER_URL` | ✅ | **Same value as `REDIS_URL`** — Upstash: one DB, no `/1` suffix |
+| `CELERY_RESULT_BACKEND` | ✅ | **Same value as `REDIS_URL`** — Upstash: one DB, no `/2` suffix |
+| `GEMINI_API_KEY` | ⚠️ optional | AI assistant disabled if blank |
+| `GEMINI_MODEL` | ⚠️ optional | Default: `gemini-flash-latest` |
+| `GOOGLE_CLIENT_ID` | ⚠️ optional | Google login disabled if blank (route returns 503) |
+| `GOOGLE_CLIENT_SECRET` | ⚠️ optional | Google login |
+| `GOOGLE_REDIRECT_URI` | ⚠️ optional | Must match Google Cloud Console |
+| `JWT_ACCESS_EXPIRE_MINUTES` | ⚠️ optional | Default: 30 |
+| `JWT_REFRESH_EXPIRE_DAYS` | ⚠️ optional | Default: 30 |
 
 ### Frontend — Required in Production
 
@@ -127,15 +134,15 @@ Key security points:
 
 ## Prerequisites Already in the Repo
 
-These files are committed and ready — no manual creation needed:
-
 | File | Purpose |
 |---|---|
 | `.github/workflows/deploy.yml` | CI: lint → build → Vercel deploy → Render hook |
-| `algofin-backend/render.yaml` | Render service definition (auto-detected as Blueprint) |
+| `algofin-backend/render.yaml` | Render Blueprint service definition (auto-detected) |
 | `algofin-platform/vercel.json` | Vercel build config + API proxy rewrite |
-| `algofin-backend/Dockerfile` | Docker image (not used by Render free tier, available for self-hosting) |
-| `algofin-backend/alembic/` | Migrations — runs `alembic upgrade head` on every Render deploy |
+| `algofin-backend/Dockerfile` | Docker image for self-hosting (not used by Render free tier) |
+| `algofin-backend/alembic/` | Database migrations (auto-run: `alembic upgrade head` on deploy) |
+| `algofin-backend/pytest.ini` | Test configuration |
+| `algofin-backend/tests/` | Test suite (42 tests) |
 
 ---
 
@@ -153,12 +160,10 @@ git push origin main
 
 1. Go to **https://neon.tech** → Sign in with GitHub → **New Project**
 2. Name: `algofin` | Region: nearest to you → **Create Project**
-3. Dashboard → **Connection string** → select driver: **asyncpg**
-4. Copy the URL:
+3. Dashboard → **Connection string** → driver: **asyncpg** → Copy:
    ```
-   postgresql+asyncpg://user:pass@ep-xxx.us-east-2.aws.neon.tech/neondb?sslmode=require
+   postgresql+asyncpg://user:pass@ep-xxx.aws.neon.tech/neondb?sslmode=require
    ```
-   Save this as `DATABASE_URL`.
 
 ---
 
@@ -166,128 +171,107 @@ git push origin main
 
 1. Go to **https://console.upstash.com** → Sign in → **Create Database → Redis**
 2. Name: `algofin-redis` | Type: **Regional** | Region: nearest → **Create**
-3. Copy the **Redis URL** (starts with `rediss://`):
-   ```
-   rediss://default:<password>@<endpoint>.upstash.io:6379
-   ```
+3. Copy the Redis URL (starts with `rediss://`)
 
-> **⚠️ Upstash does not support Redis logical database indices.**
-> Set `CELERY_BROKER_URL` and `CELERY_RESULT_BACKEND` to the **exact same URL**
-> as `REDIS_URL`. Do NOT append `/1` or `/2`.
+> **This project uses one Upstash database for `REDIS_URL`, `CELERY_BROKER_URL`,
+> and `CELERY_RESULT_BACKEND`.** Set all three to the same URL. Do not append `/1` or `/2`.
 
 ---
 
 ## Step 4 — Deploy Backend to Render (10 min)
 
-1. Go to **https://render.com** → **New → Blueprint**
-2. Connect GitHub → select `RiyazAnsariii/algofin-platform`
-3. Render detects `algofin-backend/render.yaml` → creates service **algofin-api**
-
-   > Render uses **native Python runtime** (`runtime: python` in render.yaml),
-   > not Docker. Build = `pip install -r requirements.txt`.
-   > Start = `alembic upgrade head && uvicorn ...`
-
-4. **algofin-api → Environment** → add these variables:
+1. **https://render.com** → **New → Blueprint** → connect `RiyazAnsariii/algofin-platform`
+2. Render detects `algofin-backend/render.yaml` → creates **algofin-api** web service
+3. **algofin-api → Environment** → set these vars:
 
    | Variable | Value |
    |---|---|
-   | `DATABASE_URL` | Neon asyncpg URL from Step 2 |
-   | `REDIS_URL` | Upstash `rediss://` URL from Step 3 |
-   | `CELERY_BROKER_URL` | **Same as `REDIS_URL`** (no `/1`) |
-   | `CELERY_RESULT_BACKEND` | **Same as `REDIS_URL`** (no `/2`) |
+   | `DATABASE_URL` | Neon asyncpg URL (Step 2) |
+   | `REDIS_URL` | Upstash `rediss://` URL (Step 3) |
+   | `CELERY_BROKER_URL` | **Same as `REDIS_URL`** |
+   | `CELERY_RESULT_BACKEND` | **Same as `REDIS_URL`** |
    | `FERNET_KEY` | `python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"` |
-   | `ALLOWED_ORIGINS` | Fill in after Step 5 (your Vercel URL) |
-   | `GEMINI_API_KEY` | Optional — your key from https://aistudio.google.com/app/apikey |
+   | `ALLOWED_ORIGINS` | Fill in after Step 5 |
+   | `GEMINI_API_KEY` | Optional — from https://aistudio.google.com/app/apikey |
 
-5. **Save Changes** → **Manual Deploy** → wait for:
+4. **Save → Manual Deploy** → wait for logs:
    ```
    INFO  [alembic] Running upgrade -> xxxx, initial_schema
    INFO  Application startup complete.
    ```
-6. Test health:
+5. Verify:
    ```bash
    curl https://<your-render-url>/health
-   # Expected: {"status":"ok","database":"connected","redis":"connected"}
+   # {"status":"ok","database":"connected","redis":"connected"}
    ```
-7. Copy **Deploy Hook URL**: Settings → Deploy Hooks → Create Hook → save for Step 7
+6. Copy **Deploy Hook URL**: Settings → Deploy Hooks → Create Hook
 
 ---
 
 ## Step 5 — Deploy Frontend to Vercel (5 min)
 
-1. **https://vercel.com** → **Add New → Project**
-2. Import `RiyazAnsariii/algofin-platform` → Root Directory: **`algofin-platform`**
-3. Framework: **Next.js** (auto-detected)
-4. Environment variable: `NEXT_PUBLIC_API_URL` = `https://<your-render-url>`
-5. **Deploy** → Vercel assigns a URL like `https://algofin-platform-xxxx.vercel.app`
+1. **https://vercel.com** → **Add New → Project** → import `RiyazAnsariii/algofin-platform`
+2. Root Directory: `algofin-platform` | Framework: Next.js (auto-detected)
+3. Add env var: `NEXT_PUBLIC_API_URL` = `https://<your-render-url>`
+4. **Deploy** → note your URL (e.g., `https://algofin-xxxx.vercel.app`)
 
 ---
 
-## Step 6 — Update ALLOWED_ORIGINS
+## Step 6 — Update ALLOWED_ORIGINS on Render
 
-1. Render → algofin-api → Environment
-2. `ALLOWED_ORIGINS` = `https://<your-vercel-url>` (no trailing slash, HTTPS only)
-3. Save → Render redeploys automatically
+Render → algofin-api → Environment → `ALLOWED_ORIGINS` = `https://<your-vercel-url>` → Save
 
 ---
 
 ## Step 7 — Configure GitHub Secrets (2 min)
 
-**GitHub → Settings → Secrets → Actions → New repository secret**
+GitHub → Settings → Secrets → Actions → New repository secret:
 
 | Secret | Where to get |
 |---|---|
 | `VERCEL_TOKEN` | Vercel → Settings → Tokens → Create |
 | `VERCEL_ORG_ID` | Vercel → Settings → General → Team ID |
-| `VERCEL_PROJECT_ID` | Vercel → your project → Settings → Project ID |
+| `VERCEL_PROJECT_ID` | Vercel → Project → Settings → Project ID |
 | `RENDER_DEPLOY_HOOK_URL` | Render → algofin-api → Settings → Deploy Hooks |
-
-After this: `git push origin main` → GitHub Actions lint + deploy both services.
 
 ---
 
 ## Local Development
 
 ```bash
-# Windows — double-click or:
+# Windows
 dev.bat
 
-# Manual (any OS)
-# Terminal 1:
+# Any OS — Terminal 1
 cd algofin-backend && python -m uvicorn app.main:app --reload --port 8000
-# Terminal 2:
+
+# Any OS — Terminal 2
 cd algofin-platform && npm run dev
 ```
 
-| Service | URL |
+| URL | Service |
 |---|---|
-| Frontend | http://localhost:3000 |
-| Backend API | http://localhost:8000 |
-| Interactive Docs | http://localhost:8000/docs |
+| http://localhost:3000 | Frontend |
+| http://localhost:8000 | Backend |
+| http://localhost:8000/docs | Interactive API docs |
 
 ---
 
-## How to Run Tests
+## Running Tests
 
-### Backend
 ```bash
 cd algofin-backend
-pip install pytest pytest-asyncio httpx
-pytest                         # run all tests
-pytest -v -k "test_auth"       # run specific tests
-ruff check app/                # lint only
+python -m pytest -v
 ```
 
-### Frontend
-```bash
-cd algofin-platform
-npx tsc --noEmit               # TypeScript type check
-npm run build                  # production build (catches all errors)
-```
+**42 tests across 4 files:**
 
-> There are no unit test files yet — the CI/CD pipeline runs lint + build
-> as the verification step. Add `tests/` directories and `pytest` suites
-> as the project matures.
+| File | Tests | Covers |
+|---|---|---|
+| `test_health.py` | 4 | `/health` endpoint, 404 handling |
+| `test_auth.py` | 11 | Signup schema validation, API 422 responses |
+| `test_config.py` | 9 | Settings loading, validators, SECRET_KEY enforcement |
+| `test_jwt.py` | 18 | JWT creation/decode, refresh tokens, bcrypt hashing |
 
 ---
 
@@ -296,81 +280,103 @@ npm run build                  # production build (catches all errors)
 ```bash
 cd algofin-backend
 
-# Apply all pending migrations
-python -m alembic upgrade head
-
-# Roll back one migration
-python -m alembic downgrade -1
-
-# Generate a new migration after changing models
-python -m alembic revision --autogenerate -m "add_user_preferences"
-
-# Show current migration state
-python -m alembic current
+python -m alembic upgrade head          # apply all pending migrations
+python -m alembic downgrade -1          # roll back one step
+python -m alembic revision --autogenerate -m "describe_change"  # generate new migration
+python -m alembic current               # show current DB state
 ```
 
-**Production**: Migrations run automatically on every Render deploy
-(first line of `startCommand` in render.yaml).
+**Production:** Migrations run automatically on every Render deploy (first line of `startCommand`).
 
-To run manually in production: Render → algofin-api → **Shell**:
+---
+
+## Monitoring
+
+| Service | Where to look |
+|---|---|
+| **Backend logs** | Render → algofin-api → Logs |
+| **Frontend logs** | Vercel → your project → Functions → Logs |
+| **DB metrics** | Neon dashboard → Monitoring tab |
+| **Redis usage** | Upstash console → Data Browser + metrics |
+| **CI/CD history** | GitHub → Actions tab |
+| **Health endpoint** | `GET https://<render-url>/health` |
+| **Access log format** | `INFO access GET /health 200 7ms` (structured, grep-friendly) |
+
+---
+
+## Backup Strategy
+
+**Database (Neon):**
+Neon provides automatic point-in-time recovery (PITR) on the free tier.
+You can restore to any point within the last 24 hours from the Neon dashboard.
+
+For a more durable backup strategy:
 ```bash
-python -m alembic upgrade head
+# Weekly SQL dump (run locally or in CI)
+pg_dump "$DATABASE_URL" > backup_$(date +%Y%m%d).sql
+
+# Restore from dump
+psql "$DATABASE_URL" < backup_20260718.sql
 ```
+
+Store dumps encrypted (e.g., `gpg --symmetric backup.sql`) and test restores monthly.
 
 ---
 
 ## Rollback
 
 ### Frontend (Vercel)
-Vercel → algofin-platform → Deployments → find last good deploy → **··· → Promote to Production**
+Vercel → your project → Deployments → find last good deploy → **··· → Promote to Production**
 
 ### Backend (Render)
-Render → algofin-api → Events → click **Rollback** on any previous deploy.
+Render → algofin-api → Events → **Rollback** on any previous deploy.
 
-If a migration needs rollback, run in Render Shell first:
+If a DB migration needs rollback, run in Render Shell first:
 ```bash
 python -m alembic downgrade -1
 ```
-Then rollback the Render deploy.
+Then trigger a Render rollback.
 
 ---
 
 ## Troubleshooting
 
-### Cold start delay (30–90 sec)
-Expected on free tier. Options:
-- Accept it (fine for a dev/portfolio project)
-- Keep-alive ping: **https://cron-job.org** (free) → `GET <your-render-url>/health` every 14 min
-  > Note: this consumes free compute hours faster
+| Symptom | Cause | Fix |
+|---|---|---|
+| Backend takes 30–90s to respond | Cold start after 15 min idle | Expected on free tier; use cron ping to keep warm |
+| `database: unreachable` in /health | Wrong `DATABASE_URL` format | Must include `?sslmode=require` and use `postgresql+asyncpg://` |
+| `redis: unreachable` in /health | Wrong Redis URL | Must use `rediss://` (double-s = TLS) |
+| CORS error in browser | `ALLOWED_ORIGINS` mismatch | Must be HTTPS, no trailing slash, exact Vercel URL |
+| Google OAuth redirect_uri_mismatch | Google Console not updated | Add Render callback URL to Authorized redirect URIs |
+| Vercel GitHub Action fails | Missing secrets | Check `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID` |
+| `422 Unprocessable Entity` on signup | Weak password | Must have upper, lower, digit, special char, ≥8 chars |
 
-### `database: unreachable`
-- Neon URL must include `?sslmode=require`
-- Must use `postgresql+asyncpg://` scheme (not `postgresql://`)
-- Check Neon dashboard — project may be paused
+---
 
-### `redis: unreachable`
-- Must use `rediss://` (double-s = TLS) — Upstash requires TLS
-- Do not add `/1` or `/2` to the Upstash URL
+## Future Architecture
 
-### CORS error in browser
-- `ALLOWED_ORIGINS` must be HTTPS and match the Vercel URL exactly
-- No trailing slash
+Potential improvements as the project scales:
 
-### Google OAuth `redirect_uri_mismatch`
-Add to Google Cloud Console → Credentials → your OAuth client:
-- Authorized redirect URIs: `https://<render-url>/api/v1/auth/google/callback`
-- Authorized JS origins: `https://<vercel-url>`
-
-### GitHub Actions Vercel deploy fails
-Check GitHub Secrets: `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID` must all be set.
+| Upgrade | Benefit |
+|---|---|
+| **Docker Compose (production)** | Reproducible environment, easier self-hosting |
+| **Nginx reverse proxy** | Rate limiting at edge, SSL termination, caching |
+| **Dedicated Celery worker** | Background sync separated from web process |
+| **Redis Sentinel / Cluster** | High-availability Redis for production |
+| **Kubernetes** | Auto-scaling, rolling deployments, self-healing |
+| **Prometheus + Grafana** | Real-time metrics, alerting, dashboards |
+| **Sentry** | Error tracking with stack traces and user context |
+| **OpenTelemetry** | Distributed tracing across frontend + backend |
+| **GitHub Environments** | Staging environment with approval gates |
+| **Terraform** | Infrastructure as code for reproducible cloud setup |
 
 ---
 
 ## Cost Summary
 
-| Scenario | Cost/month |
+| Scenario | Monthly cost |
 |---|---|
 | Dev / portfolio (< 5 users) | **$0** |
-| Keep-alive + higher Upstash | ~$10 |
+| Keep-alive ping + Upstash upgrade | ~$10 |
 | Always-on Render (no cold start) | ~$7 |
-| Full production-grade | ~$17 |
+| Full production (all upgrades) | ~$17 |
