@@ -116,11 +116,9 @@ async def clear_thread(db: AsyncSession, *, thread_id: str) -> None:
 
 # ── Gemini client builder ─────────────────────────────────────────
 
-def _build_gemini_model() -> genai.GenerativeModel:
-    """Configure and return a Gemini GenerativeModel with tools."""
-    genai.configure(api_key=settings.gemini_api_key)
-
-    tools = genai.protos.Tool(
+def _make_tools_proto():
+    """Build the Gemini tools proto (shared across model builds)."""
+    return genai.protos.Tool(
         function_declarations=[
             genai.protos.FunctionDeclaration(
                 name=t["name"],
@@ -146,16 +144,32 @@ def _build_gemini_model() -> genai.GenerativeModel:
         ]
     )
 
+
+def _build_gemini_model(model_name: str | None = None) -> genai.GenerativeModel:
+    """Configure and return a Gemini GenerativeModel with tools."""
+    genai.configure(api_key=settings.gemini_api_key)
+    name = model_name or settings.gemini_model
+
     return genai.GenerativeModel(
-        model_name=settings.gemini_model,
+        model_name=name,
         system_instruction=SYSTEM_PROMPT,
-        tools=[tools],
+        tools=[_make_tools_proto()],
         generation_config=genai.GenerationConfig(
             temperature=0.4,
             top_p=0.95,
             max_output_tokens=2048,
         ),
     )
+
+
+def _get_model_candidates() -> list[str]:
+    """Return primary + fallback models to try in order."""
+    fallbacks = [
+        m.strip()
+        for m in settings.gemini_fallback_models.split(",")
+        if m.strip()
+    ]
+    return [settings.gemini_model] + fallbacks
 
 
 # ── History → Gemini format ───────────────────────────────────────
@@ -183,6 +197,7 @@ async def chat_stream(
     """
     Main streaming chat function.
     Yields SSE-compatible dicts with type and content.
+    Automatically falls back to secondary models on 429 quota errors.
 
     Yields:
       {"type": "start"}
@@ -206,18 +221,47 @@ async def chat_stream(
 
         yield {"type": "start"}
 
-        # Build Gemini model and chat session with history
-        model = _build_gemini_model()
-        gemini_history = _messages_to_gemini_history(history)
-        chat = model.start_chat(history=gemini_history)
+        # Try primary model, then fallbacks on quota errors
+        model_candidates = _get_model_candidates()
+        response = None
+        used_model = None
 
-        # Send message and handle function calling loop
-        full_response = ""
-        response = await chat.send_message_async(user_message, stream=False)
-        # Note: Using non-streaming first to handle tool calls cleanly,
-        # then we stream the final text response.
+        for attempt, model_name in enumerate(model_candidates):
+            try:
+                model = _build_gemini_model(model_name)
+                gemini_history = _messages_to_gemini_history(history)
+                chat = model.start_chat(history=gemini_history)
+                response = await chat.send_message_async(user_message, stream=False)
+                used_model = model_name
+                if attempt > 0:
+                    logger.info(f"[Assistant] Fell back to model: {model_name}")
+                break
+            except Exception as model_exc:
+                err_str = str(model_exc)
+                is_quota = "429" in err_str or "ResourceExhausted" in err_str or "quota" in err_str.lower()
+                if is_quota and attempt < len(model_candidates) - 1:
+                    logger.warning(f"[Assistant] Model {model_name} quota exceeded, trying next fallback...")
+                    continue
+                elif is_quota:
+                    # All models exhausted
+                    yield {
+                        "type": "error",
+                        "message": (
+                            "⚠️ The AI assistant is temporarily unavailable — Gemini API quota has been "
+                            "reached for today. This resets at midnight Pacific Time. "
+                            "You can try again later or get a new API key at https://aistudio.google.com/app/apikey"
+                        )
+                    }
+                    return
+                else:
+                    raise model_exc
+
+        if response is None:
+            yield {"type": "error", "message": "Could not connect to AI model. Please try again."}
+            return
 
         # Function calling loop
+        full_response = ""
         max_tool_rounds = 5
         for _ in range(max_tool_rounds):
             # Check for function calls
@@ -268,7 +312,6 @@ async def chat_stream(
 
         # Stream the final text response word by word for UX
         if full_response:
-            # Yield in chunks for streaming effect
             words = full_response.split(" ")
             chunk = ""
             for i, word in enumerate(words):
@@ -288,4 +331,15 @@ async def chat_stream(
 
     except Exception as exc:
         logger.exception(f"chat_stream error for user {user_id}: {exc}")
-        yield {"type": "error", "message": f"Assistant error: {str(exc)}"}
+        err_str = str(exc)
+        if "429" in err_str or "quota" in err_str.lower():
+            yield {
+                "type": "error",
+                "message": (
+                    "⚠️ Gemini API quota exceeded for today. The assistant will be available again "
+                    "after midnight Pacific Time. You can also get a new API key at "
+                    "https://aistudio.google.com/app/apikey"
+                )
+            }
+        else:
+            yield {"type": "error", "message": f"Assistant error: {str(exc)}"}
