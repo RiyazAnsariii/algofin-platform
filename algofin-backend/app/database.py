@@ -2,6 +2,8 @@
 # AlgoFin v1/v2 — Async SQLAlchemy + async Redis setup
 # Supports both PostgreSQL (production) and SQLite (local dev/demo)
 
+from urllib.parse import urlparse, urlencode, parse_qs, urlunparse
+
 from sqlalchemy.ext.asyncio import (
     AsyncSession,
     async_sessionmaker,
@@ -17,6 +19,30 @@ import uuid as uuid_module
 from app.config import settings
 
 _is_sqlite = settings.database_url.startswith("sqlite")
+
+
+def _build_pg_engine_args(raw_url: str) -> tuple[str, dict]:
+    """
+    asyncpg does not accept ?sslmode=require (a libpq/psycopg2 param).
+    Strip it from the URL and return ssl=True via connect_args instead.
+    Works with Neon, Supabase, and any TLS-required PostgreSQL provider.
+    """
+    parsed = urlparse(raw_url)
+    params = parse_qs(parsed.query, keep_blank_values=True)
+
+    # Pull out sslmode (pop returns [] if not present)
+    sslmode = params.pop("sslmode", [None])[0]
+
+    # Rebuild the URL without sslmode
+    clean_query = urlencode({k: v[0] for k, v in params.items()})
+    clean_url = urlunparse(parsed._replace(query=clean_query))
+
+    connect_args: dict = {}
+    if sslmode and sslmode != "disable":
+        # asyncpg accepts ssl=True / ssl='require' / ssl=SSLContext
+        connect_args["ssl"] = "require"
+
+    return clean_url, connect_args
 
 
 # ── UUIDType — works on both PostgreSQL and SQLite ────────────────
@@ -58,13 +84,16 @@ if _is_sqlite:
         poolclass=StaticPool,
     )
 else:
-    # PostgreSQL: full connection pool
+    # PostgreSQL: strip sslmode from URL, pass SSL via connect_args
+    # (asyncpg rejects ?sslmode=require — it's a libpq-only param)
+    _pg_url, _pg_connect_args = _build_pg_engine_args(settings.database_url)
     engine = create_async_engine(
-        settings.database_url,
+        _pg_url,
         echo=settings.debug,
+        connect_args=_pg_connect_args,
         pool_pre_ping=True,
-        pool_size=10,
-        max_overflow=20,
+        pool_size=5,
+        max_overflow=10,
     )
 
 # ── Session factory ───────────────────────────────────────────────
