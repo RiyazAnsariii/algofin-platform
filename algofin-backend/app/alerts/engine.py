@@ -265,15 +265,45 @@ async def _run_dispatcher() -> None:
     except asyncio.CancelledError:
         logger.info("[AlertEngine] Dispatcher stopped.")
     except Exception as exc:
-        logger.error("[AlertEngine] Fatal error: %s — restarting in 5s", exc)
-        await asyncio.sleep(5)
-        asyncio.ensure_future(_run_dispatcher())
+        return exc   # bubble up to the retry wrapper
+
+
+async def _run_dispatcher_with_backoff() -> None:
+    """
+    Retry wrapper with exponential backoff.
+    Upstash Redis (free tier) closes pub/sub connections immediately.
+    After 5 consecutive failures we stop retrying to prevent log spam.
+    The HTTP API continues to work regardless.
+    """
+    delay = 5
+    max_delay = 60
+    max_attempts = 5
+    attempt = 0
+
+    while attempt < max_attempts:
+        exc = await _run_dispatcher()
+        if exc is None:
+            return   # clean shutdown
+        attempt += 1
+        logger.warning(
+            "[AlertEngine] Connection failed (%s/%s): %s — retrying in %ss",
+            attempt, max_attempts, exc, delay,
+        )
+        await asyncio.sleep(delay)
+        delay = min(delay * 2, max_delay)
+
+    logger.error(
+        "[AlertEngine] Pub/sub unavailable after %s attempts. "
+        "Upstash free tier does not support persistent pub/sub. "
+        "Engine disabled — HTTP API unaffected.",
+        max_attempts,
+    )
 
 
 def start_alert_dispatcher() -> None:
     """Called from app startup. Launches the dispatcher as a background task."""
     global _dispatcher_task
-    _dispatcher_task = asyncio.ensure_future(_run_dispatcher())
+    _dispatcher_task = asyncio.ensure_future(_run_dispatcher_with_backoff())
     logger.info("[AlertEngine] Dispatcher task created.")
 
 
