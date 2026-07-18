@@ -62,3 +62,9 @@ celerybeat.pid
 
 **/.env.*
 **/algofin_dev.db
+
+# Env secrets (never commit)
+.env.production
+algofin-platform/.env.local
+algofin-platform/.env.production
+
