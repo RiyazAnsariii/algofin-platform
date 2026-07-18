@@ -44,9 +44,11 @@ services:
       - key: JWT_REFRESH_EXPIRE_DAYS
         value: "30"
       - key: CELERY_BROKER_URL
-        sync: false          # Same Upstash URL with /1 at end
+        sync: false          # SAME value as REDIS_URL — Upstash does NOT support /1, /2 db indices
       - key: CELERY_RESULT_BACKEND
-        sync: false          # Same Upstash URL with /2 at end
+        sync: false          # SAME value as REDIS_URL — Upstash does NOT support /1, /2 db indices
+      - key: GEMINI_FALLBACK_MODELS
+        value: "gemini-flash-lite-latest,gemini-2.0-flash-lite-001"
       - key: GOOGLE_CLIENT_ID
         sync: false
       - key: GOOGLE_CLIENT_SECRET
