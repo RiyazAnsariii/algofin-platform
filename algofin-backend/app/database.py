@@ -23,26 +23,54 @@ _is_sqlite = settings.database_url.startswith("sqlite")
 
 def _build_pg_engine_args(raw_url: str) -> tuple[str, dict]:
     """
-    asyncpg does not accept ?sslmode=require (a libpq/psycopg2 param).
-    Strip it from the URL and return ssl=True via connect_args instead.
-    Works with Neon, Supabase, and any TLS-required PostgreSQL provider.
+    asyncpg only accepts its own connection keywords — it rejects libpq-specific
+    query parameters such as sslmode, channel_binding, gssencmode, etc.
+
+    This function:
+      1. Strips all libpq-only parameters from the URL
+      2. Returns ssl='require' in connect_args when sslmode was require/verify-*
+      3. Leaves other parameters (e.g. application_name) intact
+      4. Is a no-op for SQLite URLs (not called for those)
+
+    Tested against Neon, Supabase, and standard PostgreSQL connection strings.
     """
+    # libpq parameters that asyncpg does not accept as keyword arguments.
+    # Keep this list updated if new providers add unusual params.
+    LIBPQ_ONLY_PARAMS = {
+        "sslmode",
+        "channel_binding",
+        "gssencmode",
+        "sslcert",
+        "sslkey",
+        "sslrootcert",
+        "sslcrl",
+        "sslpassword",
+        "krbsrvname",
+        "gsslib",
+        "target_session_attrs",
+    }
+
     parsed = urlparse(raw_url)
     params = parse_qs(parsed.query, keep_blank_values=True)
 
-    # Pull out sslmode (pop returns [] if not present)
+    # Extract sslmode before stripping (to decide whether to add ssl=require)
     sslmode = params.pop("sslmode", [None])[0]
 
-    # Rebuild the URL without sslmode
+    # Strip all other libpq-only params
+    for key in LIBPQ_ONLY_PARAMS - {"sslmode"}:
+        params.pop(key, None)
+
+    # Rebuild clean URL
     clean_query = urlencode({k: v[0] for k, v in params.items()})
     clean_url = urlunparse(parsed._replace(query=clean_query))
 
     connect_args: dict = {}
-    if sslmode and sslmode != "disable":
-        # asyncpg accepts ssl=True / ssl='require' / ssl=SSLContext
+    if sslmode and sslmode not in ("disable", "allow", "prefer"):
+        # sslmode=require / verify-ca / verify-full → enforce TLS
         connect_args["ssl"] = "require"
 
     return clean_url, connect_args
+
 
 
 # ── UUIDType — works on both PostgreSQL and SQLite ────────────────
