@@ -7,16 +7,22 @@ from logging.config import fileConfig
 from alembic import context
 from sqlalchemy import pool
 from sqlalchemy.engine import Connection
-from sqlalchemy.ext.asyncio import async_engine_from_config
+from sqlalchemy.ext.asyncio import create_async_engine
 
 from app.config import settings
-from app.database import Base
+from app.database import Base, _build_pg_engine_args
 
 # Import all models so Alembic can detect schema
 import app.models  # noqa: F401 — this triggers __init__.py which imports all models
 
 config = context.config
-config.set_main_option("sqlalchemy.url", settings.database_url)
+
+# Strip ?sslmode=require from URL before passing to asyncpg.
+# asyncpg does not accept sslmode as a query param (libpq-only).
+# _build_pg_engine_args returns (clean_url, connect_args) with ssl='require'
+# in connect_args when the original URL contained sslmode=require.
+_db_url, _connect_args = _build_pg_engine_args(settings.database_url)
+config.set_main_option("sqlalchemy.url", _db_url)
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
@@ -43,9 +49,11 @@ def do_run_migrations(connection: Connection) -> None:
 
 
 async def run_async_migrations() -> None:
-    connectable = async_engine_from_config(
-        config.get_section(config.config_ini_section, {}),
-        prefix="sqlalchemy.",
+    # Build the engine directly so we can pass connect_args for SSL.
+    # async_engine_from_config does not support connect_args cleanly.
+    connectable = create_async_engine(
+        _db_url,
+        connect_args=_connect_args,
         poolclass=pool.NullPool,
     )
     async with connectable.connect() as connection:
