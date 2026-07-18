@@ -67,7 +67,7 @@ async def get_thread(
                 "id":         str(m.id),
                 "role":       m.role,
                 "content":    m.content,
-                "tool_name":  m.tool_name,
+                "tool_name":  None,   # kept for frontend compat; no per-message tool_name in v1 schema
                 "created_at": m.created_at.isoformat(),
             }
             for m in history

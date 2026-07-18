@@ -92,14 +92,15 @@ async def save_message(
     thread_id: str,
     role: str,
     content: str,
-    tool_name: str | None = None,
+    tool_calls: list | None = None,  # list of {tool_name, input, output} dicts
 ) -> ChatMessage:
     """Persist a message to the DB."""
+    import json as _json
     msg = ChatMessage(
         thread_id=thread_id,
         role=role,
         content=content,
-        tool_name=tool_name,
+        tool_calls_json=_json.dumps(tool_calls) if tool_calls else None,
     )
     db.add(msg)
     await db.commit()
