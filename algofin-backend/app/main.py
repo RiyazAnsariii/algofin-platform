@@ -63,7 +63,18 @@ app.add_middleware(RequestBodySizeLimitMiddleware, max_body_size=524_288)
 app.add_middleware(RequestLoggingMiddleware)
 app.add_middleware(
     TrustedHostMiddleware,
-    allowed_hosts=settings.cors_origins + ["localhost", "127.0.0.1", "api.algofin.app", ".algofin.app"],
+    allowed_hosts=(
+        # In dev, allow everything — TrustedHostMiddleware causes noise with
+        # tools like curl / uvicorn reload that send bare IP as Host.
+        ["*"]
+        if settings.environment == "development"
+        else [
+            # Extract bare hostname (no scheme, no port) from CORS origin URLs
+            # e.g. "http://localhost:3000" → "localhost"
+            origin.split("//")[-1].split(":")[0]
+            for origin in settings.cors_origins
+        ] + ["api.algofin.app", ".algofin.app"]
+    ),
 )
 
 # ── Global exception handler ──────────────────────────────────────
