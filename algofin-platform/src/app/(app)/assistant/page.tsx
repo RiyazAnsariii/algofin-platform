@@ -320,10 +320,17 @@ export default function AssistantPage() {
             if (event.type === "error") {
               const errMsg = event.message ?? "Unknown error";
               // Categorise error type for the banner
-              if (errMsg.includes("GEMINI_API_KEY") || errMsg.includes("invalid or has been revoked")) {
+              if (errMsg.includes("GEMINI_API_KEY") || errMsg.includes("not configured") || errMsg.includes("invalid or has been revoked")) {
                 setKeyError(errMsg);
                 setApiKeyMissing(true);
-              } else if (errMsg.includes("quota exceeded") || errMsg.includes("daily quota") || errMsg.includes("per-minute")) {
+              } else if (
+                errMsg.includes("quota") ||
+                errMsg.includes("429") ||
+                errMsg.includes("quota has been reached") ||
+                errMsg.includes("quota exceeded") ||
+                errMsg.includes("daily limit") ||
+                errMsg.includes("temporarily unavailable")
+              ) {
                 setQuotaError(errMsg);
               }
               // Remove empty placeholder — error is shown in banner, not in chat
@@ -378,7 +385,7 @@ export default function AssistantPage() {
           </div>
           <div>
             <p className="text-sm font-semibold text-foreground">AI Assistant</p>
-            <p className="text-[10px] text-muted-foreground">Powered by Gemini 2.0 Flash</p>
+            <p className="text-[10px] text-muted-foreground">Powered by Gemini Flash</p>
           </div>
         </div>
         {messages.length > 0 && (
@@ -512,7 +519,7 @@ export default function AssistantPage() {
           </div>
         </div>
         <p className="text-[10px] text-muted-foreground/40 text-center mt-2">
-          Enter to send · Shift+Enter for new line · Gemini 2.0 Flash
+          Enter to send · Shift+Enter for new line · Gemini Flash
         </p>
       </div>
     </div>
