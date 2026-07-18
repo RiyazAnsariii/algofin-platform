@@ -1,5 +1,9 @@
 # render.yaml — Render.com free-tier deployment config for AlgoFin backend
 # Docs: https://render.com/docs/render-yaml-spec
+#
+# NOTE: Render discontinued their free PostgreSQL tier.
+# Database is hosted on Neon (https://neon.tech) — free, no credit card.
+# Set DATABASE_URL manually from the Neon dashboard (see DEPLOYMENT.md).
 
 services:
   - type: web
@@ -22,17 +26,15 @@ services:
       - key: ENVIRONMENT
         value: production
       - key: DATABASE_URL
-        fromDatabase:
-          name: algofin-db
-          property: connectionString
+        sync: false          # Set from Neon dashboard — see DEPLOYMENT.md Step 2
       - key: REDIS_URL
-        sync: false
+        sync: false          # Set from Upstash dashboard — see DEPLOYMENT.md Step 3
       - key: SECRET_KEY
-        generateValue: true
+        generateValue: true  # Render auto-generates a secure random value
       - key: FERNET_KEY
-        sync: false
+        sync: false          # Must be a valid Fernet base64 key — see DEPLOYMENT.md
       - key: ALLOWED_ORIGINS
-        sync: false
+        sync: false          # Set to your Vercel frontend URL after deploy
       - key: GEMINI_API_KEY
         sync: false
       - key: GEMINI_MODEL
@@ -42,18 +44,12 @@ services:
       - key: JWT_REFRESH_EXPIRE_DAYS
         value: "30"
       - key: CELERY_BROKER_URL
-        sync: false
+        sync: false          # Same Upstash URL with /1 at end
       - key: CELERY_RESULT_BACKEND
-        sync: false
+        sync: false          # Same Upstash URL with /2 at end
       - key: GOOGLE_CLIENT_ID
         sync: false
       - key: GOOGLE_CLIENT_SECRET
         sync: false
       - key: GOOGLE_REDIRECT_URI
-        sync: false
-
-databases:
-  - name: algofin-db
-    databaseName: algofin
-    user: algofin
-    plan: free
+        sync: false          # https://<your-render-url>/api/v1/auth/google/callback
