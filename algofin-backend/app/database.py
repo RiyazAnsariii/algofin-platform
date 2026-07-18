@@ -30,10 +30,14 @@ def _build_pg_engine_args(raw_url: str) -> tuple[str, dict]:
       1. Strips all libpq-only parameters from the URL
       2. Returns ssl='require' in connect_args when sslmode was require/verify-*
       3. Leaves other parameters (e.g. application_name) intact
-      4. Is a no-op for SQLite URLs (not called for those)
+      4. Is a no-op for non-PostgreSQL URLs (SQLite, etc.)
 
     Tested against Neon, Supabase, and standard PostgreSQL connection strings.
     """
+    # No-op for non-PostgreSQL URLs (SQLite, etc.)
+    if not raw_url.startswith("postgresql"):
+        return raw_url, {}
+
     # libpq parameters that asyncpg does not accept as keyword arguments.
     # Keep this list updated if new providers add unusual params.
     LIBPQ_ONLY_PARAMS = {
