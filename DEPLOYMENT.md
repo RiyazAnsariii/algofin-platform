@@ -89,16 +89,18 @@ Branch push / PR → Vercel Preview URL (automatic, no GitHub Actions needed)
 
 Key security properties of this stack:
 
-| Property | Implementation |
-|---|---|
-| **HTTPS everywhere** | Enforced by Vercel and Render (TLS termination at edge) |
-| **JWT in httpOnly cookies** | Refresh token stored as httpOnly cookie; never in localStorage |
-| **Exchange keys encrypted** | Fernet (AES-256-CBC) encryption at rest; `FERNET_KEY` never in DB |
-| **Passwords hashed** | bcrypt with 12 rounds — never stored as plaintext |
-| **Secrets in env only** | All keys stored in platform env vars — not in source code |
-| **SECRET_KEY enforced** | `config.py` validator rejects startup if empty in production |
+| Property | Implementation | Verified in |
+|---|---|---|
+| **HTTPS everywhere** | Enforced by Vercel and Render (TLS at edge) | Platform-level |
+| **Refresh token in httpOnly cookie** | `set_cookie(httponly=True, secure=env!='development', samesite='lax')` | `auth/router.py` |
+| **Exchange keys encrypted at rest** | Fernet AES-256-CBC via `encrypt_credential()` / `decrypt_credential()` | `exchanges/service.py` |
+| **Passwords hashed** | bcrypt with 12 rounds — `gensalt(rounds=12)` | `common/security.py` |
+| **Refresh token stored as SHA-256 hash** | Raw token sent to client; only `hash_refresh_token()` result stored in DB | `auth/service.py` |
+| **Secrets in env only** | All keys in platform env vars — not in source code | `config.py` |
+| **SECRET_KEY enforced** | `field_validator` raises at startup if empty in non-development environment | `config.py` |
 
-> Rotate all secrets immediately if any `.env` file is accidentally committed.
+> **Cookie `secure` flag:** In development it is `False` (HTTP localhost); in production it is `True`
+> (HTTPS on Render). This is controlled by `settings.environment != "development"` in `auth/router.py`.
 
 ---
 
@@ -264,14 +266,14 @@ cd algofin-backend
 python -m pytest -v
 ```
 
-**42 tests across 4 files:**
+**42 tests across 4 files** (verified: `pytest --collect-only` reports `42 tests collected`):
 
-| File | Tests | Covers |
+| File | Count | Covers |
 |---|---|---|
-| `test_health.py` | 4 | `/health` endpoint, 404 handling |
-| `test_auth.py` | 11 | Signup schema validation, API 422 responses |
-| `test_config.py` | 9 | Settings loading, validators, SECRET_KEY enforcement |
-| `test_jwt.py` | 18 | JWT creation/decode, refresh tokens, bcrypt hashing |
+| `test_health.py` | 4 | `/health` response shape, status 200, version field, 404 for unknown routes |
+| `test_auth.py` | 11 | All 5 password rules, email format, full_name blank, API 422 on missing/weak input |
+| `test_config.py` | 9 | Settings load in dev, SECRET_KEY allows empty in dev / rejects in prod, cors_origins list, intervals > 0 |
+| `test_jwt.py` | 18 | JWT create/decode/tamper/wrong-secret, refresh token raw+hash, bcrypt hash+verify |
 
 ---
 
