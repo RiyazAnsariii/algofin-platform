@@ -16,5 +16,5 @@ env/
 htmlcov/
 .coverage
 *.log
-alembic/versions/*.py
-!alembic/versions/.gitkeep
+# alembic/versions/*.py is intentionally NOT ignored —
+# migration files must be committed for Render deployment
