@@ -5,7 +5,7 @@ import uuid
 from decimal import Decimal
 from typing import Literal
 
-from pydantic import BaseModel, field_validator, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 StrategyType = Literal["price_breakout", "manual"]
@@ -27,7 +27,7 @@ class StrategyCreate(BaseModel):
     symbol: str
     order_side: OrderSide
     order_type: OrderType = "MARKET"
-    quantity: Decimal
+    quantity: Decimal = Field(..., gt=0)
     limit_price: Decimal | None = None
     reduce_only: bool = False
 

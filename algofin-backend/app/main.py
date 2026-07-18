@@ -5,16 +5,19 @@ import logging
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import JSONResponse
-from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
-from slowapi.util import get_remote_address
+
+from app.common.middleware import RequestBodySizeLimitMiddleware, RequestLoggingMiddleware
 
 from app.admin.router import router as admin_router
 from app.auth.router import router as auth_router
 from app.auth.google_oauth import router as google_oauth_router
 from app.assistant.router import router as assistant_router
 from app.billing.router import router as billing_router
+from app.common.rate_limit import limiter
 from app.config import settings
 from app.events.router import router as events_router
 from app.exchanges.router import router as exchanges_router
@@ -26,11 +29,9 @@ from app.strategy.router import router as strategy_router  # v2 Phase F
 from app.journal.router import router as journal_router    # v2 Phase G
 from app.portfolio.router import router as portfolio_router
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s %(message)s")
 logger = logging.getLogger(__name__)
-
-# ── Rate limiter ──────────────────────────────────────────────────
-limiter = Limiter(key_func=get_remote_address)
+logging.getLogger("access").setLevel(logging.INFO)
 
 # ── FastAPI app ───────────────────────────────────────────────────
 app = FastAPI(
@@ -55,6 +56,25 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+)
+
+# ── Security middleware ──────────────────────────────────────────
+app.add_middleware(RequestBodySizeLimitMiddleware, max_body_size=524_288)
+app.add_middleware(RequestLoggingMiddleware)
+app.add_middleware(
+    TrustedHostMiddleware,
+    allowed_hosts=(
+        # In dev, allow everything — TrustedHostMiddleware causes noise with
+        # tools like curl / uvicorn reload that send bare IP as Host.
+        ["*"]
+        if settings.environment == "development"
+        else [
+            # Extract bare hostname (no scheme, no port) from CORS origin URLs
+            # e.g. "http://localhost:3000" → "localhost"
+            origin.split("//")[-1].split(":")[0]
+            for origin in settings.cors_origins
+        ] + ["api.algofin.app", ".algofin.app"]
+    ),
 )
 
 # ── Global exception handler ──────────────────────────────────────
@@ -87,7 +107,29 @@ app.include_router(journal_router,    prefix=API_PREFIX)  # v2 Phase G: journal 
 # ── Health check ──────────────────────────────────────────────────
 @app.get("/health", tags=["health"])
 async def health() -> dict:
-    return {"status": "ok", "version": "2.0.0"}
+    db_ok = False
+    redis_ok = False
+    try:
+        from app.database import AsyncSessionLocal
+        async with AsyncSessionLocal() as session:
+            from sqlalchemy import text
+            await session.execute(text("SELECT 1"))
+            db_ok = True
+    except Exception:
+        pass
+    try:
+        from app.database import get_redis_client
+        r = await get_redis_client()
+        await r.ping()
+        redis_ok = True
+    except Exception:
+        pass
+    return {
+        "status": "ok",
+        "version": "2.0.0",
+        "database": "connected" if db_ok else "unreachable",
+        "redis": "connected" if redis_ok else "unreachable",
+    }
 
 
 # ── Startup event ──────────────────────────────────────────

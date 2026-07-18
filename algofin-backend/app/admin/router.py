@@ -270,7 +270,8 @@ async def trigger_sync(
             "account_id": account_id,
         })
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to trigger sync: {str(e)}")
+        logger.exception(f"Sync trigger failed for account {account_id}: {e}")
+        raise HTTPException(status_code=500, detail="Failed to trigger sync")
 
 
 # ── Login activity ─────────────────────────────────────────────────

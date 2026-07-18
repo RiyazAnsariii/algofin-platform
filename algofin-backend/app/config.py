@@ -2,8 +2,9 @@
 # AlgoFin v1 — Application configuration (pydantic-settings)
 
 from functools import lru_cache
-from typing import List
+from typing import Any, List
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import field_validator, ValidationInfo
 
 
 class Settings(BaseSettings):
@@ -30,12 +31,31 @@ class Settings(BaseSettings):
     redis_url: str = "redis://localhost:6379/0"
 
     # ── Security ───────────────────────────────────────────────────
-    # Used to sign JWTs
-    secret_key: str = "dev_secret_key_change_in_production"
+    secret_key: str = ""
 
-    # Fernet key for encrypting exchange API credentials at rest
-    # Generate: from cryptography.fernet import Fernet; Fernet.generate_key()
+    @field_validator("secret_key")
+    @classmethod
+    def secret_key_required(cls, v: str, info: ValidationInfo) -> str:
+        env = info.data.get("environment", "development")
+        if env != "development" and (not v or len(v) < 32):
+            raise ValueError(
+                "SECRET_KEY must be set and at least 32 characters long. "
+                "Generate one with: python -c \"import secrets; print(secrets.token_urlsafe(48))\""
+            )
+        return v
+
     fernet_key: str = ""
+
+    @field_validator("fernet_key")
+    @classmethod
+    def fernet_key_required(cls, v: str, info: ValidationInfo) -> str:
+        env = info.data.get("environment", "development")
+        if env != "development" and not v:
+            raise ValueError(
+                "FERNET_KEY must be set in production. "
+                "Generate one with: python -c \"from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())\""
+            )
+        return v
 
     # ── JWT ────────────────────────────────────────────────────────
     jwt_algorithm: str = "HS256"
@@ -56,7 +76,9 @@ class Settings(BaseSettings):
     # ── Gemini AI ───────────────────────────────────────────────
     # Get your free API key at: https://aistudio.google.com/app/apikey
     gemini_api_key: str = ""
-    gemini_model: str = "gemini-2.0-flash"  # free tier model
+    gemini_model: str = "gemini-flash-latest"   # primary model
+    # Fallback models tried in order if primary hits quota (429)
+    gemini_fallback_models: str = "gemini-flash-lite-latest,gemini-2.0-flash-lite-001"
     assistant_max_history: int = 40  # messages kept in context per session
 
     # ── Sync intervals (minutes) ───────────────────────────────────

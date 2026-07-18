@@ -152,8 +152,6 @@ async def create_rule(
     current_user: CurrentUser,
     db: DbSession,
 ) -> SuccessResponse:
-    body.validate_price_alert()
-
     rule = AlertRule(
         user_id=str(current_user.id),
         alert_type=body.alert_type,

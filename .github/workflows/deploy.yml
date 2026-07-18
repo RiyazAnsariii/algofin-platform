@@ -1,26 +1,48 @@
-name: AlgoFin — Deploy to Production
+name: AlgoFin CI/CD — Vercel + Render
 
 on:
   push:
+    branches: [main, dev]
+  pull_request:
     branches: [main]
-  workflow_dispatch:      # Allow manual trigger from GitHub UI
+  workflow_dispatch:
 
 jobs:
-  # ── 1. Lint + Type check ───────────────────────────────────────
-  check:
-    name: Type check & lint
+  # ── 1. Backend lint + type check ──────────────────────────────────
+  backend-check:
+    name: Backend lint
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: algofin-backend/requirements.txt
+
+      - name: Install deps
+        working-directory: algofin-backend
+        run: pip install -r requirements.txt ruff
+
+      - name: Ruff lint
+        working-directory: algofin-backend
+        run: ruff check app/ --select E,W,F --ignore E501
+
+  # ── 2. Frontend type check + build ────────────────────────────────
+  frontend-check:
+    name: Frontend build check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
         with:
           node-version: "20"
-          cache: "npm"
+          cache: npm
           cache-dependency-path: algofin-platform/package-lock.json
 
-      - name: Install frontend deps
+      - name: Install deps
         working-directory: algofin-platform
         run: npm ci
 
@@ -28,93 +50,50 @@ jobs:
         working-directory: algofin-platform
         run: npx tsc --noEmit
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
+      - name: Build
+        working-directory: algofin-platform
+        run: npm run build
+        env:
+          NEXT_PUBLIC_API_URL: https://algofin-api.onrender.com
+
+  # ── 3. Deploy frontend to Vercel (main branch only) ───────────────
+  deploy-frontend:
+    name: Deploy frontend → Vercel
+    needs: [backend-check, frontend-check]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
         with:
-          python-version: "3.12"
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: algofin-platform/package-lock.json
 
-      - name: Install backend deps
-        working-directory: algofin-backend
-        run: pip install -r requirements.txt
+      - name: Install Vercel CLI
+        run: npm install -g vercel
 
-      - name: Ruff lint
-        working-directory: algofin-backend
+      - name: Deploy to Vercel (production)
+        working-directory: algofin-platform
         run: |
-          pip install ruff
-          ruff check app/ --select E,W,F --ignore E501
+          vercel deploy --prod \
+            --token=${{ secrets.VERCEL_TOKEN }} \
+            --yes
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
 
-  # ── 2. Build Docker images ─────────────────────────────────────
-  build:
-    name: Build & push images
-    needs: check
+  # ── 4. Trigger Render redeploy (main branch only) ─────────────────
+  deploy-backend:
+    name: Redeploy backend → Render
+    needs: [backend-check, frontend-check]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Login to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Build + push backend image
-        uses: docker/build-push-action@v5
-        with:
-          context: algofin-backend
-          file: algofin-backend/Dockerfile
-          push: true
-          tags: |
-            ghcr.io/${{ github.repository_owner }}/algofin-api:latest
-            ghcr.io/${{ github.repository_owner }}/algofin-api:${{ github.sha }}
-
-      - name: Build + push frontend image
-        uses: docker/build-push-action@v5
-        with:
-          context: algofin-platform
-          file: algofin-platform/Dockerfile
-          push: true
-          tags: |
-            ghcr.io/${{ github.repository_owner }}/algofin-frontend:latest
-            ghcr.io/${{ github.repository_owner }}/algofin-frontend:${{ github.sha }}
-          build-args: |
-            NEXT_PUBLIC_API_URL=https://${{ secrets.PRODUCTION_DOMAIN }}/api/v1
-
-  # ── 3. Deploy to VPS ──────────────────────────────────────────
-  deploy:
-    name: Deploy to VPS
-    needs: build
-    runs-on: ubuntu-latest
-    environment: production    # Requires manual approval if configured
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Deploy via SSH
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host:     ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USER }}
-          key:      ${{ secrets.VPS_SSH_KEY }}
-          script: |
-            set -e
-            cd /opt/algofin
-
-            # Pull latest images
-            docker pull ghcr.io/${{ github.repository_owner }}/algofin-api:latest
-            docker pull ghcr.io/${{ github.repository_owner }}/algofin-frontend:latest
-
-            # Apply DB migrations (zero-downtime: runs before restart)
-            docker-compose -f docker-compose.prod.yml exec -T api \
-              alembic upgrade head || true
-
-            # Rolling restart (no-downtime)
-            docker-compose -f docker-compose.prod.yml up -d \
-              --no-build \
-              --remove-orphans \
-              api worker beat nginx frontend
-
-            # Health check
-            sleep 10
-            curl -f https://${{ secrets.PRODUCTION_DOMAIN }}/health || exit 1
-
-            echo "✅ Deploy complete — ${{ github.sha }}"
+      - name: Trigger Render deploy hook
+        run: |
+          curl -s -o /dev/null -w "%{http_code}" \
+            "${{ secrets.RENDER_DEPLOY_HOOK_URL }}"
+        # RENDER_DEPLOY_HOOK_URL is set in GitHub Secrets
+        # Get it from: Render Dashboard → algofin-api → Settings → Deploy Hooks

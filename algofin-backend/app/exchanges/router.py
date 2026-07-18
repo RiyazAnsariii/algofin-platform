@@ -5,6 +5,8 @@
 # DELETE /exchanges/{account_id}
 # POST /exchanges/{account_id}/sync
 
+import uuid
+
 from fastapi import APIRouter, HTTPException, Request, status
 
 from app.common.deps import CurrentUser, DbSession
@@ -132,7 +134,7 @@ async def list_accounts(
     response_model=SuccessResponse[dict],
 )
 async def revoke(
-    account_id: str,
+    account_id: uuid.UUID,
     request: Request,
     current_user: CurrentUser,
     db: DbSession,
@@ -143,7 +145,7 @@ async def revoke(
 
     found = await revoke_exchange_account(
         db,
-        account_id=account_id,
+        account_id=str(account_id),
         user=current_user,
         ip_address=ip,
         user_agent=ua,
@@ -162,7 +164,7 @@ async def revoke(
     response_model=SuccessResponse[dict],
 )
 async def trigger_sync(
-    account_id: str,
+    account_id: uuid.UUID,
     body: TriggerSyncRequest,
     current_user: CurrentUser,
     db: DbSession,
@@ -171,9 +173,8 @@ async def trigger_sync(
     Manually trigger a sync for an exchange account.
     Queues a Celery sync task (triggered_by = 'manual').
     """
-    # Verify account belongs to user
     accounts = await get_user_exchange_accounts(db, user_id=str(current_user.id))
-    account = next((a for a in accounts if str(a.id) == account_id), None)
+    account = next((a for a in accounts if str(a.id) == str(account_id)), None)
     if account is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

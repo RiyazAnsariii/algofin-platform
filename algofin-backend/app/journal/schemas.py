@@ -5,7 +5,7 @@ from datetime import date, datetime
 from decimal import Decimal
 from typing import Literal
 
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, Field, field_validator
 
 
 # ── Journal Entry ──────────────────────────────────────────────────────────
@@ -15,10 +15,10 @@ MoodType = Literal["confident", "focused", "fearful", "greedy", "neutral"]
 
 class JournalEntryCreate(BaseModel):
     entry_date: date
-    title: str
-    body: str | None = None
-    symbol: str | None = None
-    tags: list[str] = []
+    title: str = Field(..., max_length=200)
+    body: str | None = Field(None, max_length=10000)
+    symbol: str | None = Field(None, max_length=20)
+    tags: list[str] = Field(default_factory=list, max_length=20)
     mood: MoodType | None = None
 
     @field_validator("title")

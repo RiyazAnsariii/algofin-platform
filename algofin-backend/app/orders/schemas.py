@@ -7,7 +7,7 @@ from decimal import Decimal
 from typing import Literal, Optional
 from uuid import UUID
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 # ── Order types supported (Binance USDT-M Futures) ───────────────────────────
@@ -88,6 +88,13 @@ class OrderOut(BaseModel):
     filled_quantity: Decimal
     avg_fill_price: Optional[Decimal]
     error_message: Optional[str]
+
+    @field_validator("error_message", mode="before")
+    @classmethod
+    def sanitize_error(cls, v: str | None) -> str | None:
+        if v and len(v) > 200:
+            return v[:200] + "..."
+        return v
     placed_at: str
     updated_at: str
     filled_at: Optional[str]

@@ -13,9 +13,11 @@ from sqlalchemy.exc import IntegrityError
 
 from app.auth.schemas import (
     AuthDataResponse,
+    ChangePasswordRequest,
     LoginRequest,
     RefreshResponse,
     SignupRequest,
+    UpdateProfileRequest,
     UserResponse,
 )
 from app.auth.service import (
@@ -26,6 +28,7 @@ from app.auth.service import (
     rotate_refresh_token,
 )
 from app.common.deps import CurrentUser, DbSession
+from app.common.rate_limit import limiter
 from app.common.schemas import SuccessResponse
 from app.config import settings
 from app.models.user import User
@@ -70,6 +73,7 @@ def _user_to_response(user: User) -> UserResponse:
     response_model=SuccessResponse[AuthDataResponse],
     status_code=status.HTTP_201_CREATED,
 )
+@limiter.limit("3/minute")
 async def signup(
     body: SignupRequest,
     request: Request,
@@ -109,6 +113,7 @@ async def signup(
 
 
 @router.post("/login", response_model=SuccessResponse[AuthDataResponse])
+@limiter.limit("5/minute")
 async def login(
     body: LoginRequest,
     request: Request,
@@ -202,18 +207,12 @@ async def me(current_user: CurrentUser) -> SuccessResponse[UserResponse]:
 
 @router.patch("/me", response_model=SuccessResponse[UserResponse])
 async def update_profile(
-    body: dict,
+    body: UpdateProfileRequest,
     current_user: CurrentUser,
     db: DbSession,
 ) -> SuccessResponse[UserResponse]:
     """Update user profile (full_name only in v1)."""
-    from pydantic import BaseModel, field_validator
-
-    full_name = body.get("full_name", "").strip()
-    if not full_name:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="full_name is required")
-
-    current_user.full_name = full_name
+    current_user.full_name = body.full_name
     await db.commit()
     await db.refresh(current_user)
     return SuccessResponse(data=_user_to_response(current_user))
@@ -221,36 +220,26 @@ async def update_profile(
 
 @router.post("/change-password", response_model=SuccessResponse[dict])
 async def change_password(
-    body: dict,
+    body: ChangePasswordRequest,
     current_user: CurrentUser,
     db: DbSession,
 ) -> SuccessResponse[dict]:
     """Change user password. Requires current_password verification."""
     from app.common.security import verify_password, hash_password
 
-    # Google OAuth users have no password — they must set one first
     if current_user.hashed_password is None:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Your account uses Google sign-in and has no password. You cannot change password for OAuth accounts.",
+            detail="Your account uses Google sign-in and has no password.",
         )
 
-    current_password = body.get("current_password", "")
-    new_password     = body.get("new_password", "")
-
-    if not verify_password(current_password, current_user.hashed_password):
+    if not verify_password(body.current_password, current_user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Current password is incorrect",
         )
-    if len(new_password) < 8:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="New password must be at least 8 characters",
-        )
 
-    current_user.hashed_password = hash_password(new_password)
-    # Revoke all refresh tokens so existing sessions are invalidated
+    current_user.hashed_password = hash_password(body.new_password)
     await revoke_all_tokens(db, user_id=str(current_user.id))
     await db.commit()
 
