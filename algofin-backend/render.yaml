@@ -9,7 +9,6 @@ services:
   - type: web
     name: algofin-api
     runtime: python
-    pythonVersion: "3.12.10"   # also pinned in runtime.txt and .python-version
     repo: https://github.com/RiyazAnsariii/algofin-platform
     branch: main
     rootDir: algofin-backend
