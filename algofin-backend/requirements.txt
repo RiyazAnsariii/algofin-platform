@@ -13,10 +13,9 @@ alembic==1.14.0
 psycopg2-binary==2.9.10
 
 # ── Pydantic v2 ────────────────────────────────────────────────
-# pydantic-core is pinned explicitly to avoid build failures on
-# platforms without a prebuilt wheel for newer Python versions.
+# pydantic-core is intentionally NOT pinned — pydantic manages
+# its own pydantic-core version constraint exactly.
 pydantic==2.10.3
-pydantic-core==2.27.2
 pydantic-settings==2.6.1
 email-validator==2.2.0
 
