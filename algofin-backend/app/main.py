@@ -69,11 +69,8 @@ app.add_middleware(
         ["*"]
         if settings.environment == "development"
         else [
-            # Extract bare hostname (no scheme, no port) from CORS origin URLs
-            # e.g. "http://localhost:3000" → "localhost"
-            origin.split("//")[-1].split(":")[0]
-            for origin in settings.cors_origins
-        ] + ["api.algofin.app", ".algofin.app"]
+            "*",  # Allow all hosts — TrustedHostMiddleware handled at CDN/proxy level
+        ]
     ),
 )
 
