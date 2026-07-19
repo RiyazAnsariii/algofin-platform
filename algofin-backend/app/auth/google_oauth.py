@@ -75,17 +75,17 @@ async def google_callback(
     """
     # Fail gracefully on OAuth errors (user denied access, etc.)
     if error:
-        return RedirectResponse(url=f"http://localhost:3000/login?error={urllib.parse.quote(error)}")
+        return RedirectResponse(url=f"{settings.frontend_url}/login?error={urllib.parse.quote(error)}")
 
     # Missing code means something went wrong with the flow
     if not code or not state:
-        return RedirectResponse(url="http://localhost:3000/login?error=missing_params")
+        return RedirectResponse(url=f"{settings.frontend_url}/login?error=missing_params")
 
     # Validate state (CSRF protection)
     now_ts = datetime.now(timezone.utc).timestamp()
     stored_ts = _pending_states.pop(state, None)
     if stored_ts is None or (now_ts - stored_ts) > 300:  # 5 min expiry
-        return RedirectResponse(url="http://localhost:3000/login?error=invalid_state")
+        return RedirectResponse(url=f"{settings.frontend_url}/login?error=invalid_state")
 
     # Exchange code for tokens
     async with httpx.AsyncClient() as client:
@@ -101,7 +101,7 @@ async def google_callback(
         )
 
     if token_resp.status_code != 200:
-        return RedirectResponse(url="http://localhost:3000/login?error=token_exchange_failed")
+        return RedirectResponse(url=f"{settings.frontend_url}/login?error=token_exchange_failed")
 
     token_data = token_resp.json()
     access_token_google = token_data.get("access_token")
@@ -114,7 +114,7 @@ async def google_callback(
         )
 
     if info_resp.status_code != 200:
-        return RedirectResponse(url="http://localhost:3000/login?error=userinfo_failed")
+        return RedirectResponse(url=f"{settings.frontend_url}/login?error=userinfo_failed")
 
     info = info_resp.json()
     google_id  = info.get("sub")
@@ -123,7 +123,7 @@ async def google_callback(
     avatar_url = info.get("picture")
 
     if not google_id or not email:
-        return RedirectResponse(url="http://localhost:3000/login?error=missing_user_info")
+        return RedirectResponse(url=f"{settings.frontend_url}/login?error=missing_user_info")
 
     # Upsert user: find by google_id OR email
     result = await db.execute(
@@ -196,7 +196,7 @@ async def google_callback(
     }};
     localStorage.setItem('algofin-auth', JSON.stringify(parsed));
   }} catch(e) {{ console.error('AlgoFin OAuth bridge error:', e); }}
-  window.location.replace('/dashboard');
+  window.location.replace('{settings.frontend_url}/dashboard');
 </script>
 <p>Signing you in…</p>
 </body>

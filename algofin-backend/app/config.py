@@ -64,6 +64,7 @@ class Settings(BaseSettings):
 
     # ── CORS ───────────────────────────────────────────────────────
     allowed_origins: str = "http://localhost:3000"
+    frontend_url: str = "https://algofin-platform.vercel.app"  # overridden by FRONTEND_URL env var
 
     @property
     def cors_origins(self) -> List[str]:
