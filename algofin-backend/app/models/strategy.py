@@ -39,8 +39,8 @@ class Strategy(Base):
     __tablename__ = "strategies"
 
     id: Mapped[uuid.UUID] = mapped_column(UUIDType, primary_key=True, default=uuid.uuid4)
-    user_id: Mapped[str] = mapped_column(
-        String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUIDType, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
     )
     exchange_account_id: Mapped[uuid.UUID] = mapped_column(
         UUIDType, ForeignKey("user_exchange_accounts.id", ondelete="CASCADE"), nullable=False
@@ -93,8 +93,8 @@ class StrategyExecution(Base):
     strategy_id: Mapped[uuid.UUID] = mapped_column(
         UUIDType, ForeignKey("strategies.id", ondelete="CASCADE"), nullable=False, index=True
     )
-    user_id: Mapped[str] = mapped_column(
-        String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUIDType, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
     )
 
     trigger_price: Mapped[Decimal | None] = mapped_column(Numeric(20, 8), nullable=True)

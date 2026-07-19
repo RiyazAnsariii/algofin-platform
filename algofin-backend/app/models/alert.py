@@ -23,7 +23,7 @@ class TelegramConfig(Base):
     __tablename__ = "telegram_configs"
 
     id: Mapped[uuid.UUID] = mapped_column(UUIDType, primary_key=True, default=uuid.uuid4)
-    user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id", ondelete="CASCADE"),
+    user_id: Mapped[uuid.UUID] = mapped_column(UUIDType, ForeignKey("users.id", ondelete="CASCADE"),
                                           nullable=False, unique=True, index=True)
 
     chat_id: Mapped[str] = mapped_column(String(100), nullable=False)
@@ -53,7 +53,7 @@ class AlertRule(Base):
     __tablename__ = "alert_rules"
 
     id: Mapped[uuid.UUID] = mapped_column(UUIDType, primary_key=True, default=uuid.uuid4)
-    user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id", ondelete="CASCADE"),
+    user_id: Mapped[uuid.UUID] = mapped_column(UUIDType, ForeignKey("users.id", ondelete="CASCADE"),
                                           nullable=False, index=True)
 
     alert_type: Mapped[str] = mapped_column(String(30), nullable=False)
@@ -78,7 +78,7 @@ class AlertDelivery(Base):
     __tablename__ = "alert_deliveries"
 
     id: Mapped[uuid.UUID] = mapped_column(UUIDType, primary_key=True, default=uuid.uuid4)
-    user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id", ondelete="CASCADE"),
+    user_id: Mapped[uuid.UUID] = mapped_column(UUIDType, ForeignKey("users.id", ondelete="CASCADE"),
                                           nullable=False, index=True)
     rule_id: Mapped[uuid.UUID | None] = mapped_column(UUIDType, nullable=True)
     # null for system alerts (e.g. price alerts triggered from market data)

@@ -30,8 +30,8 @@ class RiskRule(Base):
     id: Mapped[uuid.UUID] = mapped_column(
         UUIDType, primary_key=True, default=uuid.uuid4
     )
-    user_id: Mapped[str] = mapped_column(
-        String(64),
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUIDType,
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
@@ -89,7 +89,7 @@ class RiskViolation(Base):
         nullable=False,
         index=True,
     )
-    user_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUIDType, nullable=False, index=True)
 
     rule_type: Mapped[str] = mapped_column(String(30), nullable=False)
     threshold: Mapped[Decimal] = mapped_column(Numeric(20, 8), nullable=False)

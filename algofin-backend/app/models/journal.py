@@ -21,8 +21,8 @@ class JournalEntry(Base):
     __tablename__ = "journal_entries"
 
     id: Mapped[uuid.UUID] = mapped_column(UUIDType, primary_key=True, default=uuid.uuid4)
-    user_id: Mapped[str] = mapped_column(
-        String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUIDType, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
     )
 
     entry_date: Mapped[date] = mapped_column(Date, nullable=False, index=True)
