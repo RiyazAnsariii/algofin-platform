@@ -7,77 +7,31 @@
 // This page runs on the FRONTEND domain (algofin-platform.vercel.app),
 // so it can safely write to the frontend's localStorage via Zustand.
 //
-// Flow:
-//   1. Backend OAuth callback completes
-//   2. Backend redirects to /auth/google/success?token=...&user=...
-//   3. This page reads the params, calls store.login(), then navigates to /dashboard
+// IMPORTANT: useSearchParams() requires a Suspense boundary in Next.js App Router.
 
-"use client";
-
-import { useEffect } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { useAuthStore } from "@/stores/auth.store";
-import type { User } from "@/types";
+import { Suspense } from "react";
+import GoogleSuccessHandler from "./handler";
 
 export default function GoogleSuccessPage() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const login = useAuthStore((s) => s.login);
-
-  useEffect(() => {
-    const token = searchParams.get("token");
-    const userB64 = searchParams.get("user");
-
-    if (!token || !userB64) {
-      console.error("[OAuth] Missing token or user in callback URL");
-      router.replace("/login?error=oauth_failed");
-      return;
-    }
-
-    try {
-      // Decode base64url-encoded user JSON
-      const userJson = atob(userB64.replace(/-/g, "+").replace(/_/g, "/"));
-      const user: User = JSON.parse(userJson);
-
-      // Store token + user in Zustand (persisted to THIS domain's localStorage)
-      login({ access_token: token, user });
-
-      // Replace history entry to remove token from URL (security hygiene)
-      router.replace("/dashboard");
-    } catch (e) {
-      console.error("[OAuth] Failed to parse OAuth callback params:", e);
-      router.replace("/login?error=oauth_parse_failed");
-    }
-  }, [searchParams, login, router]);
-
   return (
-    <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        height: "100vh",
-        background: "#0f1117",
-        color: "#00d4aa",
-        fontFamily: "sans-serif",
-        fontSize: "1.1rem",
-      }}
-    >
-      <div style={{ textAlign: "center" }}>
+    <Suspense
+      fallback={
         <div
           style={{
-            width: 40,
-            height: 40,
-            border: "3px solid #00d4aa",
-            borderTopColor: "transparent",
-            borderRadius: "50%",
-            animation: "spin 0.8s linear infinite",
-            margin: "0 auto 16px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            height: "100vh",
+            background: "#0f1117",
+            color: "#00d4aa",
+            fontFamily: "sans-serif",
           }}
-        />
-        <p>Signing you in…</p>
-      </div>
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-    </div>
+        >
+          <p>Signing you in…</p>
+        </div>
+      }
+    >
+      <GoogleSuccessHandler />
+    </Suspense>
   );
 }
