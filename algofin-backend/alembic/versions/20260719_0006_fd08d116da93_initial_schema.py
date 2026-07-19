@@ -57,7 +57,7 @@ def upgrade() -> None:
     op.create_index(op.f('ix_users_google_id'), 'users', ['google_id'], unique=True)
     op.create_table('alert_deliveries',
     sa.Column('id', app.database.UUIDType(length=36), nullable=False),
-    sa.Column('user_id', sa.String(length=36), nullable=False),
+    sa.Column('user_id', app.database.UUIDType(length=36), nullable=False),
     sa.Column('rule_id', app.database.UUIDType(length=36), nullable=True),
     sa.Column('event_type', sa.String(length=30), nullable=False),
     sa.Column('message', sa.Text(), nullable=False),
@@ -70,7 +70,7 @@ def upgrade() -> None:
     op.create_index(op.f('ix_alert_deliveries_user_id'), 'alert_deliveries', ['user_id'], unique=False)
     op.create_table('alert_rules',
     sa.Column('id', app.database.UUIDType(length=36), nullable=False),
-    sa.Column('user_id', sa.String(length=36), nullable=False),
+    sa.Column('user_id', app.database.UUIDType(length=36), nullable=False),
     sa.Column('alert_type', sa.String(length=30), nullable=False),
     sa.Column('symbol', sa.String(length=30), nullable=True),
     sa.Column('threshold', sa.Numeric(precision=20, scale=8), nullable=True),
@@ -94,7 +94,7 @@ def upgrade() -> None:
     )
     op.create_table('journal_entries',
     sa.Column('id', app.database.UUIDType(length=36), nullable=False),
-    sa.Column('user_id', sa.String(length=36), nullable=False),
+    sa.Column('user_id', app.database.UUIDType(length=36), nullable=False),
     sa.Column('entry_date', sa.Date(), nullable=False),
     sa.Column('title', sa.String(length=200), nullable=False),
     sa.Column('body', sa.Text(), nullable=True),
@@ -151,7 +151,7 @@ def upgrade() -> None:
     op.create_index(op.f('ix_risk_rules_user_id'), 'risk_rules', ['user_id'], unique=False)
     op.create_table('telegram_configs',
     sa.Column('id', app.database.UUIDType(length=36), nullable=False),
-    sa.Column('user_id', sa.String(length=36), nullable=False),
+    sa.Column('user_id', app.database.UUIDType(length=36), nullable=False),
     sa.Column('chat_id', sa.String(length=100), nullable=False),
     sa.Column('bot_token_encrypted', sa.Text(), nullable=False),
     sa.Column('is_active', sa.Boolean(), nullable=False),
@@ -348,7 +348,7 @@ def upgrade() -> None:
     op.create_index(op.f('ix_risk_violations_user_id'), 'risk_violations', ['user_id'], unique=False)
     op.create_table('strategies',
     sa.Column('id', app.database.UUIDType(length=36), nullable=False),
-    sa.Column('user_id', sa.String(length=36), nullable=False),
+    sa.Column('user_id', app.database.UUIDType(length=36), nullable=False),
     sa.Column('exchange_account_id', app.database.UUIDType(length=36), nullable=False),
     sa.Column('name', sa.String(length=100), nullable=False),
     sa.Column('description', sa.Text(), nullable=True),
@@ -398,7 +398,7 @@ def upgrade() -> None:
     op.create_table('strategy_executions',
     sa.Column('id', app.database.UUIDType(length=36), nullable=False),
     sa.Column('strategy_id', app.database.UUIDType(length=36), nullable=False),
-    sa.Column('user_id', sa.String(length=36), nullable=False),
+    sa.Column('user_id', app.database.UUIDType(length=36), nullable=False),
     sa.Column('trigger_price', sa.Numeric(precision=20, scale=8), nullable=True),
     sa.Column('order_id', app.database.UUIDType(length=36), nullable=True),
     sa.Column('status', sa.String(length=20), nullable=False),
