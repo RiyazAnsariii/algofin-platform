@@ -163,14 +163,14 @@ async def google_callback(
         db, user=user, ip_address=ip, user_agent=ua
     )
 
-    # We use a tiny HTML bridge page to:
-    #   1. Write the access token + user to Zustand's localStorage key
-    #   2. Redirect to /dashboard
-    # This is necessary because:
-    #   - We can't set localStorage from a plain HTTP redirect
-    #   - The httpOnly refresh cookie is set via response headers below
-    import json
-    user_json = json.dumps({
+    # Build the redirect URL to the frontend success page.
+    # The frontend's /auth/google/success page reads these params and calls
+    # store.login() on its own domain — solving the cross-domain localStorage issue.
+    import base64
+    import json as json_mod
+    from datetime import timedelta
+
+    user_dict = {
         "id":         str(user.id),
         "email":      user.email,
         "full_name":  user.full_name,
@@ -178,36 +178,24 @@ async def google_callback(
         "created_at": user.created_at.isoformat(),
         "google_id":  user.google_id,
         "avatar_url": user.avatar_url,
-    })
-    token_json = json.dumps(algofin_access_token)
+    }
+    # base64url-encode the user JSON so it's safe to put in a URL query param
+    user_b64 = base64.urlsafe_b64encode(
+        json_mod.dumps(user_dict).encode()
+    ).decode()
 
-    html = f"""<!DOCTYPE html>
-<html>
-<head><title>Signing you in…</title></head>
-<body>
-<script>
-  try {{
-    var stored = localStorage.getItem('algofin-auth');
-    var parsed = stored ? JSON.parse(stored) : {{}};
-    parsed.state = {{
-      accessToken:     {token_json},
-      user:            {user_json},
-      isAuthenticated: true
-    }};
-    localStorage.setItem('algofin-auth', JSON.stringify(parsed));
-  }} catch(e) {{ console.error('AlgoFin OAuth bridge error:', e); }}
-  window.location.replace('{settings.frontend_url}/dashboard');
-</script>
-<p>Signing you in…</p>
-</body>
-</html>"""
-
-    from starlette.responses import HTMLResponse as SR
-    from datetime import timedelta
     from app.config import settings as cfg
+    redirect_url = (
+        f"{cfg.frontend_url}/auth/google/success"
+        f"?token={algofin_access_token}"
+        f"&user={user_b64}"
+    )
 
-    response = SR(content=html, status_code=200)
-    # Set httpOnly refresh cookie (same as regular login)
+    from starlette.responses import RedirectResponse as SR
+    response = SR(url=redirect_url, status_code=302)
+
+    # Still set the httpOnly refresh cookie on the BACKEND domain so that
+    # subsequent /api/v1/auth/refresh calls can use it automatically.
     max_age = int(timedelta(days=cfg.jwt_refresh_expire_days).total_seconds())
     response.set_cookie(
         key="algofin_refresh_token",
@@ -219,3 +207,4 @@ async def google_callback(
         path="/",
     )
     return response
+
