@@ -134,7 +134,7 @@ def upgrade() -> None:
     op.create_index(op.f('ix_refresh_tokens_user_id'), 'refresh_tokens', ['user_id'], unique=False)
     op.create_table('risk_rules',
     sa.Column('id', app.database.UUIDType(length=36), nullable=False),
-    sa.Column('user_id', sa.String(length=64), nullable=False),
+    sa.Column('user_id', app.database.UUIDType(length=36), nullable=False),
     sa.Column('name', sa.String(length=100), nullable=False),
     sa.Column('rule_type', sa.String(length=30), nullable=False),
     sa.Column('threshold', sa.Numeric(precision=20, scale=8), nullable=False),
@@ -333,7 +333,7 @@ def upgrade() -> None:
     op.create_table('risk_violations',
     sa.Column('id', app.database.UUIDType(length=36), nullable=False),
     sa.Column('rule_id', app.database.UUIDType(length=36), nullable=False),
-    sa.Column('user_id', sa.String(length=64), nullable=False),
+    sa.Column('user_id', app.database.UUIDType(length=36), nullable=False),
     sa.Column('rule_type', sa.String(length=30), nullable=False),
     sa.Column('threshold', sa.Numeric(precision=20, scale=8), nullable=False),
     sa.Column('current_value', sa.Numeric(precision=20, scale=8), nullable=False),
