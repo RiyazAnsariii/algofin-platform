@@ -97,7 +97,7 @@ class Settings(BaseSettings):
     # ── Google OAuth ───────────────────────────────────────────────
     google_client_id: str = ""
     google_client_secret: str = ""
-    google_redirect_uri: str = "http://localhost:3000/api/v1/auth/google/callback"
+    google_redirect_uri: str = "https://algofin-api.onrender.com/api/v1/auth/google/callback"
 
 
 @lru_cache
