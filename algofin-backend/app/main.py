@@ -41,8 +41,8 @@ app = FastAPI(
         "Binance USDT-M Futures only. Real-time market data via WebSocket."
     ),
     version="2.0.0",
-    docs_url="/docs" if settings.environment != "production" else None,
-    redoc_url="/redoc" if settings.environment != "production" else None,
+    docs_url="/docs",
+    redoc_url="/redoc",
 )
 
 # Rate limiter
