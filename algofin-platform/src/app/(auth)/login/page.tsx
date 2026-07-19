@@ -160,7 +160,7 @@ export default function LoginPage() {
 
       {/* Google OAuth button */}
       <a
-        href="/api/v1/auth/google"
+        href={`${process.env.NEXT_PUBLIC_API_URL}/api/v1/auth/google`}
         className="flex items-center justify-center gap-3 w-full py-2.5 rounded-xl
           border border-white/10 bg-white/5 text-sm font-medium text-foreground
           hover:bg-white/10 hover:border-white/20 transition-all"
