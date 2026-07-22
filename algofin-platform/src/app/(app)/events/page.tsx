@@ -214,7 +214,7 @@ export default function EventsPage() {
   const hasFilters = impact !== null;
 
   return (
-    <div className="p-6 max-w-3xl space-y-5">
+    <div className="max-w-3xl space-y-5">
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
         <div>
