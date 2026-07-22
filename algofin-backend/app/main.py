@@ -28,6 +28,8 @@ from app.alerts.router import router as alerts_router  # v2 Phase E
 from app.strategy.router import router as strategy_router  # v2 Phase F
 from app.journal.router import router as journal_router    # v2 Phase G
 from app.portfolio.router import router as portfolio_router
+from app.webhooks.router import router as webhooks_router  # v2 Phase M
+from app.webhooks.worker import start_webhook_worker, stop_webhook_worker  # v2 Phase M
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s %(message)s")
 logger = logging.getLogger(__name__)
@@ -100,6 +102,7 @@ app.include_router(risk_router,       prefix=API_PREFIX)  # v2 Phase D: risk con
 app.include_router(alerts_router,     prefix=API_PREFIX)  # v2 Phase E: Telegram alerts
 app.include_router(strategy_router,   prefix=API_PREFIX)  # v2 Phase F: strategy engine
 app.include_router(journal_router,    prefix=API_PREFIX)  # v2 Phase G: journal & analytics
+app.include_router(webhooks_router,   prefix=API_PREFIX)  # v2 Phase M: TradingView webhooks
 
 # ── Health check ──────────────────────────────────────────────────
 @app.get("/health", tags=["health"])
@@ -127,6 +130,14 @@ async def health() -> dict:
         "database": "connected" if db_ok else "unreachable",
         "redis": "connected" if redis_ok else "unreachable",
     }
+
+
+# HEAD /health — UptimeRobot and other monitors use HEAD, not GET.
+# Without this, they get 405 Method Not Allowed.
+@app.head("/health", tags=["health"])
+async def health_head():
+    from fastapi.responses import Response
+    return Response(status_code=200)
 
 
 # ── Startup event ──────────────────────────────────────────
@@ -172,6 +183,45 @@ async def startup() -> None:
     except Exception as exc:
         logger.warning(f"[StrategyEngine] Could not start engine: {exc}")
 
+    # v2 Phase M: start async webhook worker + reconciliation loop
+    try:
+        start_webhook_worker()
+        logger.info("[WebhookWorker] Webhook worker and reconciliation loop started.")
+    except Exception as exc:
+        logger.warning(f"[WebhookWorker] Could not start webhook worker: {exc}")
+
+    # Keep-alive self-pinger (prevents Render free tier from spinning down)
+    # Pings /health every 14 min so Render never sleeps.
+    # Enable by setting RENDER_KEEP_ALIVE=true in Render environment variables.
+    # Render sets RENDER_EXTERNAL_URL automatically on all services.
+    try:
+        import asyncio as _asyncio
+        import os as _os
+        import httpx as _httpx
+
+        async def _keep_alive_loop() -> None:
+            external_url = _os.getenv("RENDER_EXTERNAL_URL", "").rstrip("/")
+            ping_url  = f"{external_url}/health"
+            interval  = int(_os.getenv("KEEP_ALIVE_INTERVAL_SECONDS", "840"))  # 14 min
+            logger.info(f"[KeepAlive] Self-pinger started -> {ping_url} every {interval}s")
+            await _asyncio.sleep(60)  # wait 1 min after boot before first ping
+            while True:
+                try:
+                    async with _httpx.AsyncClient(timeout=10) as _client:
+                        _r = await _client.get(ping_url)
+                        logger.info(f"[KeepAlive] Ping {ping_url} -> {_r.status_code}")
+                except Exception as _ping_err:
+                    logger.warning(f"[KeepAlive] Ping failed: {_ping_err}")
+                await _asyncio.sleep(interval)
+
+        if _os.getenv("RENDER_KEEP_ALIVE", "").lower() == "true":
+            _asyncio.create_task(_keep_alive_loop())
+            logger.info("[KeepAlive] Keep-alive task scheduled (14 min interval).")
+        else:
+            logger.info("[KeepAlive] Disabled. Set RENDER_KEEP_ALIVE=true to enable.")
+    except Exception as exc:
+        logger.warning(f"[KeepAlive] Could not start keep-alive task: {exc}")
+
 
 # ── Shutdown event ──────────────────────────────────────────
 @app.on_event("shutdown")
@@ -181,6 +231,7 @@ async def shutdown() -> None:
     from app.database import close_redis_client
     from app.marketdata.binance_stream import stop_binance_stream
     from app.marketdata.binance_user_stream import stop_all_user_streams
+    stop_webhook_worker()            # v2 Phase M
     stop_strategy_engine()           # v2 Phase F
     stop_alert_dispatcher()          # v2 Phase E
     await stop_all_user_streams()

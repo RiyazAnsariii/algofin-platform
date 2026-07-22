@@ -101,6 +101,45 @@ class Settings(BaseSettings):
     google_redirect_uri: str = "https://algofin-api.onrender.com/api/v1/auth/google/callback"
 
 
+    # ── Phase M: Webhook Engine (Tier-2 operational constants) ────────
+    # These require a code change + deploy to modify.
+    # Admin-configurable values (Tier-3) live in the system_settings DB table.
+
+    # Queue keys (Redis)
+    webhook_queue_key: str = "algofin:webhook_queue"
+    webhook_retry_key: str = "algofin:webhook_retry"
+    webhook_dlq_key: str = "algofin:webhook_dlq"
+    webhook_dedup_prefix: str = "algofin:dedup:"
+    webhook_ratelimit_prefix: str = "algofin:ratelimit:strategy:"
+    webhook_brute_prefix: str = "algofin:brute:"
+    worker_heartbeat_key: str = "algofin:worker:heartbeat"
+
+    # Retry policy (exponential backoff delays in seconds)
+    webhook_retry_delays: list[int] = [1, 5, 30]
+    webhook_max_retries: int = 3
+
+    # Timing
+    webhook_replay_window_seconds: int = 60    # reject signals older than 60s
+    webhook_payload_max_bytes: int = 10_240    # 10 KB hard limit before JSON parse
+    webhook_dedup_ttl_seconds: int = 300       # Redis dedup key lifetime (5 min)
+    webhook_secret_grace_seconds: int = 300    # old secret valid 5 min after rotation
+    webhook_processing_timeout_minutes: int = 5  # signal stuck in PROCESSING → reconcile
+
+    # Rate limiting
+    webhook_rate_limit: int = 100              # max signals per minute per strategy
+    webhook_brute_force_limit: int = 5         # bad secrets per IP before block (60s)
+
+    # TradingView allowed IPs (Tier-2: changing requires deploy + ADR)
+    tradingview_allowed_ips: str = "52.89.214.238,34.212.75.30,54.218.53.128,52.32.178.7"
+
+    @property
+    def tv_allowed_ips(self) -> set[str]:
+        return {ip.strip() for ip in self.tradingview_allowed_ips.split(",")}
+
+    # Max active pine_webhook strategies per user (system-wide invariant)
+    max_active_strategies_per_user: int = 50
+
+
 @lru_cache
 def get_settings() -> Settings:
     return Settings()
