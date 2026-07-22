@@ -1,6 +1,6 @@
 // src/hooks/useApiWarmup.ts
 // Detects when the Render backend is cold-starting and shows a warm-up banner.
-// Polls /api/v1/health every 3 seconds until it gets a 200 response.
+// Polls /api/v1/ping (fast endpoint, no DB query) through Next.js proxy every 3s.
 
 "use client";
 
@@ -8,20 +8,29 @@ import { useEffect, useState, useCallback } from "react";
 
 export type WarmupState = "idle" | "warming" | "ready" | "failed";
 
-const HEALTH_URL = "/api/v1/health";
-const POLL_INTERVAL_MS = 3000;
-const MAX_WAIT_MS = 60_000; // give up after 60s
+// /api/v1/ping goes through Next.js rewrite -> backend /api/v1/ping
+// This is a fast endpoint that returns instantly (no DB/Redis queries)
+const HEALTH_URL = "/api/v1/ping";
+const POLL_INTERVAL_MS = 4000;
+const MAX_WAIT_MS = 180_000; // 3 minutes — Render cold start can take up to 2 min
 
 export function useApiWarmup() {
   const [state, setState] = useState<WarmupState>("idle");
   const [elapsedMs, setElapsedMs] = useState(0);
+  const [retryTrigger, setRetryTrigger] = useState(0);
+
+  const retry = useCallback(() => {
+    setElapsedMs(0);
+    setState("warming");
+    setRetryTrigger((n) => n + 1);
+  }, []);
 
   const checkHealth = useCallback(async (): Promise<boolean> => {
     try {
       const res = await fetch(HEALTH_URL, {
         method: "GET",
         cache:  "no-store",
-        signal: AbortSignal.timeout(5000),
+        signal: AbortSignal.timeout(6000),
       });
       return res.ok;
     } catch {
@@ -31,7 +40,7 @@ export function useApiWarmup() {
 
   useEffect(() => {
     let cancelled = false;
-    let startTime = Date.now();
+    const startTime = Date.now();
     let timer: ReturnType<typeof setTimeout>;
 
     const poll = async () => {
@@ -56,14 +65,14 @@ export function useApiWarmup() {
       }
     };
 
-    // Kick off immediately
     poll();
 
     return () => {
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [checkHealth]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [checkHealth, retryTrigger]);
 
-  return { state, elapsedMs };
+  return { state, elapsedMs, retry };
 }

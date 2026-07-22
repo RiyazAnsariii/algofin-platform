@@ -1,13 +1,13 @@
 // src/components/ApiWarmupBanner.tsx
-// Displays a top banner when the Render backend is waking up.
-// Only shown when state === "warming" — disappears automatically when API is ready.
+// Displays a top banner when the Render backend is waking up from a cold start.
+// Polls /api/v1/ping — disappears automatically when API responds.
 
 "use client";
 
 import { useApiWarmup } from "@/hooks/useApiWarmup";
 
 export function ApiWarmupBanner() {
-  const { state, elapsedMs } = useApiWarmup();
+  const { state, elapsedMs, retry } = useApiWarmup();
   const seconds = Math.floor(elapsedMs / 1000);
 
   if (state === "idle" || state === "ready") return null;
@@ -26,17 +26,37 @@ export function ApiWarmupBanner() {
           padding: "10px 20px",
           display: "flex",
           alignItems: "center",
-          gap: "10px",
+          justifyContent: "space-between",
+          gap: "12px",
           fontSize: "13px",
           fontFamily: "system-ui, sans-serif",
           boxShadow: "0 2px 12px rgba(0,0,0,0.4)",
         }}
       >
-        <span style={{ fontSize: "16px" }}>⚠️</span>
-        <span>
-          <strong>API unavailable.</strong> The server did not respond within 60 seconds.
-          Please refresh the page or try again shortly.
-        </span>
+        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+          <span style={{ fontSize: "16px" }}>⚠️</span>
+          <span>
+            <strong>API is taking longer than expected.</strong>{" "}
+            The server may be starting up. Please wait a moment or refresh.
+          </span>
+        </div>
+        <button
+          onClick={retry}
+          style={{
+            flexShrink: 0,
+            padding: "6px 14px",
+            background: "rgba(255,255,255,0.15)",
+            border: "1px solid rgba(255,255,255,0.25)",
+            borderRadius: "8px",
+            color: "#fff",
+            fontSize: "12px",
+            fontWeight: 600,
+            cursor: "pointer",
+            whiteSpace: "nowrap",
+          }}
+        >
+          Try again
+        </button>
       </div>
     );
   }
@@ -75,10 +95,10 @@ export function ApiWarmupBanner() {
         </svg>
 
         <span>
-          <strong>AlgoFin API is starting up</strong> — this takes ~15 seconds on the first visit.
+          <strong>AlgoFin API is starting up</strong> — this takes up to 30 seconds on the first visit.
           {seconds > 3 && (
             <span style={{ marginLeft: "8px", opacity: 0.7 }}>
-              ({seconds}s)
+              ({seconds}s elapsed)
             </span>
           )}
         </span>
