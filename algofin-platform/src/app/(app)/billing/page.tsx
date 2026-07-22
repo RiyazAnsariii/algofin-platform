@@ -11,6 +11,7 @@
 import { useEffect, useState, useCallback } from "react";
 import api from "@/lib/api";
 import type { ProfitPeriod, PeriodStatus } from "@/types/billing";
+import { useDelayedLoading } from "@/hooks/useDelayedLoading";
 
 // ── Helpers ───────────────────────────────────────────────────────
 const fmt = (n: number) =>
@@ -101,9 +102,9 @@ function CurrentPeriodCard({
 }) {
   if (loading) {
     return (
-      <div className="surface-card p-6 animate-pulse space-y-4">
-        <div className="h-4 w-40 bg-muted/40 rounded" />
-        <div className="h-24 w-full bg-muted/20 rounded-xl" />
+      <div className="surface-card p-6 space-y-4">
+        <div className="skeleton h-3 w-40" />
+        <div className="skeleton h-24 w-full rounded-xl" />
       </div>
     );
   }
@@ -205,7 +206,7 @@ function HistoryTable({
       {loading ? (
         <div className="p-5 space-y-3">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="h-10 bg-muted/20 rounded-lg animate-pulse" />
+            <div key={i} className="skeleton h-10 w-full" />
           ))}
         </div>
       ) : periods.length === 0 ? (
@@ -251,8 +252,8 @@ function HistoryTable({
 export default function BillingPage() {
   const [current, setCurrent]       = useState<ProfitPeriod | null>(null);
   const [history, setHistory]       = useState<ProfitPeriod[]>([]);
-  const [loadCurrent, setLoadCurrent] = useState(true);
-  const [loadHistory, setLoadHistory] = useState(true);
+  const [loading, setLoading]       = useState(true);
+  const showSkeleton                = useDelayedLoading(loading);
 
   const fetchData = useCallback(async () => {
     try {
@@ -268,8 +269,7 @@ export default function BillingPage() {
       }
     } catch { /* ignore */ }
     finally {
-      setLoadCurrent(false);
-      setLoadHistory(false);
+      setLoading(false);
     }
   }, []);
 
@@ -300,8 +300,8 @@ export default function BillingPage() {
         ))}
       </div>
 
-      <CurrentPeriodCard period={current} loading={loadCurrent} />
-      <HistoryTable periods={history} loading={loadHistory} />
+      <CurrentPeriodCard period={current} loading={showSkeleton} />
+      <HistoryTable periods={history} loading={showSkeleton} />
     </div>
   );
 }
