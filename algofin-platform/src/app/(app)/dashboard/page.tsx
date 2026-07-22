@@ -321,85 +321,103 @@ export default function DashboardPage() {
         </button>
       </div>
 
-      {/* No exchange */}
-      {!loading && noExchange && <NoExchangeBanner />}
-
-      {/* Stale banner */}
-      {summary && <StaleBanner freshness={summary.data_freshness} />}
-
-      {/* Stat cards */}
-      {!noExchange && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard
-            label="Portfolio Value"
-            value={`$${fmt(summary?.total_value_usdt ?? 0)}`}
-            sub="USDT-M Futures"
-            loading={showSkeleton}
-          />
-          <StatCard
-            label="Realized PnL (MTD)"
-            value={fmtPnl(pnlMtd)}
-            sub="Month to date"
-            valueClass={pnlPositive ? "pnl-positive" : "pnl-negative"}
-            loading={showSkeleton}
-          />
-          <StatCard
-            label="Est. Monthly Fee"
-            value={`$${fmt(estFee)}`}
-            sub="20% of profit · display only"
-            valueClass="text-muted-foreground"
-            loading={showSkeleton}
-          />
-          <StatCard
-            label="Open Positions"
-            value={summary?.open_positions ?? 0}
-            sub={`${summary?.connected_accounts ?? 0} account(s) connected`}
-            loading={showSkeleton}
-          />
-        </div>
-      )}
-
-      {/* Data freshness row */}
-      {summary && !noExchange && (
-        <div className="flex flex-wrap gap-2">
-          <FreshnessBadge item={summary.data_freshness.balances}  label="Balances" />
-          <FreshnessBadge item={summary.data_freshness.positions} label="Positions" />
-          <FreshnessBadge item={summary.data_freshness.trades}    label="Trades" />
-        </div>
-      )}
-
-      {/* Open positions */}
-      {!noExchange && (
-        <div className="surface-card overflow-hidden">
-          <div className="px-4 py-3 border-b border-white/6 flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-foreground">Open Positions</h2>
-            {positions.length > 0 && (
-              <span className="text-xs text-muted-foreground">{positions.length} positions</span>
-            )}
-          </div>
-          {showSkeleton ? (
-            <div className="p-4 space-y-2">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="skeleton h-10 w-full" />
+      {/* Loading state — show skeletons until we know whether exchange is connected */}
+      {loading && showSkeleton && (
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {[1,2,3,4].map(i => (
+              <div key={i} className="surface-card p-5 space-y-3">
+                <div className="skeleton h-3 w-24" />
+                <div className="skeleton h-7 w-28" />
+                <div className="skeleton h-3 w-16" />
+              </div>
             ))}
           </div>
-          ) : positions.length > 0 ? (
-            <div className="divide-y divide-white/4 animate-fade-in">
-              {positions.map((p) => (
-                <PositionRow
-                  key={p.id}
-                  pos={p}
-                  liveMarkPrice={prices[p.symbol]?.markPrice ?? null}
-                  livePnl={calcEstLivePnl(p.symbol, p.entry_price, p.size, p.side)}
-                />
-              ))}
+          <div className="surface-card overflow-hidden">
+            <div className="px-4 py-3 border-b border-white/6">
+              <div className="skeleton h-4 w-32" />
             </div>
-          ) : (
-            <div className="px-4 py-8 text-center text-sm text-muted-foreground">
-              No open positions
+            <div className="p-4 space-y-2">
+              {[1,2,3].map(i => <div key={i} className="skeleton h-10 w-full" />)}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* No exchange — only show AFTER loading completes */}
+      {!loading && noExchange && <NoExchangeBanner />}
+
+      {/* Everything below only renders once we know an exchange IS connected */}
+      {!loading && !noExchange && (
+        <>
+          {/* Stale banner */}
+          {summary && <StaleBanner freshness={summary.data_freshness} />}
+
+          {/* Stat cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 animate-fade-in">
+            <StatCard
+              label="Portfolio Value"
+              value={`$${fmt(summary?.total_value_usdt ?? 0)}`}
+              sub="USDT-M Futures"
+              loading={false}
+            />
+            <StatCard
+              label="Realized PnL (MTD)"
+              value={fmtPnl(pnlMtd)}
+              sub="Month to date"
+              valueClass={pnlPositive ? "pnl-positive" : "pnl-negative"}
+              loading={false}
+            />
+            <StatCard
+              label="Est. Monthly Fee"
+              value={`$${fmt(estFee)}`}
+              sub="20% of profit · display only"
+              valueClass="text-muted-foreground"
+              loading={false}
+            />
+            <StatCard
+              label="Open Positions"
+              value={summary?.open_positions ?? 0}
+              sub={`${summary?.connected_accounts ?? 0} account(s) connected`}
+              loading={false}
+            />
+          </div>
+
+          {/* Data freshness row */}
+          {summary && (
+            <div className="flex flex-wrap gap-2">
+              <FreshnessBadge item={summary.data_freshness.balances}  label="Balances" />
+              <FreshnessBadge item={summary.data_freshness.positions} label="Positions" />
+              <FreshnessBadge item={summary.data_freshness.trades}    label="Trades" />
             </div>
           )}
-        </div>
+
+          {/* Open positions */}
+          <div className="surface-card overflow-hidden">
+            <div className="px-4 py-3 border-b border-white/6 flex items-center justify-between">
+              <h2 className="text-sm font-semibold text-foreground">Open Positions</h2>
+              {positions.length > 0 && (
+                <span className="text-xs text-muted-foreground">{positions.length} positions</span>
+              )}
+            </div>
+            {positions.length > 0 ? (
+              <div className="divide-y divide-white/4 animate-fade-in">
+                {positions.map((p) => (
+                  <PositionRow
+                    key={p.id}
+                    pos={p}
+                    liveMarkPrice={prices[p.symbol]?.markPrice ?? null}
+                    livePnl={calcEstLivePnl(p.symbol, p.entry_price, p.size, p.side)}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="px-4 py-8 text-center text-sm text-muted-foreground">
+                No open positions
+              </div>
+            )}
+          </div>
+        </>
       )}
     </div>
   );
