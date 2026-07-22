@@ -4,6 +4,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import api from "@/lib/api";
+import { cachedGet, invalidateCachePrefix } from "@/lib/apiCache";
 import { useDelayedLoading } from "@/hooks/useDelayedLoading";
 
 // ── Types ───────────────────────────────────────────────────────────────────
@@ -360,14 +361,15 @@ function WebhookStrategyCard({
     );
     setSecret(r.data.data.secret);
     setWebhookUrl(r.data.data.webhook_url);
+    invalidateCachePrefix("/strategy");
     await onRefresh();
   });
 
-  const handlePause  = () => action(async () => { await api.post(`/strategy/${strategy.id}/pause`);  onRefresh(); });
-  const handleResume = () => action(async () => { await api.post(`/strategy/${strategy.id}/resume`); onRefresh(); });
+  const handlePause  = () => action(async () => { await api.post(`/strategy/${strategy.id}/pause`);  invalidateCachePrefix("/strategy"); onRefresh(); });
+  const handleResume = () => action(async () => { await api.post(`/strategy/${strategy.id}/resume`); invalidateCachePrefix("/strategy"); onRefresh(); });
   const handleStop   = () => action(async () => {
     if (!confirm("Stop this strategy? It will no longer accept signals.")) return;
-    await api.post(`/strategy/${strategy.id}/stop`); onRefresh();
+    await api.post(`/strategy/${strategy.id}/stop`); invalidateCachePrefix("/strategy"); onRefresh();
   });
   const handleRotate = () => action(async () => {
     if (!confirm("Rotate the webhook secret? The old secret stays valid for 5 minutes.")) return;
@@ -722,11 +724,11 @@ export default function WebhookStrategyPage() {
     setLoading(true);
     try {
       const [strat, accts] = await Promise.all([
-        api.get<{ data: WebhookStrategy[] }>("/strategy?strategy_type=pine_webhook"),
-        api.get<{ data: ExchangeAccount[] }>("/exchanges"),
+        cachedGet<WebhookStrategy[]>("/strategy?strategy_type=pine_webhook", 30_000),
+        cachedGet<ExchangeAccount[]>("/exchanges", 30_000),
       ]);
-      setStrategies((strat.data.data || []).filter(s => s.strategy_type === "pine_webhook"));
-      setAccounts(accts.data.data || []);
+      setStrategies((strat || []).filter(s => s.strategy_type === "pine_webhook"));
+      setAccounts(accts || []);
     } catch { /* ignore */ } finally {
       setLoading(false);
     }

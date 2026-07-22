@@ -4,6 +4,7 @@
 
 import { useEffect, useState } from "react";
 import api from "@/lib/api";
+import { cachedGet, invalidateCachePrefix } from "@/lib/apiCache";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 type TelegramConfig = {
@@ -93,22 +94,22 @@ export default function AlertsPage() {
 
   async function loadTelegramConfig() {
     try {
-      const res = await api.get<{ success: boolean; data: TelegramConfig | null }>("/alerts/telegram");
-      setTgConfig(res.data.data);
+      const data = await cachedGet<TelegramConfig | null>("/alerts/telegram", 60_000);
+      setTgConfig(data);
     } catch { /* not configured */ }
   }
 
   async function loadRules() {
     try {
-      const res = await api.get<{ success: boolean; data: AlertRule[] }>("/alerts/rules");
-      setRules(res.data.data);
+      const data = await cachedGet<AlertRule[]>("/alerts/rules", 30_000);
+      setRules(data);
     } catch { /* ignore */ }
   }
 
   async function loadHistory() {
     try {
-      const res = await api.get<{ success: boolean; data: Delivery[] }>("/alerts/history?limit=20");
-      setHistory(res.data.data);
+      const data = await cachedGet<Delivery[]>("/alerts/history?limit=20", 20_000);
+      setHistory(data);
     } catch { /* ignore */ }
   }
 
@@ -124,6 +125,7 @@ export default function AlertsPage() {
         "/alerts/telegram",
         { bot_token: botToken.trim(), chat_id: chatId.trim() }
       );
+      invalidateCachePrefix("/alerts");
       setTgConfig(res.data.data);
       setTgSuccess(true);
       setBotToken("");
@@ -137,6 +139,7 @@ export default function AlertsPage() {
   async function handleDeleteTelegram() {
     if (!confirm("Disconnect Telegram? All alert rules will stop delivering.")) return;
     await api.delete("/alerts/telegram");
+    invalidateCachePrefix("/alerts");
     setTgConfig(null);
     setTgSuccess(false);
   }
@@ -153,6 +156,7 @@ export default function AlertsPage() {
         body.direction = newDirection;
       }
       await api.post("/alerts/rules", body);
+      invalidateCachePrefix("/alerts");
       await loadRules();
       setNewSymbol("");
       setNewThreshold("");
@@ -165,11 +169,13 @@ export default function AlertsPage() {
 
   async function handleToggleRule(id: string) {
     await api.patch(`/alerts/rules/${id}`);
+    invalidateCachePrefix("/alerts");
     await loadRules();
   }
 
   async function handleDeleteRule(id: string) {
     await api.delete(`/alerts/rules/${id}`);
+    invalidateCachePrefix("/alerts");
     await loadRules();
   }
 

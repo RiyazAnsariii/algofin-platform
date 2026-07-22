@@ -10,6 +10,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import api from "@/lib/api";
+import { cachedGet } from "@/lib/apiCache";
 import type { ProfitPeriod, PeriodStatus } from "@/types/billing";
 import { useDelayedLoading } from "@/hooks/useDelayedLoading";
 
@@ -258,13 +259,12 @@ export default function BillingPage() {
   const fetchData = useCallback(async () => {
     try {
       const [curRes, histRes] = await Promise.allSettled([
-        api.get<{ data: ProfitPeriod }>("/billing/periods/current"),
-        api.get<{ data: ProfitPeriod[] }>("/billing/periods"),
+        cachedGet<ProfitPeriod>("/billing/periods/current", 45_000),
+        cachedGet<ProfitPeriod[]>("/billing/periods", 45_000),
       ]);
-      if (curRes.status === "fulfilled") setCurrent(curRes.value.data.data);
+      if (curRes.status === "fulfilled") setCurrent(curRes.value);
       if (histRes.status === "fulfilled") {
-        // History list excluding current month (already shown above)
-        const all = histRes.value.data.data;
+        const all = histRes.value;
         setHistory(all.length > 1 ? all.slice(1) : []);
       }
     } catch { /* ignore */ }

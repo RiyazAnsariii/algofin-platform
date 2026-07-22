@@ -8,6 +8,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import api from "@/lib/api";
+import { cachedGet } from "@/lib/apiCache";
 import type { EconomicEvent, ImpactLevel } from "@/types/events";
 import { relativeTime } from "@/lib/staleness";
 import { useDelayedLoading } from "@/hooks/useDelayedLoading";
@@ -193,8 +194,8 @@ export default function EventsPage() {
     try {
       const params = new URLSearchParams({ days_ahead: String(daysAhead) });
       if (impact) params.set("impact", impact);
-      const res = await api.get<{ data: EconomicEvent[] }>(`/events?${params}`);
-      setEvents(res.data.data);
+      const data = await cachedGet<EconomicEvent[]>(`/events?${params}`, 60_000);
+      setEvents(data);
       setLastUpdated(new Date());
     } catch (err: any) {
       const status = err?.response?.status;

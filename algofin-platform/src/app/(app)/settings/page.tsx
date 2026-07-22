@@ -6,6 +6,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import api from "@/lib/api";
+import { cachedGet } from "@/lib/apiCache";
 import { useAuthStore } from "@/stores/auth.store";
 import type { User } from "@/types";
 
@@ -215,8 +216,8 @@ export default function SettingsPage() {
   // Load sessions
   const fetchSessions = useCallback(async () => {
     try {
-      const res = await api.get<{ data: typeof sessions }>("/auth/sessions");
-      setSessions(res.data.data);
+      const data = await cachedGet<typeof sessions>("/auth/sessions", 30_000);
+      setSessions(data);
     } catch {
       // ignore — non-critical
     } finally {

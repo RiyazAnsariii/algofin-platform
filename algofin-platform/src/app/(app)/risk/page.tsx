@@ -5,6 +5,7 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import api from "@/lib/api";
+import { cachedGet, invalidateCachePrefix } from "@/lib/apiCache";
 import marketDataSocket from "@/lib/marketDataSocket";
 import { useAuthStore } from "@/stores/auth.store";
 import { useDelayedLoading } from "@/hooks/useDelayedLoading";
@@ -109,6 +110,7 @@ function CreateRuleForm({ onSuccess }: { onSuccess: () => void }) {
         action,
         symbol: symbol.trim() ? symbol.trim().toUpperCase() : undefined,
       });
+      invalidateCachePrefix("/risk");
       setName(""); setThreshold(""); setSymbol("");
       onSuccess();
     } catch (err: unknown) {
@@ -354,8 +356,8 @@ export default function RiskPage() {
   // ── Fetch data ─────────────────────────────────────────────────────────────
   const fetchRules = useCallback(async () => {
     try {
-      const res = await api.get<{ data: RiskRule[] }>("/risk/rules?include_inactive=true");
-      setRules(res.data.data);
+      const data = await cachedGet<RiskRule[]>("/risk/rules?include_inactive=true", 30_000);
+      setRules(data);
     } catch { /* handled */ } finally {
       setLoading(false);
     }
@@ -363,8 +365,8 @@ export default function RiskPage() {
 
   const fetchViolations = useCallback(async () => {
     try {
-      const res = await api.get<{ data: RiskViolation[] }>("/risk/violations");
-      setViolations(res.data.data);
+      const data = await cachedGet<RiskViolation[]>("/risk/violations", 20_000);
+      setViolations(data);
     } catch { /* handled */ }
   }, []);
 
@@ -387,7 +389,8 @@ export default function RiskPage() {
           symbol:       data.symbol       ?? "",
           ts:           Date.now(),
         });
-        // Refresh rules + violations in background
+        // Refresh rules + violations in background (bypass cache)
+        invalidateCachePrefix("/risk");
         fetchRules();
         fetchViolations();
       } catch { /* ignore */ }
@@ -410,11 +413,13 @@ export default function RiskPage() {
   // ── Actions ────────────────────────────────────────────────────────────────
   const handleToggle = async (id: string, active: boolean) => {
     await api.patch(`/risk/rules/${id}`, { is_active: active });
+    invalidateCachePrefix("/risk");
     await fetchRules();
   };
 
   const handleDelete = async (id: string) => {
     await api.delete(`/risk/rules/${id}`);
+    invalidateCachePrefix("/risk");
     await fetchRules();
   };
 

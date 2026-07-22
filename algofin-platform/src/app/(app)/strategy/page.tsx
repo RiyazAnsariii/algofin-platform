@@ -4,6 +4,7 @@
 
 import { useEffect, useState } from "react";
 import api from "@/lib/api";
+import { cachedGet, invalidateCachePrefix } from "@/lib/apiCache";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 type ExchangeAccount = { id: string; exchange: string; label: string };
@@ -411,20 +412,21 @@ export default function StrategyPage() {
 
   async function loadStrategies() {
     try {
-      const res = await api.get<{ data: Strategy[] }>("/strategy");
-      setStrategies(res.data.data);
+      const data = await cachedGet<Strategy[]>("/strategy", 30_000);
+      setStrategies(data);
     } catch { /* ignore */ }
   }
 
   async function loadAccounts() {
     try {
-      const res = await api.get<{ data: ExchangeAccount[] }>("/exchanges");
-      setAccounts(res.data.data || []);
+      const data = await cachedGet<ExchangeAccount[]>("/exchanges", 30_000);
+      setAccounts(data || []);
     } catch { /* ignore */ }
   }
 
   const handleToggle = async (id: string, newStatus: string) => {
     await api.patch(`/strategy/${id}`, { status: newStatus });
+    invalidateCachePrefix("/strategy");
     await loadStrategies();
   };
 

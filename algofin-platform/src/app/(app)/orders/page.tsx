@@ -6,6 +6,7 @@
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import api from "@/lib/api";
+import { cachedGet } from "@/lib/apiCache";
 import { useOrderEvents } from "@/hooks/useOrderEvents";
 import marketDataSocket from "@/lib/marketDataSocket";
 import { useAuthStore } from "@/stores/auth.store";
@@ -365,8 +366,8 @@ export default function OrdersPage() {
     try {
       const qStatus = statusFilter === "open" ? "NEW" : statusFilter === "all" ? undefined : statusFilter;
       const params = qStatus ? `?status=${qStatus}` : "";
-      const res = await api.get<{ data: Order[] }>(`/orders${params}`);
-      setOrders(res.data.data);
+      const data = await cachedGet<Order[]>(`/orders${params}`, 10_000);
+      setOrders(data);
     } catch {
       /* handled */
     }
@@ -374,8 +375,8 @@ export default function OrdersPage() {
 
   const fetchAccounts = useCallback(async () => {
     try {
-      const res = await api.get<{ data: ExchangeAccount[] }>("/exchanges");
-      setAccounts(res.data.data);
+      const data = await cachedGet<ExchangeAccount[]>("/exchanges", 30_000);
+      setAccounts(data);
     } catch {
       /* handled */
     } finally {

@@ -10,6 +10,42 @@ const nextConfig: NextConfig = {
   // on redirect, causing 401 errors on valid sessions.
   skipTrailingSlashRedirect: true,
 
+  // Enable compression
+  compress: true,
+
+  // Production headers for static assets & caching
+  async headers() {
+    return [
+      {
+        source: "/_next/static/:path*",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=31536000, immutable",
+          },
+        ],
+      },
+      {
+        source: "/fonts/:path*",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=31536000, immutable",
+          },
+        ],
+      },
+      {
+        source: "/favicon.ico",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=86400, stale-while-revalidate=604800",
+          },
+        ],
+      },
+    ];
+  },
+
   // API rewrites: /api/* → backend
   // Dev: http://localhost:8000  |  Prod: Nginx proxies directly, no rewrite needed
   async rewrites() {
@@ -26,6 +62,7 @@ const nextConfig: NextConfig = {
   images: {
     remotePatterns: [],
     formats: ["image/avif", "image/webp"],
+    minimumCacheTTL: 86400,
   },
 };
 

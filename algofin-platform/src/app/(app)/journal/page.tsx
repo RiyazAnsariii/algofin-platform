@@ -4,6 +4,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import api from "@/lib/api";
+import { cachedGet, invalidateCachePrefix } from "@/lib/apiCache";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 type DailyPnL = { date: string; pnl: string; trade_count: number; cumulative_pnl: string };
@@ -173,6 +174,7 @@ function EntryForm({
       } else {
         await api.post("/journal/entries", body);
       }
+      invalidateCachePrefix("/journal");
       onSave();
     } catch (err: any) {
       setError(err?.response?.data?.detail || "Failed to save entry");
@@ -258,15 +260,15 @@ export default function JournalPage() {
   const loadAnalytics = useCallback(async (d: number) => {
     setAnalyticsLoading(true);
     try {
-      const res = await api.get<{ data: Analytics }>(`/journal/analytics?days=${d}`);
-      setAnalytics(res.data.data);
+      const data = await cachedGet<Analytics>(`/journal/analytics?days=${d}`, 60_000);
+      setAnalytics(data);
     } catch { /* ignore */ } finally { setAnalyticsLoading(false); }
   }, []);
 
   const loadEntries = useCallback(async () => {
     try {
-      const res = await api.get<{ data: JournalEntry[] }>("/journal/entries?limit=50");
-      setEntries(res.data.data);
+      const data = await cachedGet<JournalEntry[]>("/journal/entries?limit=50", 30_000);
+      setEntries(data);
     } catch { /* ignore */ }
   }, []);
 
@@ -276,7 +278,9 @@ export default function JournalPage() {
   const handleDelete = async (id: string) => {
     if (!confirm("Delete this journal entry?")) return;
     await api.delete(`/journal/entries/${id}`);
+    invalidateCachePrefix("/journal");
     loadEntries();
+    loadAnalytics(period);
   };
 
   const a = analytics;
