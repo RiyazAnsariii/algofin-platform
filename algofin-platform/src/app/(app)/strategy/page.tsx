@@ -4,7 +4,6 @@
 
 import { useEffect, useState } from "react";
 import api from "@/lib/api";
-import { useDelayedLoading } from "@/hooks/useDelayedLoading";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 type ExchangeAccount = { id: string; exchange: string; label: string };
@@ -354,7 +353,6 @@ function HistoryPanel({
 }) {
   const [executions, setExecutions] = useState<Execution[]>([]);
   const [loading, setLoading] = useState(true);
-  const showSkeleton = useDelayedLoading(loading);
 
   useEffect(() => {
     api.get<{ data: Execution[] }>(`/strategy/${strategyId}/history?limit=30`)
@@ -371,12 +369,8 @@ function HistoryPanel({
           <button onClick={onClose} className="text-muted-foreground hover:text-foreground text-xl leading-none">×</button>
         </div>
         <div className="flex-1 overflow-y-auto p-5 space-y-2">
-          {showSkeleton ? (
-            <div className="space-y-2">
-              {[1, 2, 3].map(i => (
-                <div key={i} className="skeleton h-12 w-full rounded-xl" />
-              ))}
-            </div>
+          {loading ? (
+            <p className="text-sm text-muted-foreground text-center py-8">Loading…</p>
           ) : executions.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-8">No executions yet.</p>
           ) : executions.map(e => (

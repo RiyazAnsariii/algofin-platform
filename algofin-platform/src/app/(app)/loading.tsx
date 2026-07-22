@@ -1,16 +1,10 @@
-"use client";
-
-import { Spinner } from "@/components/ui/spinner";
-import { useDelayedLoading } from "@/hooks/useDelayedLoading";
+import { Spinner } from "@/components/ui/spinner"
 
 export default function AppLoading() {
-  const show = useDelayedLoading(true, 200);
-  if (!show) return null;
-
   return (
-    <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3 animate-fade-in">
+    <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3">
       <Spinner />
-      <p className="text-sm text-muted-foreground">Loading...</p>
+      <p className="text-sm text-muted-foreground animate-pulse">Loading your dashboard&hellip;</p>
     </div>
-  );
+  )
 }

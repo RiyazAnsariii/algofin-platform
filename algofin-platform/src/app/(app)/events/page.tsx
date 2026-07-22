@@ -10,7 +10,6 @@ import { useEffect, useState, useCallback } from "react";
 import api from "@/lib/api";
 import type { EconomicEvent, ImpactLevel } from "@/types/events";
 import { relativeTime } from "@/lib/staleness";
-import { useDelayedLoading } from "@/hooks/useDelayedLoading";
 
 // ── Helpers ───────────────────────────────────────────────────────
 const IMPACT_MAP: Record<ImpactLevel, { label: string; cls: string; dot: string }> = {
@@ -181,7 +180,6 @@ function EmptyState({ hasFilters }: { hasFilters: boolean }) {
 export default function EventsPage() {
   const [events, setEvents]       = useState<EconomicEvent[]>([]);
   const [loading, setLoading]     = useState(true);
-  const showSkeleton              = useDelayedLoading(loading);
   const [error, setError]         = useState<string | null>(null);
   const [daysAhead, setDaysAhead] = useState(7);
   const [impact, setImpact]       = useState<ImpactLevel | null>(null);
@@ -273,17 +271,17 @@ export default function EventsPage() {
       )}
 
       {/* Events */}
-      {showSkeleton ? (
+      {loading ? (
         <div className="surface-card divide-y divide-white/5">
           {[1, 2, 3, 4, 5].map((i) => (
-            <div key={i} className="flex gap-4 px-4 py-3">
+            <div key={i} className="flex gap-4 px-4 py-3 animate-pulse">
               <div className="w-12 space-y-1">
-                <div className="skeleton h-2 w-2 rounded-full mx-auto" />
-                <div className="skeleton h-2 w-10" />
+                <div className="w-2 h-2 rounded-full bg-muted/30 mx-auto" />
+                <div className="h-2 w-10 bg-muted/20 rounded" />
               </div>
               <div className="flex-1 space-y-1.5">
-                <div className="skeleton h-3.5 w-2/3" />
-                <div className="skeleton h-2.5 w-1/3" />
+                <div className="h-3.5 w-2/3 bg-muted/30 rounded" />
+                <div className="h-2.5 w-1/3 bg-muted/20 rounded" />
               </div>
             </div>
           ))}

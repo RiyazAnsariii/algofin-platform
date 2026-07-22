@@ -4,7 +4,6 @@
 
 import { useEffect, useRef, useState } from "react";
 import api from "@/lib/api";
-import { useDelayedLoading } from "@/hooks/useDelayedLoading";
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
@@ -712,7 +711,6 @@ export default function WebhookStrategyPage() {
   const [versionsFor, setVersionsFor] = useState<string | null>(null);
   const [filter, setFilter]           = useState("all");
   const [loading, setLoading]         = useState(true);
-  const showSkeleton                  = useDelayedLoading(loading);
 
   useEffect(() => {
     loadAll();
@@ -834,10 +832,10 @@ export default function WebhookStrategyPage() {
       )}
 
       {/* Loading */}
-      {showSkeleton && (
+      {loading && (
         <div className="space-y-3">
           {[1, 2].map(i => (
-            <div key={i} className="skeleton rounded-2xl p-5 h-36" />
+            <div key={i} className="bg-surface-1 border border-white/8 rounded-2xl p-5 animate-pulse h-36" />
           ))}
         </div>
       )}

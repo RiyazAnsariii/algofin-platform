@@ -1,15 +1,9 @@
-"use client";
-
-import { Spinner } from "@/components/ui/spinner";
-import { useDelayedLoading } from "@/hooks/useDelayedLoading";
+import { Spinner } from "@/components/ui/spinner"
 
 export default function AuthLoading() {
-  const show = useDelayedLoading(true, 200);
-  if (!show) return null;
-
   return (
-    <div className="flex items-center justify-center py-16 animate-fade-in">
+    <div className="flex items-center justify-center py-16">
       <Spinner />
     </div>
-  );
+  )
 }

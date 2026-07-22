@@ -4,6 +4,7 @@
 // Orders placed through AlgoFin show live FILLED/CANCELLED status via WebSocket.
 
 import { useEffect, useState, useCallback } from "react";
+import Link from "next/link";
 import api from "@/lib/api";
 import { useOrderEvents } from "@/hooks/useOrderEvents";
 import marketDataSocket from "@/lib/marketDataSocket";
@@ -426,9 +427,9 @@ export default function OrdersPage() {
         <div className="surface-card p-8 text-center space-y-3">
           <p className="font-semibold text-foreground">No exchange account connected</p>
           <p className="text-sm text-muted-foreground">Connect your Binance account to place orders.</p>
-          <a href="/exchanges" className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-all">
+          <Link href="/exchanges" className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-all">
             Connect account →
-          </a>
+          </Link>
         </div>
       )}
 

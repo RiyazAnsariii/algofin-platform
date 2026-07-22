@@ -11,7 +11,6 @@
 import { useEffect, useState, useCallback } from "react";
 import api from "@/lib/api";
 import type { ProfitPeriod, PeriodStatus } from "@/types/billing";
-import { useDelayedLoading } from "@/hooks/useDelayedLoading";
 
 // ── Helpers ───────────────────────────────────────────────────────
 const fmt = (n: number) =>
@@ -100,14 +99,11 @@ function CurrentPeriodCard({
   period: ProfitPeriod | null;
   loading: boolean;
 }) {
-  const showSkeleton = useDelayedLoading(loading);
-
   if (loading) {
-    if (!showSkeleton) return null;
     return (
-      <div className="surface-card p-6 space-y-4">
-        <div className="skeleton h-4 w-40" />
-        <div className="skeleton h-24 w-full rounded-xl" />
+      <div className="surface-card p-6 animate-pulse space-y-4">
+        <div className="h-4 w-40 bg-muted/40 rounded" />
+        <div className="h-24 w-full bg-muted/20 rounded-xl" />
       </div>
     );
   }
@@ -200,18 +196,16 @@ function HistoryTable({
   periods: ProfitPeriod[];
   loading: boolean;
 }) {
-  const showSkeleton = useDelayedLoading(loading);
-
   return (
     <div className="surface-card overflow-hidden">
       <div className="px-5 py-4 border-b border-white/6">
         <h2 className="text-sm font-semibold text-foreground">Billing history</h2>
       </div>
 
-      {showSkeleton ? (
+      {loading ? (
         <div className="p-5 space-y-3">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="skeleton h-10 w-full" />
+            <div key={i} className="h-10 bg-muted/20 rounded-lg animate-pulse" />
           ))}
         </div>
       ) : periods.length === 0 ? (
