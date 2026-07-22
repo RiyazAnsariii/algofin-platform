@@ -326,37 +326,49 @@ export default function DashboardPage() {
       {/* Stale banner */}
       {summary && <StaleBanner freshness={summary.data_freshness} />}
 
-      {/* Stat cards */}
-      {!noExchange && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* Stat cards — only render once we know exchange status */}
+      {loading ? (
+        showSkeleton && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {[1, 2, 3, 4].map(i => (
+              <div key={i} className="surface-card p-5 space-y-3">
+                <div className="skeleton h-3 w-24" />
+                <div className="skeleton h-7 w-28" />
+                <div className="skeleton h-3 w-20" />
+              </div>
+            ))}
+          </div>
+        )
+      ) : !noExchange ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 animate-fade-in">
           <StatCard
             label="Portfolio Value"
             value={`$${fmt(summary?.total_value_usdt ?? 0)}`}
             sub="USDT-M Futures"
-            loading={showSkeleton}
+            loading={false}
           />
           <StatCard
             label="Realized PnL (MTD)"
             value={fmtPnl(pnlMtd)}
             sub="Month to date"
             valueClass={pnlPositive ? "pnl-positive" : "pnl-negative"}
-            loading={showSkeleton}
+            loading={false}
           />
           <StatCard
             label="Est. Monthly Fee"
             value={`$${fmt(estFee)}`}
             sub="20% of profit · display only"
             valueClass="text-muted-foreground"
-            loading={showSkeleton}
+            loading={false}
           />
           <StatCard
             label="Open Positions"
             value={summary?.open_positions ?? 0}
             sub={`${summary?.connected_accounts ?? 0} account(s) connected`}
-            loading={showSkeleton}
+            loading={false}
           />
         </div>
-      )}
+      ) : null}
 
       {/* Data freshness row */}
       {summary && !noExchange && (
@@ -367,23 +379,17 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Open positions */}
-      {!noExchange && (
-        <div className="surface-card overflow-hidden">
+      {/* Open positions — only show after load, only if exchange connected */}
+      {!loading && !noExchange && (
+        <div className="surface-card overflow-hidden animate-fade-in">
           <div className="px-4 py-3 border-b border-white/6 flex items-center justify-between">
             <h2 className="text-sm font-semibold text-foreground">Open Positions</h2>
             {positions.length > 0 && (
               <span className="text-xs text-muted-foreground">{positions.length} positions</span>
             )}
           </div>
-          {showSkeleton ? (
-            <div className="p-4 space-y-2">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="skeleton h-10 w-full" />
-            ))}
-          </div>
-          ) : positions.length > 0 ? (
-            <div className="divide-y divide-white/4 animate-fade-in">
+          {positions.length > 0 ? (
+            <div className="divide-y divide-white/4">
               {positions.map((p) => (
                 <PositionRow
                   key={p.id}
@@ -398,6 +404,19 @@ export default function DashboardPage() {
               No open positions
             </div>
           )}
+        </div>
+      )}
+      {/* Positions skeleton — only when loading takes > 200ms */}
+      {loading && showSkeleton && !noExchange && (
+        <div className="surface-card overflow-hidden">
+          <div className="px-4 py-3 border-b border-white/6">
+            <div className="skeleton h-4 w-32" />
+          </div>
+          <div className="p-4 space-y-2">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="skeleton h-10 w-full" />
+            ))}
+          </div>
         </div>
       )}
     </div>
