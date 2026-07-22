@@ -6,6 +6,7 @@
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import api from "@/lib/api";
+import { cachedGet, invalidateCachePrefix } from "@/lib/apiCache";
 import { relativeTime } from "@/lib/staleness";
 import { useLivePrices } from "@/hooks/useLivePrices";
 import { useDelayedLoading } from "@/hooks/useDelayedLoading";
@@ -253,15 +254,20 @@ export default function DashboardPage() {
     }
   }, [positionSymbols.join(",")]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async (bypassCache = false) => {
+    if (bypassCache) invalidateCachePrefix("/portfolio");
     try {
       const [summaryRes, posRes] = await Promise.allSettled([
-        api.get<{ data: PortfolioSummary }>("/portfolio/summary"),
-        api.get<{ data: Position[] }>("/positions"),
+        bypassCache
+          ? api.get<{ data: PortfolioSummary }>("/portfolio/summary").then(r => r.data.data)
+          : cachedGet<PortfolioSummary>("/portfolio/summary", 45_000),
+        bypassCache
+          ? api.get<{ data: Position[] }>("/positions").then(r => r.data.data)
+          : cachedGet<Position[]>("/positions", 45_000),
       ]);
 
       if (summaryRes.status === "fulfilled") {
-        const s = summaryRes.value.data.data;
+        const s = summaryRes.value;
         if (s.connected_accounts === 0) {
           setNoExchange(true);
         } else {
@@ -270,7 +276,7 @@ export default function DashboardPage() {
         }
       }
       if (posRes.status === "fulfilled") {
-        setPositions(posRes.value.data.data);
+        setPositions(posRes.value);
       }
       setLastUpdated(new Date());
     } catch {

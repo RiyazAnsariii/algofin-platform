@@ -11,6 +11,7 @@ import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import { useAuthStore } from "@/stores/auth.store";
 import api from "@/lib/api";
+import { clearCache } from "@/lib/apiCache";
 import type { User } from "@/types";
 
 // ── Nav items ─────────────────────────────────────────────────────
@@ -187,6 +188,7 @@ function Sidebar({
             <Link
               key={item.href}
               href={item.href}
+              prefetch={false}
               className={`
                 flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all
                 ${active
@@ -317,6 +319,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   const handleLogout = useCallback(async () => {
     try { await api.post("/auth/logout"); } catch { /* ignore */ }
+    clearCache();
     logout();
     router.replace("/login");
   }, [logout, router]);

@@ -8,6 +8,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import api from "@/lib/api";
+import { cachedGet, invalidateCache } from "@/lib/apiCache";
 import { useDelayedLoading } from "@/hooks/useDelayedLoading";
 
 // ── Types ─────────────────────────────────────────────────────────
@@ -439,14 +440,13 @@ export default function ExchangesPage() {
 
   const fetchAccounts = useCallback(async () => {
     try {
-      const res = await api.get<{ data: ExchangeAccount[] }>("/exchanges");
-      setAccounts(res.data.data);
+      const data = await cachedGet<ExchangeAccount[]>("/exchanges", 30_000);
+      setAccounts(data);
       setError(null);
     } catch (err: any) {
       const status = err?.response?.status;
       const detail = err?.response?.data?.detail;
       if (status === 401) {
-        // Token expired and refresh failed — redirect to login
         window.location.href = "/login";
         return;
       }
@@ -462,8 +462,9 @@ export default function ExchangesPage() {
 
   const fetchExchanges = useCallback(async () => {
     try {
-      const res = await api.get<{ data: ExchangeDef[] }>("/exchanges/supported");
-      setExchanges(res.data.data);
+      // Supported exchange registry changes rarely — cache 5 minutes
+      const data = await cachedGet<ExchangeDef[]>("/exchanges/supported", 5 * 60_000);
+      setExchanges(data);
     } catch { /* registry always returns 200 */ }
   }, []);
 
@@ -474,20 +475,21 @@ export default function ExchangesPage() {
 
   const handleSync = async (id: string) => {
     setActionLoading(true);
-    try { await api.post(`/exchanges/${id}/sync`, { sync_type: "full" }); await fetchAccounts(); }
+    try { await api.post(`/exchanges/${id}/sync`, { sync_type: "full" }); invalidateCache("/exchanges"); await fetchAccounts(); }
     catch { /* ignore */ } finally { setActionLoading(false); }
   };
 
   const handleRevoke = async (id: string) => {
     if (!confirm("Revoke this exchange account? Billing consent will also be removed.")) return;
     setActionLoading(true);
-    try { await api.delete(`/exchanges/${id}`); await fetchAccounts(); }
+    try { await api.delete(`/exchanges/${id}`); invalidateCache("/exchanges"); await fetchAccounts(); }
     catch { /* ignore */ } finally { setActionLoading(false); }
   };
 
   const handleConnected = async () => {
     setConnecting(null);
     setLoading(true);
+    invalidateCache("/exchanges");
     await fetchAccounts();
   };
 
