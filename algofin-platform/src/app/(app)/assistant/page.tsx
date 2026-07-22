@@ -376,7 +376,7 @@ export default function AssistantPage() {
   const isEmpty = messages.length === 0 && !loadingHistory;
 
   return (
-    <div className="flex flex-col h-[calc(100vh-3.5rem)] lg:h-screen max-w-3xl">
+    <div className="-m-6 flex flex-col h-[calc(100vh-3.5rem)] lg:h-screen max-w-3xl lg:max-w-none">
       {/* Header */}
       <div className="px-6 h-14 flex items-center justify-between border-b border-white/6 shrink-0">
         <div className="flex items-center gap-2.5">
