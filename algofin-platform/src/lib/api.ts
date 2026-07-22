@@ -9,9 +9,12 @@ import axios, {
   type InternalAxiosRequestConfig,
 } from "axios";
 
-// Direct backend URL if configured (avoids Vercel proxy hop overhead),
-// fallback to relative path for dev rewrites.
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "";
+// In browser: use relative path so Next.js rewrites to backend → cookies are same-origin
+// In SSR/Node: use direct backend URL
+const BASE_URL =
+  typeof window !== "undefined"
+    ? "" // relative — goes through Next.js rewrite (/api/v1/* → backend)
+    : process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
 // Create a single axios instance for all API calls
 export const api: AxiosInstance = axios.create({

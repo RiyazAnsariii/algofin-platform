@@ -266,7 +266,7 @@ export default function DashboardPage() {
           : cachedGet<Position[]>("/positions", 45_000),
       ]);
 
-      if (summaryRes.status === "fulfilled") {
+      if (summaryRes.status === "fulfilled" && summaryRes.value) {
         const s = summaryRes.value;
         if (s.connected_accounts === 0) {
           setNoExchange(true);
@@ -275,7 +275,7 @@ export default function DashboardPage() {
           setNoExchange(false);
         }
       }
-      if (posRes.status === "fulfilled") {
+      if (posRes.status === "fulfilled" && Array.isArray(posRes.value)) {
         setPositions(posRes.value);
       }
       setLastUpdated(new Date());
