@@ -115,8 +115,8 @@ function StatCard({
       <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{label}</p>
       {loading ? (
         <div className="space-y-2">
-          <div className="h-7 w-28 bg-muted/40 rounded animate-pulse" />
-          {sub && <div className="h-3 w-20 bg-muted/30 rounded animate-pulse" />}
+          <div className="skeleton h-7 w-28" />
+          {sub && <div className="skeleton h-3 w-20" />}
         </div>
       ) : (
         <>
@@ -376,10 +376,10 @@ export default function DashboardPage() {
           </div>
           {loading ? (
             <div className="p-4 space-y-2">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="h-10 bg-muted/30 rounded-lg animate-pulse" />
-              ))}
-            </div>
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="skeleton h-10 w-full" />
+            ))}
+          </div>
           ) : positions.length > 0 ? (
             <div className="divide-y divide-white/4">
               {positions.map((p) => (

@@ -483,8 +483,14 @@ export default function RiskPage() {
           {tab === "rules" && (
             loading ? (
               <div className="space-y-3">
-                {[1, 2].map((i) => (
-                  <div key={i} className="h-24 bg-muted/30 rounded-xl animate-pulse" />
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="surface-card p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="skeleton h-4 w-40" />
+                      <div className="skeleton h-5 w-16 rounded-full" />
+                    </div>
+                    <div className="skeleton h-3 w-56" />
+                  </div>
                 ))}
               </div>
             ) : rules.length === 0 ? (

@@ -524,9 +524,16 @@ export default function ExchangesPage() {
       {(loading ? (
         <div className="space-y-3">
           {[1, 2].map(i => (
-            <div key={i} className="surface-card p-5 animate-pulse">
-              <div className="h-4 w-48 bg-muted rounded mb-2" />
-              <div className="h-3 w-32 bg-muted/60 rounded" />
+            <div key={i} className="surface-card p-5 space-y-3">
+              <div className="flex items-center gap-3">
+                <div className="skeleton h-10 w-10 rounded-xl" />
+                <div className="space-y-2">
+                  <div className="skeleton h-4 w-36" />
+                  <div className="skeleton h-3 w-24" />
+                </div>
+                <div className="skeleton h-5 w-16 rounded-full ml-auto" />
+              </div>
+              <div className="skeleton h-8 w-full rounded-lg" />
             </div>
           ))}
         </div>

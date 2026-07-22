@@ -465,8 +465,8 @@ export default function OrdersPage() {
             {/* Orders */}
             {loading ? (
               <div className="p-4 space-y-2">
-                {[1, 2, 3].map((i) => (
-                  <div key={i} className="h-10 bg-muted/30 rounded-lg animate-pulse" />
+                {[1, 2, 3, 4, 5].map((i) => (
+                  <div key={i} className="skeleton h-10 w-full" />
                 ))}
               </div>
             ) : orders.length === 0 ? (

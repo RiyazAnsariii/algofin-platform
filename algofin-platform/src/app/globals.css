@@ -415,9 +415,30 @@
 }
 
 @utility animate-shimmer {
-  background: linear-gradient(90deg, transparent, oklch(1 0 0 / 5%), transparent);
+  background: linear-gradient(
+    90deg,
+    oklch(0.22 0.01 240) 0%,
+    oklch(0.28 0.01 240) 40%,
+    oklch(0.32 0.015 240) 50%,
+    oklch(0.28 0.01 240) 60%,
+    oklch(0.22 0.01 240) 100%
+  );
   background-size: 200% 100%;
-  animation: shimmer 2s ease-in-out infinite;
+  animation: shimmer 1.6s linear infinite;
+}
+
+@utility skeleton {
+  background: linear-gradient(
+    90deg,
+    oklch(0.22 0.01 240) 0%,
+    oklch(0.28 0.01 240) 40%,
+    oklch(0.32 0.015 240) 50%,
+    oklch(0.28 0.01 240) 60%,
+    oklch(0.22 0.01 240) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.6s linear infinite;
+  border-radius: 0.5rem;
 }
 
 @utility delay-100 { animation-delay: 100ms; }
