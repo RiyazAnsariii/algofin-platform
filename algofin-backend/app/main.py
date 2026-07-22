@@ -140,6 +140,21 @@ async def health_head():
     return Response(status_code=200)
 
 
+# ── Fast ping (frontend cold-start detection) ──────────────────────
+# Registered under /api/v1 prefix via the router include below.
+# The frontend warmup banner polls GET /api/v1/ping through Next.js proxy.
+# Unlike /health, this does NOT query DB or Redis — returns instantly.
+@app.get("/api/v1/ping", tags=["health"])
+async def ping() -> dict:
+    return {"status": "ok"}
+
+
+@app.head("/api/v1/ping", tags=["health"])
+async def ping_head():
+    from fastapi.responses import Response
+    return Response(status_code=200)
+
+
 # ── Startup event ──────────────────────────────────────────
 @app.on_event("startup")
 async def startup() -> None:
