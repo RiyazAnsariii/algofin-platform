@@ -171,10 +171,16 @@ function Sidebar({
       {/* Nav — scrollable area between logo and user footer */}
       <nav className="flex-1 px-2 py-3 space-y-0.5 overflow-y-auto">
         {NAV_ITEMS.map((item) => {
-          // Active if exact match OR starts with href/ — but NOT if a more-specific
-          // nav item already matches (e.g. /strategy/webhook claimed by TV Webhooks).
+          // A child nav item "claims" this path if:
+          //   1. it's a different item
+          //   2. it matches the current path (exactly OR as prefix)
+          //   3. its href starts with this item's href (i.e. it is a sub-route)
+          // Example: on /strategy/webhook → TV Webhooks claims it → Strategy Engine is inactive
           const childClaimsPath = NAV_ITEMS.some(
-            (other) => other.href !== item.href && pathname.startsWith(other.href + "/") && other.href.startsWith(item.href)
+            (other) =>
+              other.href !== item.href &&
+              (pathname === other.href || pathname.startsWith(other.href + "/")) &&
+              other.href.startsWith(item.href + "/")
           );
           const active = !childClaimsPath && (pathname === item.href || pathname.startsWith(item.href + "/"));
           return (
