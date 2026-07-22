@@ -7,6 +7,7 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import api from "@/lib/api";
 import marketDataSocket from "@/lib/marketDataSocket";
 import { useAuthStore } from "@/stores/auth.store";
+import { useDelayedLoading } from "@/hooks/useDelayedLoading";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type RuleType = "MAX_DAILY_LOSS" | "MAX_POSITION_SIZE" | "MAX_OPEN_POSITIONS" | "MAX_ORDER_SIZE";
@@ -345,6 +346,7 @@ export default function RiskPage() {
   const [rules,      setRules]      = useState<RiskRule[]>([]);
   const [violations, setViolations] = useState<RiskViolation[]>([]);
   const [loading,    setLoading]    = useState(true);
+  const showSkeleton                = useDelayedLoading(loading);
   const [activeAlert, setActiveAlert] = useState<LiveRiskAlert | null>(null);
   const [tab, setTab] = useState<"rules" | "history">("rules");
   const accessToken = useAuthStore((s) => s.accessToken);
@@ -481,7 +483,7 @@ export default function RiskPage() {
 
           {/* Rules list */}
           {tab === "rules" && (
-            loading ? (
+            showSkeleton ? (
               <div className="space-y-3">
                 {[1, 2, 3].map((i) => (
                   <div key={i} className="surface-card p-4 space-y-3">

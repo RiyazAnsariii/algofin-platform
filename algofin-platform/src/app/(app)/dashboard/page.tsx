@@ -7,6 +7,7 @@ import { useEffect, useState, useCallback } from "react";
 import api from "@/lib/api";
 import { relativeTime } from "@/lib/staleness";
 import { useLivePrices } from "@/hooks/useLivePrices";
+import { useDelayedLoading } from "@/hooks/useDelayedLoading";
 
 // ── API response types ────────────────────────────────────────────
 interface FreshnessItem {
@@ -236,6 +237,7 @@ export default function DashboardPage() {
   const [summary, setSummary] = useState<PortfolioSummary | null>(null);
   const [positions, setPositions] = useState<Position[]>([]);
   const [loading, setLoading] = useState(true);
+  const showSkeleton          = useDelayedLoading(loading);
   const [noExchange, setNoExchange] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
@@ -331,27 +333,27 @@ export default function DashboardPage() {
             label="Portfolio Value"
             value={`$${fmt(summary?.total_value_usdt ?? 0)}`}
             sub="USDT-M Futures"
-            loading={loading}
+            loading={showSkeleton}
           />
           <StatCard
             label="Realized PnL (MTD)"
             value={fmtPnl(pnlMtd)}
             sub="Month to date"
             valueClass={pnlPositive ? "pnl-positive" : "pnl-negative"}
-            loading={loading}
+            loading={showSkeleton}
           />
           <StatCard
             label="Est. Monthly Fee"
             value={`$${fmt(estFee)}`}
             sub="20% of profit · display only"
             valueClass="text-muted-foreground"
-            loading={loading}
+            loading={showSkeleton}
           />
           <StatCard
             label="Open Positions"
             value={summary?.open_positions ?? 0}
             sub={`${summary?.connected_accounts ?? 0} account(s) connected`}
-            loading={loading}
+            loading={showSkeleton}
           />
         </div>
       )}
@@ -374,14 +376,14 @@ export default function DashboardPage() {
               <span className="text-xs text-muted-foreground">{positions.length} positions</span>
             )}
           </div>
-          {loading ? (
+          {showSkeleton ? (
             <div className="p-4 space-y-2">
             {[1, 2, 3].map((i) => (
               <div key={i} className="skeleton h-10 w-full" />
             ))}
           </div>
           ) : positions.length > 0 ? (
-            <div className="divide-y divide-white/4">
+            <div className="divide-y divide-white/4 animate-fade-in">
               {positions.map((p) => (
                 <PositionRow
                   key={p.id}

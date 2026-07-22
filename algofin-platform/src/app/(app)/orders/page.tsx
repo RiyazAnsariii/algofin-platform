@@ -8,6 +8,7 @@ import api from "@/lib/api";
 import { useOrderEvents } from "@/hooks/useOrderEvents";
 import marketDataSocket from "@/lib/marketDataSocket";
 import { useAuthStore } from "@/stores/auth.store";
+import { useDelayedLoading } from "@/hooks/useDelayedLoading";
 
 // ── Types ─────────────────────────────────────────────────────────
 interface Order {
@@ -345,6 +346,7 @@ export default function OrdersPage() {
   const [orders, setOrders]     = useState<Order[]>([]);
   const [accounts, setAccounts] = useState<ExchangeAccount[]>([]);
   const [loading, setLoading]   = useState(true);
+  const showSkeleton             = useDelayedLoading(loading);
   const [statusFilter, setStatusFilter] = useState<string>("open");
   const accessToken = useAuthStore((s) => s.accessToken);
 
@@ -463,7 +465,7 @@ export default function OrdersPage() {
             </div>
 
             {/* Orders */}
-            {loading ? (
+            {showSkeleton ? (
               <div className="p-4 space-y-2">
                 {[1, 2, 3, 4, 5].map((i) => (
                   <div key={i} className="skeleton h-10 w-full" />
@@ -474,7 +476,7 @@ export default function OrdersPage() {
                 No orders found
               </div>
             ) : (
-              <div>
+              <div className="animate-fade-in">
                 {orders.map((o) => (
                   <OrderRow
                     key={o.id}

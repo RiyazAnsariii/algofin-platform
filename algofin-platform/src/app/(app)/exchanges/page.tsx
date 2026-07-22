@@ -8,6 +8,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import api from "@/lib/api";
+import { useDelayedLoading } from "@/hooks/useDelayedLoading";
 
 // ── Types ─────────────────────────────────────────────────────────
 interface ExchangeAccount {
@@ -431,6 +432,7 @@ export default function ExchangesPage() {
   const [accounts, setAccounts]       = useState<ExchangeAccount[]>([]);
   const [exchanges, setExchanges]     = useState<ExchangeDef[]>([]);
   const [loading, setLoading]         = useState(true);
+  const showSkeleton                  = useDelayedLoading(loading);
   const [actionLoading, setActionLoading] = useState(false);
   const [connecting, setConnecting]   = useState<ExchangeDef | null>(null);
   const [error, setError]             = useState<string | null>(null);
@@ -521,7 +523,7 @@ export default function ExchangesPage() {
       )}
 
       {/* Connected accounts */}
-      {(loading ? (
+      {(showSkeleton ? (
         <div className="space-y-3">
           {[1, 2].map(i => (
             <div key={i} className="surface-card p-5 space-y-3">
@@ -538,7 +540,7 @@ export default function ExchangesPage() {
           ))}
         </div>
       ) : accounts.length > 0 ? (
-        <div className="space-y-3">
+        <div className="space-y-3 animate-fade-in">
           <h2 className="text-sm font-semibold text-foreground">Connected accounts ({accounts.length})</h2>
           {accounts.map(acct => (
             <AccountCard key={acct.id} account={acct}
