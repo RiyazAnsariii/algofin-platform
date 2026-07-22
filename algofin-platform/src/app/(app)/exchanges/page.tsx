@@ -522,83 +522,87 @@ export default function ExchangesPage() {
         />
       )}
 
-      {/* Connected accounts */}
-      {!loading && (showSkeleton ? (
-        <div className="space-y-3">
-          {[1, 2].map(i => (
-            <div key={i} className="surface-card p-5 space-y-3">
-              <div className="flex items-center gap-3">
-                <div className="skeleton h-10 w-10 rounded-xl" />
-                <div className="space-y-2">
-                  <div className="skeleton h-4 w-36" />
-                  <div className="skeleton h-3 w-24" />
+      {/* ── LOADING STATE: skeletons ── */}
+      {loading && showSkeleton && (
+        <div className="space-y-6">
+          {/* account skeletons */}
+          <div className="space-y-3">
+            {[1, 2].map(i => (
+              <div key={i} className="surface-card p-5 space-y-3">
+                <div className="flex items-center gap-3">
+                  <div className="skeleton h-10 w-10 rounded-xl" />
+                  <div className="space-y-2">
+                    <div className="skeleton h-4 w-36" />
+                    <div className="skeleton h-3 w-24" />
+                  </div>
+                  <div className="skeleton h-5 w-16 rounded-full ml-auto" />
                 </div>
-                <div className="skeleton h-5 w-16 rounded-full ml-auto" />
+                <div className="skeleton h-8 w-full rounded-lg" />
               </div>
-              <div className="skeleton h-8 w-full rounded-lg" />
-            </div>
-          ))}
-        </div>
-      ) : accounts.length > 0 ? (
-        <div className="space-y-3 animate-fade-in">
-          <h2 className="text-sm font-semibold text-foreground">Connected accounts ({accounts.length})</h2>
-          {accounts.map(acct => (
-            <AccountCard key={acct.id} account={acct}
-              onSync={handleSync} onRevoke={handleRevoke} loading={actionLoading} />
-          ))}
-        </div>
-      ) : null)}
-
-      {/* Exchange picker — gate on !loading so connected counts are accurate */}
-      {!loading && (
-        <div className="space-y-4 animate-fade-in">
-          <div>
-            <h2 className="text-base font-semibold text-foreground">Supported Exchanges</h2>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Click a live exchange to connect. Coming Soon exchanges will be enabled in future updates.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {(exchanges.length > 0 ? exchanges : [
-              // Fallback if API call fails — hardcoded to always show the grid
-              { id: "binance_usdtm",     name: "Binance",  display_name: "Binance USDT-M Futures",   status: "live",        markets: ["USDT-M Futures"], requires_passphrase: false, logo_letter: "B", description: "The world's largest crypto exchange. Connect your USDT-M Futures account.", api_docs_url: "" },
-              { id: "bybit_linear",      name: "Bybit",    display_name: "Bybit Linear Perpetuals",   status: "coming_soon", markets: ["USDT Perpetuals"], requires_passphrase: false, logo_letter: "Y", description: "Bybit Linear Perpetuals. Full integration coming soon.", api_docs_url: "" },
-              { id: "okx_swap",          name: "OKX",      display_name: "OKX Perpetual Swaps",       status: "coming_soon", markets: ["USDT Perpetuals"], requires_passphrase: true,  logo_letter: "O", description: "OKX Perpetual Swaps (USDT-settled). Integration coming soon.", api_docs_url: "" },
-              { id: "coinbase_advanced",  name: "Coinbase", display_name: "Coinbase Advanced Trade",   status: "coming_soon", markets: ["Spot"],            requires_passphrase: false, logo_letter: "C", description: "Coinbase Advanced Trade (spot). API integration coming soon.", api_docs_url: "" },
-            ] as ExchangeDef[]).map(ex => (
-              <ExchangeCard
-                key={ex.id}
-                exchange={ex}
-                connectedCount={countByExchange[ex.id] || 0}
-                onSelect={setConnecting}
-              />
             ))}
+          </div>
+          {/* exchange picker skeletons */}
+          <div className="space-y-4">
+            <div className="skeleton h-5 w-44" />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {[1,2,3,4].map(i => (
+                <div key={i} className="surface-card p-5 space-y-3">
+                  <div className="flex items-center gap-3">
+                    <div className="skeleton h-10 w-10 rounded-xl" />
+                    <div className="space-y-1.5">
+                      <div className="skeleton h-4 w-32" />
+                      <div className="skeleton h-3 w-20" />
+                    </div>
+                  </div>
+                  <div className="skeleton h-3 w-full" />
+                  <div className="skeleton h-3 w-3/4" />
+                  <div className="skeleton h-8 w-28 rounded-lg" />
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       )}
 
-      {/* Skeleton for exchange picker while loading */}
-      {loading && showSkeleton && (
-        <div className="space-y-4">
-          <div className="skeleton h-5 w-44" />
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {[1,2,3,4].map(i => (
-              <div key={i} className="surface-card p-5 space-y-3">
-                <div className="flex items-center gap-3">
-                  <div className="skeleton h-10 w-10 rounded-xl" />
-                  <div className="space-y-1.5">
-                    <div className="skeleton h-4 w-32" />
-                    <div className="skeleton h-3 w-20" />
-                  </div>
-                </div>
-                <div className="skeleton h-3 w-full" />
-                <div className="skeleton h-3 w-3/4" />
-                <div className="skeleton h-8 w-28 rounded-lg" />
-              </div>
-            ))}
+      {/* ── LOADED STATE: real content (strictly after loading=false) ── */}
+      {!loading && (
+        <>
+          {/* Connected accounts — only shown when there are accounts */}
+          {accounts.length > 0 && (
+            <div className="space-y-3 animate-fade-in">
+              <h2 className="text-sm font-semibold text-foreground">Connected accounts ({accounts.length})</h2>
+              {accounts.map(acct => (
+                <AccountCard key={acct.id} account={acct}
+                  onSync={handleSync} onRevoke={handleRevoke} loading={actionLoading} />
+              ))}
+            </div>
+          )}
+
+          {/* Exchange picker */}
+          <div className="space-y-4 animate-fade-in">
+            <div>
+              <h2 className="text-base font-semibold text-foreground">Supported Exchanges</h2>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Click a live exchange to connect. Coming Soon exchanges will be enabled in future updates.
+              </p>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {(exchanges.length > 0 ? exchanges : [
+                { id: "binance_usdtm",    name: "Binance",  display_name: "Binance USDT-M Futures",  status: "live",        markets: ["USDT-M Futures"], requires_passphrase: false, logo_letter: "B", description: "The world's largest crypto exchange. Connect your USDT-M Futures account.", api_docs_url: "" },
+                { id: "bybit_linear",     name: "Bybit",    display_name: "Bybit Linear Perpetuals",  status: "coming_soon", markets: ["USDT Perpetuals"], requires_passphrase: false, logo_letter: "Y", description: "Bybit Linear Perpetuals. Full integration coming soon.", api_docs_url: "" },
+                { id: "okx_swap",         name: "OKX",      display_name: "OKX Perpetual Swaps",      status: "coming_soon", markets: ["USDT Perpetuals"], requires_passphrase: true,  logo_letter: "O", description: "OKX Perpetual Swaps (USDT-settled). Integration coming soon.", api_docs_url: "" },
+                { id: "coinbase_advanced", name: "Coinbase", display_name: "Coinbase Advanced Trade",  status: "coming_soon", markets: ["Spot"],            requires_passphrase: false, logo_letter: "C", description: "Coinbase Advanced Trade (spot). API integration coming soon.", api_docs_url: "" },
+              ] as ExchangeDef[]).map(ex => (
+                <ExchangeCard
+                  key={ex.id}
+                  exchange={ex}
+                  connectedCount={countByExchange[ex.id] || 0}
+                  onSelect={setConnecting}
+                />
+              ))}
+            </div>
           </div>
-        </div>
+        </>
       )}
     </div>
   );
