@@ -78,6 +78,20 @@ const NAV_ITEMS = [
     ),
   },
   {
+    href:  "/strategy/webhook",
+    label: "TV Webhooks",
+    icon:  (active: boolean) => (
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 2 : 1.5}>
+        <path d="M6.5 6.5C4.01 8.99 4.01 13.01 6.5 15.5" />
+        <path d="M17.5 6.5C19.99 8.99 19.99 13.01 17.5 15.5" />
+        <path d="M9.5 9.5C8.17 10.83 8.17 12.17 9.5 13.5" />
+        <path d="M14.5 9.5C15.83 10.83 15.83 12.17 14.5 13.5" />
+        <circle cx="12" cy="12" r="1.5" fill={active ? "currentColor" : "none"} stroke="currentColor" />
+        <path d="M12 13.5V19M9.5 19h5" />
+      </svg>
+    ),
+  },
+  {
     href:  "/journal",
     label: "Journal",
     icon:  (active: boolean) => (
