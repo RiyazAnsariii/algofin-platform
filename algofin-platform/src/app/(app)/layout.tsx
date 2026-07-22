@@ -290,14 +290,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       // Wait for Zustand to finish rehydrating from localStorage.
       // Without this, isAuthenticated is always false on first render
       // (even if the user IS logged in), causing a spurious /login redirect.
-      await new Promise<void>((resolve) => {
-        // useAuthStore.persist.hasHydrated() is synchronous once rehydrated.
-        // We poll until it's ready (usually < 1 tick on fast devices).
-        const check = () => {
-          if (useAuthStore.persist.hasHydrated()) { resolve(); } else { setTimeout(check, 10); }
-        };
-        check();
-      });
+      if (!useAuthStore.persist.hasHydrated()) {
+        await new Promise<void>((resolve) => {
+          const check = () => {
+            if (useAuthStore.persist.hasHydrated()) { resolve(); } else { setTimeout(check, 5); }
+          };
+          check();
+        });
+      }
 
       const { isAuthenticated } = useAuthStore.getState();
       if (isAuthenticated) { setChecking(false); return; }

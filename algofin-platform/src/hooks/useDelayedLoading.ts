@@ -18,7 +18,7 @@
 
 import { useEffect, useRef, useState } from "react";
 
-export function useDelayedLoading(loading: boolean, delay = 200): boolean {
+export function useDelayedLoading(loading: boolean, delay = 300): boolean {
   // Track whether the delay has elapsed while loading is still true.
   // We never allow showSkeleton=true when loading=false, so the two
   // conditions (loading && showSkeleton) and (!loading) are always

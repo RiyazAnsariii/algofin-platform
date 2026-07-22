@@ -2,24 +2,20 @@
 // AlgoFin v1 — Axios API client
 // - Injects Authorization: Bearer <access_token> from auth store into all requests
 // - Handles 401 → token refresh flow → retry original request
-// - Refresh token is httpOnly cookie, managed by backend (not read here)
+// - Refresh token is httpOnly cookie, managed by backend
 
 import axios, {
   type AxiosInstance,
-  type AxiosRequestConfig,
   type InternalAxiosRequestConfig,
 } from "axios";
 
-// In browser: use relative path so Next.js rewrites to backend → cookies are same-origin
-// In SSR/Node: use direct backend URL
-const BASE_URL =
-  typeof window !== "undefined"
-    ? ""  // relative — goes through Next.js rewrite (/api/v1/* → backend)
-    : process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+// Direct backend URL if configured (avoids Vercel proxy hop overhead),
+// fallback to relative path for dev rewrites.
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "";
 
 // Create a single axios instance for all API calls
 export const api: AxiosInstance = axios.create({
-  baseURL:         `${BASE_URL}/api/v1`,
+  baseURL: `${BASE_URL}/api/v1`,
   withCredentials: true, // sends httpOnly refresh cookie on every request
   headers: {
     "Content-Type": "application/json",
@@ -29,7 +25,6 @@ export const api: AxiosInstance = axios.create({
 
 // Request interceptor — inject access token from localStorage
 api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
-  // Read token from localStorage directly (avoids React hook limitations)
   try {
     const raw = localStorage.getItem("algofin-auth");
     if (raw) {
@@ -49,7 +44,7 @@ api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
 let isRefreshing = false;
 let refreshQueue: Array<{
   resolve: (token: string) => void;
-  reject:  (err: unknown) => void;
+  reject: (err: unknown) => void;
 }> = [];
 
 const processQueue = (token: string | null, error: unknown = null) => {
@@ -63,84 +58,73 @@ const processQueue = (token: string | null, error: unknown = null) => {
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
-    const original = error.config as AxiosRequestConfig & { _retry?: boolean };
+    const originalRequest = error.config as InternalAxiosRequestConfig & {
+      _retry?: boolean;
+    };
 
-    // If not 401, or already retried, or this is the refresh endpoint itself
-    if (
-      error.response?.status !== 401 ||
-      original._retry ||
-      original.url?.includes("/auth/refresh")
-    ) {
-      return Promise.reject(error);
-    }
-
-    if (isRefreshing) {
-      // Queue the request until refresh resolves
-      return new Promise((resolve, reject) => {
-        refreshQueue.push({
-          resolve: (token) => {
-            if (original.headers) {
-              (original.headers as Record<string, string>).Authorization = `Bearer ${token}`;
-            }
-            resolve(api(original));
-          },
-          reject,
+    // Only intercept 401s if request hasn't been retried yet
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      if (isRefreshing) {
+        return new Promise((resolve, reject) => {
+          refreshQueue.push({
+            resolve: (token: string) => {
+              if (originalRequest.headers) {
+                originalRequest.headers.Authorization = `Bearer ${token}`;
+              }
+              resolve(api(originalRequest));
+            },
+            reject: (err: unknown) => reject(err),
+          });
         });
-      });
-    }
+      }
 
-    original._retry = true;
-    isRefreshing = true;
+      originalRequest._retry = true;
+      isRefreshing = true;
 
-    try {
-      // Backend reads httpOnly refresh cookie and returns new access token
-      const res = await api.post<{ data: { access_token: string } }>(
-        "/auth/refresh"
-      );
-      const newToken = res.data.data.access_token;
-
-      // Update localStorage — keep Zustand store in sync
       try {
-        const raw = localStorage.getItem("algofin-auth");
-        if (raw) {
-          const parsed = JSON.parse(raw) as {
-            state?: { accessToken?: string; isAuthenticated?: boolean };
-          };
-          if (parsed.state) {
-            parsed.state.accessToken = newToken;
-            parsed.state.isAuthenticated = true;
-            localStorage.setItem("algofin-auth", JSON.stringify(parsed));
-          }
+        const refreshRes = await axios.post<{
+          data: { access_token: string };
+        }>(
+          `${BASE_URL}/api/v1/auth/refresh`,
+          {},
+          { withCredentials: true }
+        );
+
+        const newToken = refreshRes.data.data.access_token;
+
+        // Update localStorage store directly
+        try {
+          const raw = localStorage.getItem("algofin-auth");
+          const parsed = raw ? JSON.parse(raw) : { state: {} };
+          parsed.state.accessToken = newToken;
+          localStorage.setItem("algofin-auth", JSON.stringify(parsed));
+        } catch {
+          /* ignore */
         }
-      } catch {
-        // ignore
+
+        processQueue(newToken, null);
+
+        if (originalRequest.headers) {
+          originalRequest.headers.Authorization = `Bearer ${newToken}`;
+        }
+        return api(originalRequest);
+      } catch (refreshErr) {
+        processQueue(null, refreshErr);
+
+        // Clear auth state on refresh failure
+        try {
+          localStorage.removeItem("algofin-auth");
+        } catch {
+          /* ignore */
+        }
+
+        return Promise.reject(refreshErr);
+      } finally {
+        isRefreshing = false;
       }
-
-      processQueue(newToken);
-
-      if (original.headers) {
-        (original.headers as Record<string, string>).Authorization = `Bearer ${newToken}`;
-      }
-
-      return api(original);
-    } catch (refreshError) {
-      processQueue(null, refreshError);
-
-      // Clear auth state — redirect to login
-      try {
-        localStorage.removeItem("algofin-auth");
-      } catch {
-        // ignore
-      }
-
-      if (typeof window !== "undefined") {
-        window.location.href = "/login";
-      }
-
-      return Promise.reject(refreshError);
-    } finally {
-      isRefreshing = false;
     }
+
+    return Promise.reject(error);
   }
 );
 
