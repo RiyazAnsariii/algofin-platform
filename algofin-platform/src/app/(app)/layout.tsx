@@ -171,7 +171,12 @@ function Sidebar({
       {/* Nav — scrollable area between logo and user footer */}
       <nav className="flex-1 px-2 py-3 space-y-0.5 overflow-y-auto">
         {NAV_ITEMS.map((item) => {
-          const active = pathname === item.href || pathname.startsWith(item.href + "/");
+          // Active if exact match OR starts with href/ — but NOT if a more-specific
+          // nav item already matches (e.g. /strategy/webhook claimed by TV Webhooks).
+          const childClaimsPath = NAV_ITEMS.some(
+            (other) => other.href !== item.href && pathname.startsWith(other.href + "/") && other.href.startsWith(item.href)
+          );
+          const active = !childClaimsPath && (pathname === item.href || pathname.startsWith(item.href + "/"));
           return (
             <Link
               key={item.href}
