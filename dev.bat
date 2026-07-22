@@ -1,8 +1,6 @@
 @echo off
-title AlgoFin Dev Launcher
+title AlgoFin Dev
 color 0A
-
-:: ── Navigate to this script's folder ─────────────────────────────────────────
 cd /d "%~dp0"
 
 echo.
@@ -15,8 +13,8 @@ echo  Frontend -^>  http://localhost:3000
 echo  API Docs -^>  http://localhost:8000/docs
 echo.
 
-:: ── Kill any existing processes on :3000 and :8000 ───────────────────────────
-echo  Cleaning up old server processes...
+:: ── Kill stale processes ───────────────────────────────────────────
+echo  Cleaning up old processes on :3000 and :8000...
 for /f "tokens=5" %%a in ('netstat -ano 2^>nul ^| findstr ":3000 " ^| findstr "LISTENING"') do (
     taskkill /PID %%a /F >nul 2>&1
 )
@@ -24,35 +22,35 @@ for /f "tokens=5" %%a in ('netstat -ano 2^>nul ^| findstr ":8000 " ^| findstr "L
     taskkill /PID %%a /F >nul 2>&1
 )
 timeout /t 1 /nobreak >nul
-echo  Ports cleared.
+echo  Done. Starting servers...
 echo.
 
-:: ── Launch Backend in its own Cyan window ────────────────────────────────────
-start "AlgoFin Backend :8000" cmd /k ^
-  "color 0B && title AlgoFin Backend :8000 && cd /d %~dp0algofin-backend && echo. && echo  [BACKEND] FastAPI on http://localhost:8000 && echo  [BACKEND] API Docs on http://localhost:8000/docs && echo. && python -m uvicorn app.main:app --reload --port 8000 --reload-dir app"
+:: ── Start backend in background (hidden, logs to backend.log) ─────
+start /B "" cmd /c "cd /d %~dp0algofin-backend && python -m uvicorn app.main:app --reload --port 8000 --reload-dir app > ..\backend.log 2>&1"
 
-:: ── Launch Frontend in its own Magenta window ────────────────────────────────
-start "AlgoFin Frontend :3000" cmd /k ^
-  "color 0D && title AlgoFin Frontend :3000 && cd /d %~dp0algofin-platform && echo. && echo  [FRONTEND] Next.js on http://localhost:3000 && echo. && npm run dev"
-
-:: ── Wait for Next.js first compile, then open browser ────────────────────────
-echo  Waiting for Next.js to start (first compile takes ~10 seconds)...
-echo.
-
-:wait_loop
+:: ── Wait for backend to be ready ──────────────────────────────────
+echo  [1/2] Waiting for backend...
+:wait_backend
 timeout /t 2 /nobreak >nul
 powershell -NoProfile -Command ^
-  "try { $r=(Invoke-WebRequest http://localhost:3000 -UseBasicParsing -TimeoutSec 2).StatusCode; if($r -eq 200){exit 0} } catch {}; exit 1" >nul 2>&1
-if errorlevel 1 goto wait_loop
+  "try { $r=(Invoke-WebRequest http://localhost:8000/health -UseBasicParsing -TimeoutSec 2).StatusCode; if($r -eq 200){exit 0} } catch {}; exit 1" >nul 2>&1
+if errorlevel 1 goto wait_backend
+echo  [1/2] Backend ready  -^>  http://localhost:8000
+echo.
 
-echo  Opening http://localhost:3000 in your browser...
-start "" "http://localhost:3000"
+:: ── Start frontend in THIS window (so you see Next.js output here) ─
+echo  [2/2] Starting Next.js frontend...
 echo.
 echo  =====================================================
 echo    Both servers are running!
-echo.
-echo    Close the Backend / Frontend windows to stop.
-echo    Or press any key here to close this launcher.
+echo    Frontend logs shown below.
+echo    Press Ctrl+C to stop everything.
 echo  =====================================================
 echo.
-pause >nul
+
+:: Open browser after 8 seconds in background
+start /B "" powershell -NoProfile -WindowStyle Hidden -Command "Start-Sleep 8; Start-Process 'http://localhost:3000'"
+
+:: Run frontend in foreground — you see its output directly here
+cd /d "%~dp0algofin-platform"
+npm run dev
