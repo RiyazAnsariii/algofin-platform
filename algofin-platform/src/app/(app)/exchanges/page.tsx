@@ -446,7 +446,7 @@ export default function ExchangesPage() {
     } catch (err: any) {
       const status = err?.response?.status;
       const detail = err?.response?.data?.detail;
-      if (status === 401) {
+      if (status === 401 || status === 403) {
         window.location.href = "/login";
         return;
       }

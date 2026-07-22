@@ -1,7 +1,7 @@
 // src/lib/api.ts
 // AlgoFin v1 — Axios API client
 // - Injects Authorization: Bearer <access_token> from auth store into all requests
-// - Handles 401 → token refresh flow → retry original request
+// - Handles 401 / 403 → token refresh flow → retry original request
 // - Refresh token is httpOnly cookie, managed by backend
 
 import axios, {
@@ -43,7 +43,7 @@ api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
   return config;
 });
 
-// Response interceptor — handle 401 with refresh attempt
+// Response interceptor — handle 401 / 403 with automatic token refresh attempt
 let isRefreshing = false;
 let refreshQueue: Array<{
   resolve: (token: string) => void;
@@ -65,8 +65,11 @@ api.interceptors.response.use(
       _retry?: boolean;
     };
 
-    // Only intercept 401s if request hasn't been retried yet
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    const status = error.response?.status;
+    const isAuthError = (status === 401 || status === 403) && !originalRequest._retry;
+
+    // Intercept 401 / 403 unauthenticated errors
+    if (isAuthError) {
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
           refreshQueue.push({
@@ -114,11 +117,19 @@ api.interceptors.response.use(
       } catch (refreshErr) {
         processQueue(null, refreshErr);
 
-        // Clear auth state on refresh failure
+        // Clear auth state & redirect to login on refresh failure
         try {
           localStorage.removeItem("algofin-auth");
         } catch {
           /* ignore */
+        }
+
+        if (
+          typeof window !== "undefined" &&
+          !window.location.pathname.startsWith("/login") &&
+          !window.location.pathname.startsWith("/signup")
+        ) {
+          window.location.href = "/login";
         }
 
         return Promise.reject(refreshErr);
