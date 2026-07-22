@@ -11,6 +11,7 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import api from "@/lib/api";
+import { useDelayedLoading } from "@/hooks/useDelayedLoading";
 
 // ── Types ─────────────────────────────────────────────────────────
 interface Message {
@@ -185,6 +186,7 @@ export default function AssistantPage() {
   const [streaming, setStreaming]       = useState(false);
   const [threadId, setThreadId]         = useState<string | null>(null);
   const [loadingHistory, setLoadingHistory] = useState(true);
+  const showHistoryLoading                  = useDelayedLoading(loadingHistory);
   const [apiKeyMissing, setApiKeyMissing]   = useState(false);
   const [quotaError, setQuotaError]         = useState<string | null>(null);
   const [keyError, setKeyError]             = useState<string | null>(null);
@@ -440,7 +442,7 @@ export default function AssistantPage() {
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto px-4 py-6 space-y-5">
-        {loadingHistory ? (
+        {showHistoryLoading ? (
           <div className="flex justify-center">
             <div className="w-5 h-5 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
           </div>
