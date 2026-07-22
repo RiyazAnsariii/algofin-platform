@@ -117,7 +117,7 @@ function Nav() {
 // ── Hero section ───────────────────────────────────────────────────
 function HeroSection() {
   return (
-    <section className="relative pt-32 pb-20 md:pt-44 md:pb-32 px-6 md:px-12 overflow-hidden">
+    <section className="relative pt-28 pb-16 md:pt-36 md:pb-24 px-6 md:px-12 overflow-hidden">
       {/* Background radial glow layers */}
       <div className="pointer-events-none absolute inset-0" aria-hidden>
         {/* Primary top center glow */}
@@ -160,40 +160,40 @@ function HeroSection() {
       <div className="relative max-w-4xl mx-auto text-center space-y-8">
 
         {/* Beta badge */}
-        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full glass border border-primary/25 text-xs font-semibold text-primary animate-fade-in tracking-wide uppercase">
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full glass border border-primary/20 text-[11px] font-semibold text-primary animate-fade-in tracking-widest uppercase">
           <span className="pulse-dot w-1.5 h-1.5" />
           Closed Beta &nbsp;·&nbsp; Professional Trading Workspace
         </div>
 
         {/* Headline */}
-        <h1 className="text-5xl md:text-7xl lg:text-8xl font-bold tracking-tight leading-[1.04] animate-fade-up">
+        <h1 className="text-[2.6rem] md:text-5xl lg:text-6xl font-bold tracking-tight leading-[1.1] animate-fade-up">
           Trade smarter.
           <br />
           <span className="text-gradient-cyan">Everything else follows.</span>
         </h1>
 
         {/* Subheading */}
-        <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed animate-fade-up delay-100">
+        <p className="text-base md:text-lg text-muted-foreground max-w-xl mx-auto leading-relaxed animate-fade-up delay-100">
           Connect your trading account, monitor your portfolio in real time, stay ahead of
           market-moving events, and get AI-powered insights — all from one intelligent workspace.
         </p>
 
         {/* CTAs */}
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-4 animate-fade-up delay-200">
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-3 animate-fade-up delay-200">
           <Link
             href="/signup"
             id="hero-cta-signup"
-            className="group flex items-center gap-2 px-7 py-3.5 rounded-xl bg-primary text-primary-foreground font-semibold text-sm hover:bg-primary/90 transition-all glow-cyan hover:scale-[1.02] active:scale-[0.98]"
+            className="group flex items-center gap-2 px-6 py-3 rounded-xl bg-primary text-primary-foreground font-semibold text-sm hover:bg-primary/90 transition-all glow-cyan hover:scale-[1.02] active:scale-[0.98]"
           >
             Get Early Access
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="transition-transform group-hover:translate-x-0.5">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" className="transition-transform group-hover:translate-x-0.5">
               <path d="M3 8H13M13 8L9 4M13 8L9 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </Link>
           <Link
             href="/login"
             id="hero-cta-login"
-            className="px-7 py-3.5 rounded-xl glass border border-white/12 text-sm font-medium hover:border-white/22 hover:bg-white/6 transition-all"
+            className="px-6 py-3 rounded-xl glass border border-white/12 text-sm font-medium hover:border-white/22 hover:bg-white/6 transition-all"
           >
             Open Dashboard
           </Link>
@@ -414,12 +414,12 @@ function FeaturesSection() {
   return (
     <section className="px-6 md:px-12 pb-28">
       <div className="max-w-5xl mx-auto space-y-14">
-        <div className="text-center space-y-4">
-          <h2 className="text-3xl md:text-4xl font-bold tracking-tight">
+        <div className="text-center space-y-3">
+          <h2 className="text-2xl md:text-3xl font-bold tracking-tight">
             One place for your{" "}
             <span className="text-gradient-brand">trading workflow</span>
           </h2>
-          <p className="text-muted-foreground max-w-xl mx-auto text-sm md:text-base">
+          <p className="text-muted-foreground max-w-lg mx-auto text-sm">
             AlgoFin combines the four tools traders currently juggle separately — in one connected, intelligent workspace.
           </p>
         </div>
@@ -438,12 +438,12 @@ function PricingSection() {
   return (
     <section className="px-6 md:px-12 pb-28" id="pricing">
       <div className="max-w-5xl mx-auto">
-        <div className="text-center space-y-4 mb-14">
-          <h2 className="text-3xl md:text-4xl font-bold tracking-tight">
+        <div className="text-center space-y-3 mb-12">
+          <h2 className="text-2xl md:text-3xl font-bold tracking-tight">
             Simple, honest{" "}
             <span className="text-gradient-cyan">pricing</span>
           </h2>
-          <p className="text-muted-foreground text-sm md:text-base">
+          <p className="text-muted-foreground text-sm">
             We only earn when you do. Zero fee in losing months.
           </p>
         </div>
@@ -495,11 +495,11 @@ function CtaSection() {
         {/* Divider */}
         <div className="w-px h-16 bg-gradient-to-b from-transparent via-white/10 to-transparent mx-auto" />
 
-        <h2 className="text-3xl md:text-4xl font-bold tracking-tight">
+        <h2 className="text-2xl md:text-3xl font-bold tracking-tight">
           The workspace that{" "}
           <span className="text-gradient-cyan">knows your account.</span>
         </h2>
-        <p className="text-muted-foreground">
+        <p className="text-sm text-muted-foreground">
           Real-time portfolio · Economic events · AI-powered insights
         </p>
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
