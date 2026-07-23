@@ -100,6 +100,13 @@ class Settings(BaseSettings):
     google_client_secret: str = ""
     google_redirect_uri: str = "https://algofin-api.onrender.com/api/v1/auth/google/callback"
 
+    # ── SMTP Email Delivery (Gmail / Custom SMTP) ─────────────────
+    smtp_host: str = "smtp.gmail.com"
+    smtp_port: int = 587
+    smtp_user: str = ""        # e.g. mdriyazansari2005@gmail.com
+    smtp_password: str = ""    # Gmail App Password
+    smtp_from_email: str = ""  # e.g. AlgoFin Security <mdriyazansari2005@gmail.com>
+
 
     # ── Phase M: Webhook Engine (Tier-2 operational constants) ────────
     # These require a code change + deploy to modify.

@@ -22,8 +22,12 @@ from app.auth.schemas import (
     SignupRequest,
     UpdateProfileRequest,
     UserResponse,
+    VerifyResetCodeRequest,
+    VerifyResetCodeResponse,
 )
+from app.common.email import send_reset_code_email
 from app.common.security import (
+    create_password_reset_code,
     create_password_reset_token,
     decode_password_reset_token,
     hash_password,
@@ -261,19 +265,53 @@ async def forgot_password(
     request: Request,
     db: DbSession,
 ) -> SuccessResponse[ForgotPasswordResponse]:
-    """Request a password reset token."""
+    """Request a 6-digit password reset verification code sent to Gmail."""
     email = body.email.lower().strip()
     result = await db.execute(select(User).where(User.email == email))
     user = result.scalar_one_or_none()
 
     reset_token = None
     if user and user.is_active and user.hashed_password is not None:
-        reset_token = create_password_reset_token(str(user.id), user.email)
+        code = create_password_reset_code()
+        reset_token = create_password_reset_token(str(user.id), user.email, code=code)
+        # Deliver 6-digit verification code to user's email inbox
+        await send_reset_code_email(email, code)
 
     return SuccessResponse(
         data=ForgotPasswordResponse(
-            message="If an account exists with that email, a reset token has been issued.",
+            message="If an account exists with that email, a 6-digit reset code has been sent.",
             reset_token=reset_token,
+        )
+    )
+
+
+@router.post("/verify-reset-code", response_model=SuccessResponse[VerifyResetCodeResponse])
+@limiter.limit("5/minute")
+async def verify_reset_code(
+    body: VerifyResetCodeRequest,
+    request: Request,
+    db: DbSession,
+) -> SuccessResponse[VerifyResetCodeResponse]:
+    """Verify the 6-digit code sent to user's email."""
+    email = body.email.lower().strip()
+    code = body.code.strip()
+
+    result = await db.execute(select(User).where(User.email == email))
+    user = result.scalar_one_or_none()
+
+    if not user or not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid email or verification code.",
+        )
+
+    # Issue verified reset token
+    verified_token = create_password_reset_token(str(user.id), user.email, verified=True)
+
+    return SuccessResponse(
+        data=VerifyResetCodeResponse(
+            message="Verification code confirmed successfully.",
+            reset_token=verified_token,
         )
     )
 
@@ -285,8 +323,11 @@ async def reset_password(
     request: Request,
     db: DbSession,
 ) -> SuccessResponse[dict]:
-    """Reset password using a valid reset token."""
-    payload = decode_password_reset_token(body.token)
+    """Reset password using verified reset token."""
+    payload = decode_password_reset_token(body.token, expected_type="password_reset_verified")
+    if not payload:
+        payload = decode_password_reset_token(body.token, expected_type="password_reset")
+
     if not payload or "sub" not in payload:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

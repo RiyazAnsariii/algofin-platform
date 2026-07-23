@@ -76,25 +76,34 @@ def decode_access_token(token: str) -> dict[str, Any] | None:
         return None
 
 
-def create_password_reset_token(user_id: str, email: str) -> str:
+def create_password_reset_code() -> str:
+    """Generate a random 6-digit numeric verification code."""
+    import random
+    return f"{random.randint(100000, 999999)}"
+
+
+def create_password_reset_token(user_id: str, email: str, code: str | None = None, verified: bool = False) -> str:
     """Create a short-lived (15 min) password reset JWT token."""
     expire = datetime.now(timezone.utc) + timedelta(minutes=15)
+    token_type = "password_reset_verified" if verified else "password_reset"
     payload = {
         "sub": user_id,
         "email": email,
         "exp": expire,
-        "type": "password_reset",
+        "type": token_type,
     }
+    if code:
+        payload["code"] = code
     return jwt.encode(payload, settings.secret_key, algorithm=settings.jwt_algorithm)
 
 
-def decode_password_reset_token(token: str) -> dict[str, Any] | None:
+def decode_password_reset_token(token: str, expected_type: str = "password_reset") -> dict[str, Any] | None:
     """Decode and verify a password reset token."""
     try:
         payload = jwt.decode(
             token, settings.secret_key, algorithms=[settings.jwt_algorithm]
         )
-        if payload.get("type") != "password_reset":
+        if payload.get("type") != expected_type:
             return None
         return payload
     except JWTError:

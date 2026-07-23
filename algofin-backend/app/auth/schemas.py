@@ -106,6 +106,16 @@ class ForgotPasswordResponse(BaseModel):
     reset_token: str | None = None
 
 
+class VerifyResetCodeRequest(BaseModel):
+    email: EmailStr
+    code: str
+
+
+class VerifyResetCodeResponse(BaseModel):
+    message: str
+    reset_token: str
+
+
 class ResetPasswordRequest(BaseModel):
     token: str
     new_password: str
