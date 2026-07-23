@@ -26,7 +26,7 @@ celery_app.conf.update(
     task_acks_late=True,
     worker_prefetch_multiplier=1,
     task_routes={
-        "app.workers.sync_tasks.*":    {"queue": "sync"},
+        "app.workers.sync_tasks.*": {"queue": "sync"},
         "app.workers.billing_tasks.*": {"queue": "default"},
     },
 )

@@ -2,8 +2,7 @@
 # AlgoFin v1 — Billing service (get/create/refresh billing periods)
 
 import calendar
-from datetime import date, datetime, timezone
-from decimal import Decimal
+from datetime import date
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession

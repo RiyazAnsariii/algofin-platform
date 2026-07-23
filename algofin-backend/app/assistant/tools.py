@@ -7,7 +7,6 @@
 
 import logging
 from datetime import date, datetime, timedelta, timezone
-from decimal import Decimal
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -16,11 +15,12 @@ logger = logging.getLogger(__name__)
 
 # ── Tool: get_monthly_pnl ─────────────────────────────────────────
 
+
 async def tool_get_monthly_pnl(
     db: AsyncSession,
     *,
     user_id: str,
-    month: str | None = None,   # "YYYY-MM" format, defaults to current month
+    month: str | None = None,  # "YYYY-MM" format, defaults to current month
 ) -> dict:
     """
     Returns realized PnL for a specific calendar month.
@@ -36,25 +36,27 @@ async def tool_get_monthly_pnl(
             year, m = today.year, today.month
 
         import calendar
+
         period_start = date(year, m, 1)
         last_day = calendar.monthrange(year, m)[1]
         period_end = date(year, m, last_day)
 
         result = await calculate_period_pnl(
-            db, user_id=user_id,
+            db,
+            user_id=user_id,
             period_start=period_start,
             period_end=period_end,
         )
 
         return {
-            "period_start":           period_start.isoformat(),
-            "period_end":             period_end.isoformat(),
-            "total_realized_pnl":     float(result.total_realized_pnl),
-            "performance_fee_rate":   float(result.performance_fee_rate),
+            "period_start": period_start.isoformat(),
+            "period_end": period_end.isoformat(),
+            "total_realized_pnl": float(result.total_realized_pnl),
+            "performance_fee_rate": float(result.performance_fee_rate),
             "performance_fee_amount": float(result.performance_fee_amount),
-            "consented_accounts":     len(result.consented_account_ids),
-            "is_complete":            result.is_complete,
-            "incomplete_reason":      result.incomplete_reason,
+            "consented_accounts": len(result.consented_account_ids),
+            "is_complete": result.is_complete,
+            "incomplete_reason": result.incomplete_reason,
         }
     except Exception as exc:
         logger.error(f"tool_get_monthly_pnl error: {exc}")
@@ -62,6 +64,7 @@ async def tool_get_monthly_pnl(
 
 
 # ── Tool: get_estimated_fee ───────────────────────────────────────
+
 
 async def tool_get_estimated_fee(db: AsyncSession, *, user_id: str) -> dict:
     """
@@ -82,7 +85,9 @@ async def tool_get_estimated_fee(db: AsyncSession, *, user_id: str) -> dict:
             f"Your estimated monthly fee for {result['period_start'][:7]} is "
             f"${fee:,.2f} USDT (20% of ${pnl:,.2f} realized profit). "
             "This is a display estimate only — no payment is collected during beta."
-        ) if pnl > 0 else (
+        )
+        if pnl > 0
+        else (
             f"No estimated fee for {result['period_start'][:7]} — "
             f"realized PnL is ${pnl:,.2f} USDT (fees only apply to profitable months)."
         ),
@@ -90,6 +95,7 @@ async def tool_get_estimated_fee(db: AsyncSession, *, user_id: str) -> dict:
 
 
 # ── Tool: get_open_positions ──────────────────────────────────────
+
 
 async def tool_get_open_positions(db: AsyncSession, *, user_id: str) -> dict:
     """Returns all currently open USDT-M Futures positions."""
@@ -120,24 +126,25 @@ async def tool_get_open_positions(db: AsyncSession, *, user_id: str) -> dict:
     return {
         "positions": [
             {
-                "symbol":         p.symbol,
-                "side":           p.side,
-                "size":           float(p.size),
-                "entry_price":    float(p.entry_price),
-                "mark_price":     float(p.mark_price),
+                "symbol": p.symbol,
+                "side": p.side,
+                "size": float(p.size),
+                "entry_price": float(p.entry_price),
+                "mark_price": float(p.mark_price),
                 "unrealized_pnl": float(p.unrealized_pnl),
-                "leverage":       float(p.leverage),
-                "margin_type":    p.margin_type,
+                "leverage": float(p.leverage),
+                "margin_type": p.margin_type,
             }
             for p in positions
         ],
-        "count":             len(positions),
-        "total_unrealized":  total_unrealized,
-        "note":              "unrealized_pnl is for display only and not included in billing",
+        "count": len(positions),
+        "total_unrealized": total_unrealized,
+        "note": "unrealized_pnl is for display only and not included in billing",
     }
 
 
 # ── Tool: get_recent_trades ───────────────────────────────────────
+
 
 async def tool_get_recent_trades(
     db: AsyncSession,
@@ -178,22 +185,23 @@ async def tool_get_recent_trades(
     return {
         "trades": [
             {
-                "symbol":        t.symbol,
-                "side":          t.side,
-                "price":         float(t.price),
-                "qty":           float(t.qty),
-                "realized_pnl":  float(t.realized_pnl),
-                "commission":    float(t.commission),
-                "trade_time":    t.trade_time.isoformat(),
+                "symbol": t.symbol,
+                "side": t.side,
+                "price": float(t.price),
+                "qty": float(t.qty),
+                "realized_pnl": float(t.realized_pnl),
+                "commission": float(t.commission),
+                "trade_time": t.trade_time.isoformat(),
             }
             for t in trades
         ],
-        "count":     len(trades),
+        "count": len(trades),
         "total_pnl": total_pnl,
     }
 
 
 # ── Tool: get_economic_events ─────────────────────────────────────
+
 
 async def tool_get_economic_events(
     db: AsyncSession,
@@ -223,22 +231,23 @@ async def tool_get_economic_events(
     return {
         "events": [
             {
-                "title":      e.title,
-                "currency":   e.currency,
-                "impact":     e.impact,
+                "title": e.title,
+                "currency": e.currency,
+                "impact": e.impact,
                 "event_time": e.event_time.isoformat(),
-                "forecast":   e.forecast,
-                "previous":   e.previous,
-                "actual":     e.actual,
+                "forecast": e.forecast,
+                "previous": e.previous,
+                "actual": e.actual,
             }
             for e in events
         ],
-        "count":       len(events),
-        "days_ahead":  days_ahead,
+        "count": len(events),
+        "days_ahead": days_ahead,
     }
 
 
 # ── Tool: get_portfolio_summary ───────────────────────────────────
+
 
 async def tool_get_portfolio_summary(db: AsyncSession, *, user_id: str) -> dict:
     """Returns a quick portfolio overview: balance, MTD PnL, open positions count."""
@@ -258,27 +267,36 @@ async def tool_get_portfolio_summary(db: AsyncSession, *, user_id: str) -> dict:
     if not account_ids:
         return {"note": "No exchange accounts connected."}
 
-    bal = (await db.execute(
-        select(func.sum(Balance.wallet_balance)).where(Balance.exchange_account_id.in_(account_ids))
-    )).scalar_one_or_none() or 0
+    bal = (
+        await db.execute(
+            select(func.sum(Balance.wallet_balance)).where(
+                Balance.exchange_account_id.in_(account_ids)
+            )
+        )
+    ).scalar_one_or_none() or 0
 
-    pos_count = (await db.execute(
-        select(func.count(Position.id)).where(Position.exchange_account_id.in_(account_ids))
-    )).scalar_one_or_none() or 0
+    pos_count = (
+        await db.execute(
+            select(func.count(Position.id)).where(
+                Position.exchange_account_id.in_(account_ids)
+            )
+        )
+    ).scalar_one_or_none() or 0
 
     today = date.today()
     pnl = await calculate_period_pnl(
-        db, user_id=user_id,
+        db,
+        user_id=user_id,
         period_start=date(today.year, today.month, 1),
         period_end=today,
     )
 
     return {
-        "wallet_balance_usdt":    float(bal),
-        "open_positions":         pos_count,
-        "realized_pnl_mtd":       float(pnl.total_realized_pnl),
-        "estimated_monthly_fee":  float(pnl.performance_fee_amount),
-        "connected_accounts":     len(account_ids),
+        "wallet_balance_usdt": float(bal),
+        "open_positions": pos_count,
+        "realized_pnl_mtd": float(pnl.total_realized_pnl),
+        "estimated_monthly_fee": float(pnl.performance_fee_amount),
+        "connected_accounts": len(account_ids),
     }
 
 
@@ -363,6 +381,7 @@ GEMINI_TOOL_DECLARATIONS = [
 
 # ── Tool dispatcher ───────────────────────────────────────────────
 
+
 async def dispatch_tool(
     name: str,
     args: dict,
@@ -371,12 +390,16 @@ async def dispatch_tool(
 ) -> dict:
     """Route a Gemini function call to the correct backend tool."""
     dispatch = {
-        "get_monthly_pnl":       lambda: tool_get_monthly_pnl(db, user_id=user_id, **args),
-        "get_estimated_fee":     lambda: tool_get_estimated_fee(db, user_id=user_id),
-        "get_open_positions":    lambda: tool_get_open_positions(db, user_id=user_id),
-        "get_recent_trades":     lambda: tool_get_recent_trades(db, user_id=user_id, **args),
-        "get_economic_events":   lambda: tool_get_economic_events(db, **args),
-        "get_portfolio_summary": lambda: tool_get_portfolio_summary(db, user_id=user_id),
+        "get_monthly_pnl": lambda: tool_get_monthly_pnl(db, user_id=user_id, **args),
+        "get_estimated_fee": lambda: tool_get_estimated_fee(db, user_id=user_id),
+        "get_open_positions": lambda: tool_get_open_positions(db, user_id=user_id),
+        "get_recent_trades": lambda: tool_get_recent_trades(
+            db, user_id=user_id, **args
+        ),
+        "get_economic_events": lambda: tool_get_economic_events(db, **args),
+        "get_portfolio_summary": lambda: tool_get_portfolio_summary(
+            db, user_id=user_id
+        ),
     }
     fn = dispatch.get(name)
     if fn is None:

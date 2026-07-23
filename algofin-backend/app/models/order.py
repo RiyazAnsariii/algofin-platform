@@ -27,6 +27,7 @@ class Order(Base):
         EXPIRED          — GTX/time-in-force expired
         REJECTED         — Binance rejected the order
     """
+
     __tablename__ = "orders"
 
     id: Mapped[uuid.UUID] = mapped_column(
@@ -43,9 +44,7 @@ class Order(Base):
     binance_order_id: Mapped[str | None] = mapped_column(
         String(50), nullable=True, index=True
     )
-    client_order_id: Mapped[str | None] = mapped_column(
-        String(64), nullable=True
-    )
+    client_order_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
 
     # ── Order details ─────────────────────────────────────────────────
     symbol: Mapped[str] = mapped_column(String(30), nullable=False, index=True)
@@ -65,8 +64,12 @@ class Order(Base):
 
     # ── Fill state ────────────────────────────────────────────────────
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="NEW")
-    filled_quantity: Mapped[Decimal] = mapped_column(Numeric(20, 8), nullable=False, default=0)
-    avg_fill_price: Mapped[Decimal | None] = mapped_column(Numeric(20, 8), nullable=True)
+    filled_quantity: Mapped[Decimal] = mapped_column(
+        Numeric(20, 8), nullable=False, default=0
+    )
+    avg_fill_price: Mapped[Decimal | None] = mapped_column(
+        Numeric(20, 8), nullable=True
+    )
 
     # ── Metadata ──────────────────────────────────────────────────────
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -76,11 +79,19 @@ class Order(Base):
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False,
-        server_default=func.now(), onupdate=func.now()
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+        onupdate=func.now(),
     )
-    filled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    cancelled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    filled_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    cancelled_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
     # ── Relationships ─────────────────────────────────────────────────
-    exchange_account: Mapped["UserExchangeAccount"] = relationship(back_populates="orders")  # type: ignore[name-defined]
+    exchange_account: Mapped["UserExchangeAccount"] = relationship(  # noqa: F821
+        back_populates="orders"
+    )  # type: ignore[name-defined]

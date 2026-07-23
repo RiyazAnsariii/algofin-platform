@@ -14,7 +14,9 @@ class FreshnessItem(TypedDict):
     is_stale: bool
 
 
-def compute_freshness(synced_at: datetime | None, threshold_minutes: int) -> FreshnessItem:
+def compute_freshness(
+    synced_at: datetime | None, threshold_minutes: int
+) -> FreshnessItem:
     """
     Compute whether a given sync timestamp is stale.
     Returns a FreshnessItem dict matching the API response contract (plan.md Section 9).
@@ -46,7 +48,11 @@ def compute_data_freshness(
     plan.md Section 9 — response contract.
     """
     return {
-        "balances": compute_freshness(balances_synced_at, settings.stale_balances_minutes),
-        "positions": compute_freshness(positions_synced_at, settings.stale_positions_minutes),
+        "balances": compute_freshness(
+            balances_synced_at, settings.stale_balances_minutes
+        ),
+        "positions": compute_freshness(
+            positions_synced_at, settings.stale_positions_minutes
+        ),
         "trades": compute_freshness(trades_synced_at, settings.stale_trades_minutes),
     }

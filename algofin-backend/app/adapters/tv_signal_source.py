@@ -12,13 +12,11 @@
 # Source: https://www.tradingview.com/support/solutions/43000529348
 
 import uuid
-from datetime import datetime, timezone, timedelta
-from decimal import Decimal
 
 import bcrypt
 
 from app.config import settings
-from app.ports.signal_source import SignalPayload, SignalSourcePort
+from app.ports.signal_source import SignalPayload
 from app.webhooks.schemas import TVWebhookPayload
 
 
@@ -55,14 +53,14 @@ class TradingViewSignalSource:
 
         return SignalPayload(
             strategy_id=strategy_id,
-            action=validated.action,          # already normalized to lowercase
-            ticker=validated.ticker,           # already normalized to uppercase
+            action=validated.action,  # already normalized to lowercase
+            ticker=validated.ticker,  # already normalized to uppercase
             contracts=validated.contracts,
             price=validated.price,
             tv_timestamp=validated.parsed_time,
-            is_test=False,                     # test flag set by WebhookService via ?test=1 param
+            is_test=False,  # test flag set by WebhookService via ?test=1 param
             source_name=self.source_name,
-            sender_ip=None,                    # injected by WebhookService from request headers
+            sender_ip=None,  # injected by WebhookService from request headers
             raw_payload=raw,
         )
 

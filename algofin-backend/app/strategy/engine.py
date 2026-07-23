@@ -29,6 +29,7 @@ _engine_task: asyncio.Task | None = None
 
 # ── Order placement helper ─────────────────────────────────────────────────
 
+
 async def _place_order(
     db: AsyncSession,
     strategy: Strategy,
@@ -39,7 +40,7 @@ async def _place_order(
     Returns (status, order_id | None).
     """
     try:
-        from app.orders.service import place_order   # avoid circular at module level
+        from app.orders.service import place_order  # avoid circular at module level
         from app.orders.schemas import PlaceOrderRequest
 
         req = PlaceOrderRequest(
@@ -54,11 +55,14 @@ async def _place_order(
         order = await place_order(db, user_id=strategy.user_id, req=req)
         return "order_placed", str(order.id)
     except Exception as exc:
-        logger.error("[StrategyEngine] Order placement failed for %s: %s", strategy.name, exc)
+        logger.error(
+            "[StrategyEngine] Order placement failed for %s: %s", strategy.name, exc
+        )
         return "failed", None
 
 
 # ── Execution handler ──────────────────────────────────────────────────────
+
 
 async def _execute_strategy(strategy: Strategy, trigger_price: Decimal | None) -> None:
     """Execute one strategy: place order + log + update counters."""
@@ -67,7 +71,7 @@ async def _execute_strategy(strategy: Strategy, trigger_price: Decimal | None) -
         result = await db.execute(select(Strategy).where(Strategy.id == strategy.id))
         s = result.scalar_one_or_none()
         if s is None or s.status != "active":
-            return   # was deactivated between check and execution
+            return  # was deactivated between check and execution
 
         exec_status, order_id = await _place_order(db, s, trigger_price)
 
@@ -88,13 +92,17 @@ async def _execute_strategy(strategy: Strategy, trigger_price: Decimal | None) -
         # Stop if max executions reached
         if s.max_executions is not None and s.execution_count >= s.max_executions:
             s.status = "stopped"
-            logger.info("[StrategyEngine] Strategy %s reached max executions, stopped.", s.name)
+            logger.info(
+                "[StrategyEngine] Strategy %s reached max executions, stopped.", s.name
+            )
 
         await db.commit()
 
         logger.info(
             "[StrategyEngine] Strategy '%s' executed — status=%s order=%s",
-            s.name, exec_status, order_id
+            s.name,
+            exec_status,
+            order_id,
         )
 
 
@@ -125,7 +133,7 @@ async def _evaluate_price_breakout(symbol: str, price: Decimal) -> None:
         level = Decimal(str(s.price_level))
 
         current_side = "above" if price >= level else "below"
-        prev_side    = _fired_state.get(sid)
+        prev_side = _fired_state.get(sid)
 
         # Edge-triggered: only fire when crossing (not every tick)
         if prev_side != current_side:
@@ -133,12 +141,16 @@ async def _evaluate_price_breakout(symbol: str, price: Decimal) -> None:
             if current_side == s.direction:
                 logger.info(
                     "[StrategyEngine] Strategy '%s' triggered: %s %s price_level=%s",
-                    s.name, symbol, s.direction, level
+                    s.name,
+                    symbol,
+                    s.direction,
+                    level,
                 )
                 await _execute_strategy(s, price)
 
 
 # ── Redis subscriber loop ──────────────────────────────────────────────────
+
 
 async def _run_engine() -> None:
     from app.database import get_redis_client as get_redis
@@ -159,8 +171,8 @@ async def _run_engine() -> None:
                     data = data.decode()
                 event = json.loads(data)
 
-                symbol       = event.get("symbol", "")
-                price_raw    = event.get("price") or event.get("mark_price") or ""
+                symbol = event.get("symbol", "")
+                price_raw = event.get("price") or event.get("mark_price") or ""
                 if not symbol or not price_raw:
                     continue
                 price = Decimal(str(price_raw))
@@ -172,7 +184,7 @@ async def _run_engine() -> None:
     except asyncio.CancelledError:
         logger.info("[StrategyEngine] Stopped.")
     except Exception as exc:
-        return exc   # bubble up to the retry wrapper
+        return exc  # bubble up to the retry wrapper
 
 
 async def _run_engine_with_backoff() -> None:
@@ -190,11 +202,14 @@ async def _run_engine_with_backoff() -> None:
     while attempt < max_attempts:
         exc = await _run_engine()
         if exc is None:
-            return   # clean shutdown
+            return  # clean shutdown
         attempt += 1
         logger.warning(
             "[StrategyEngine] Connection failed (%s/%s): %s — retrying in %ss",
-            attempt, max_attempts, exc, delay,
+            attempt,
+            max_attempts,
+            exc,
+            delay,
         )
         await asyncio.sleep(delay)
         delay = min(delay * 2, max_delay)

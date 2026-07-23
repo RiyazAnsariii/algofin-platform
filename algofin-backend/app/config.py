@@ -2,7 +2,7 @@
 # AlgoFin v1 — Application configuration (pydantic-settings)
 
 from functools import lru_cache
-from typing import Any, List
+from typing import List
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import field_validator, ValidationInfo
 
@@ -40,7 +40,7 @@ class Settings(BaseSettings):
         if env != "development" and (not v or len(v) < 32):
             raise ValueError(
                 "SECRET_KEY must be set and at least 32 characters long. "
-                "Generate one with: python -c \"import secrets; print(secrets.token_urlsafe(48))\""
+                'Generate one with: python -c "import secrets; print(secrets.token_urlsafe(48))"'
             )
         return v
 
@@ -53,7 +53,7 @@ class Settings(BaseSettings):
         if env != "development" and not v:
             raise ValueError(
                 "FERNET_KEY must be set in production. "
-                "Generate one with: python -c \"from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())\""
+                'Generate one with: python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"'
             )
         return v
 
@@ -64,7 +64,9 @@ class Settings(BaseSettings):
 
     # ── CORS ───────────────────────────────────────────────────────
     allowed_origins: str = "http://localhost:3000"
-    frontend_url: str = "https://algofin-platform.vercel.app"  # overridden by FRONTEND_URL env var
+    frontend_url: str = (
+        "https://algofin-platform.vercel.app"  # overridden by FRONTEND_URL env var
+    )
 
     @property
     def cors_origins(self) -> List[str]:
@@ -77,7 +79,7 @@ class Settings(BaseSettings):
     # ── Gemini AI ───────────────────────────────────────────────
     # Get your free API key at: https://aistudio.google.com/app/apikey
     gemini_api_key: str = ""
-    gemini_model: str = "gemini-flash-latest"   # primary model
+    gemini_model: str = "gemini-flash-latest"  # primary model
     # Fallback models tried in order if primary hits quota (429)
     gemini_fallback_models: str = "gemini-flash-lite-latest,gemini-2.0-flash-lite-001"
     assistant_max_history: int = 40  # messages kept in context per session
@@ -98,15 +100,16 @@ class Settings(BaseSettings):
     # ── Google OAuth ───────────────────────────────────────────────
     google_client_id: str = ""
     google_client_secret: str = ""
-    google_redirect_uri: str = "https://algofin-api.onrender.com/api/v1/auth/google/callback"
+    google_redirect_uri: str = (
+        "https://algofin-api.onrender.com/api/v1/auth/google/callback"
+    )
 
     # ── SMTP Email Delivery (Gmail / Custom SMTP) ─────────────────
     smtp_host: str = "smtp.gmail.com"
     smtp_port: int = 587
-    smtp_user: str = ""        # e.g. mdriyazansari2005@gmail.com
-    smtp_password: str = ""    # Gmail App Password
+    smtp_user: str = ""  # e.g. mdriyazansari2005@gmail.com
+    smtp_password: str = ""  # Gmail App Password
     smtp_from_email: str = ""  # e.g. AlgoFin Security <mdriyazansari2005@gmail.com>
-
 
     # ── Phase M: Webhook Engine (Tier-2 operational constants) ────────
     # These require a code change + deploy to modify.
@@ -126,18 +129,22 @@ class Settings(BaseSettings):
     webhook_max_retries: int = 3
 
     # Timing
-    webhook_replay_window_seconds: int = 60    # reject signals older than 60s
-    webhook_payload_max_bytes: int = 10_240    # 10 KB hard limit before JSON parse
-    webhook_dedup_ttl_seconds: int = 300       # Redis dedup key lifetime (5 min)
-    webhook_secret_grace_seconds: int = 300    # old secret valid 5 min after rotation
-    webhook_processing_timeout_minutes: int = 5  # signal stuck in PROCESSING → reconcile
+    webhook_replay_window_seconds: int = 60  # reject signals older than 60s
+    webhook_payload_max_bytes: int = 10_240  # 10 KB hard limit before JSON parse
+    webhook_dedup_ttl_seconds: int = 300  # Redis dedup key lifetime (5 min)
+    webhook_secret_grace_seconds: int = 300  # old secret valid 5 min after rotation
+    webhook_processing_timeout_minutes: int = (
+        5  # signal stuck in PROCESSING → reconcile
+    )
 
     # Rate limiting
-    webhook_rate_limit: int = 100              # max signals per minute per strategy
-    webhook_brute_force_limit: int = 5         # bad secrets per IP before block (60s)
+    webhook_rate_limit: int = 100  # max signals per minute per strategy
+    webhook_brute_force_limit: int = 5  # bad secrets per IP before block (60s)
 
     # TradingView allowed IPs (Tier-2: changing requires deploy + ADR)
-    tradingview_allowed_ips: str = "52.89.214.238,34.212.75.30,54.218.53.128,52.32.178.7"
+    tradingview_allowed_ips: str = (
+        "52.89.214.238,34.212.75.30,54.218.53.128,52.32.178.7"
+    )
 
     @property
     def tv_allowed_ips(self) -> set[str]:

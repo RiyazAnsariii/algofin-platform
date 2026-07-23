@@ -46,6 +46,7 @@ def _get_sender_ip(request: Request) -> str | None:
 
 # ── TradingView Webhook Receiver ─────────────────────────────────────────────
 
+
 @router.post(
     "/tv/{strategy_id}",
     response_model=WebhookResponse,
@@ -122,6 +123,7 @@ async def tradingview_webhook(
 
 # ── Webhook Health (authenticated) ───────────────────────────────────────────
 
+
 @router.get(
     "/health",
     summary="Webhook engine health",
@@ -134,6 +136,7 @@ async def webhook_health(current_user: CurrentUser) -> dict:
     """
     try:
         from app.adapters.redis_queue import RedisQueueAdapter
+
         redis = await get_redis_client()
         q = RedisQueueAdapter(redis)
 
@@ -156,7 +159,9 @@ async def webhook_health(current_user: CurrentUser) -> dict:
             "dlq_depth": dlq_depth,
             "worker": {
                 "status": worker_status,
-                "heartbeat_age_seconds": round(heartbeat_age, 1) if heartbeat_age else None,
+                "heartbeat_age_seconds": round(heartbeat_age, 1)
+                if heartbeat_age
+                else None,
             },
             "alerts": {
                 "queue_depth_critical": queue_depth > 50,
@@ -170,5 +175,9 @@ async def webhook_health(current_user: CurrentUser) -> dict:
             "queue_depth": -1,
             "dlq_depth": -1,
             "worker": {"status": "unknown", "heartbeat_age_seconds": None},
-            "alerts": {"queue_depth_critical": False, "dlq_has_items": False, "worker_dead": True},
+            "alerts": {
+                "queue_depth_critical": False,
+                "dlq_has_items": False,
+                "worker_dead": True,
+            },
         }

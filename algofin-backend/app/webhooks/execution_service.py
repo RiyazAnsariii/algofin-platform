@@ -25,17 +25,13 @@ import logging
 import time
 import uuid
 from datetime import datetime, timezone
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal
 
 from sqlalchemy import select
-from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.exc import IntegrityError, OperationalError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.config import settings
 from app.models.strategy import Strategy, ExecutionRecord, DomainEventOutbox
-from app.models.risk import RiskRule, RiskViolation
-from app.orders.schemas import PlaceOrderRequest
 from app.ports.repositories import SignalReadModel
 from app.webhooks.signal_service import SignalService, SignalStatus
 
@@ -106,6 +102,7 @@ class ExecutionService:
 
         # ── Step 2: Load signal read model (BC2 → BC3 boundary) ──────────────
         from app.adapters.postgres_signal_repo import PostgresSignalRepository
+
         signal_repo = PostgresSignalRepository(self._db)
         signal = await signal_repo.find_for_execution(signal_id)
 
@@ -126,7 +123,7 @@ class ExecutionService:
                 .with_for_update(nowait=True)
             )
             strategy = result.scalar_one_or_none()
-        except OperationalError as exc:
+        except OperationalError:
             # Lock not available — another worker is processing this strategy
             duration_ms = int(time.time() * 1000) - start_ms
             logger.info(
@@ -146,13 +143,16 @@ class ExecutionService:
 
         # ── Step 4: Strategy status guard ─────────────────────────────────────
         if strategy.status == "paused":
-            await self._signal_svc.update_status(signal_id, SignalStatus.STRATEGY_PAUSED)
+            await self._signal_svc.update_status(
+                signal_id, SignalStatus.STRATEGY_PAUSED
+            )
             await self._db.commit()
             return SignalStatus.STRATEGY_PAUSED
 
         if strategy.status != "active":
             await self._signal_svc.update_status(
-                signal_id, SignalStatus.FAILED,
+                signal_id,
+                SignalStatus.FAILED,
                 error=f"Strategy is {strategy.status!r}, not active",
             )
             await self._db.commit()
@@ -255,7 +255,7 @@ class ExecutionService:
         risk_result: "PASS" | "BLOCK"
         """
         try:
-            from app.risk.engine import evaluate_rules, RiskViolationError
+            from app.risk.engine import evaluate_rules
             from app.orders.schemas import PlaceOrderRequest
 
             # Build a synthetic PlaceOrderRequest for the risk engine
@@ -271,6 +271,7 @@ class ExecutionService:
             # Get all exchange account IDs for daily PnL calculation
             from sqlalchemy import select as sa_select
             from app.models.exchange import UserExchangeAccount
+
             acct_result = await self._db.execute(
                 sa_select(UserExchangeAccount.id).where(
                     UserExchangeAccount.user_id == user_id,
@@ -280,6 +281,7 @@ class ExecutionService:
             all_account_ids = [str(r) for r in acct_result.scalars().all()]
 
             from app.database import get_redis_client
+
             redis = await get_redis_client()
 
             await evaluate_rules(

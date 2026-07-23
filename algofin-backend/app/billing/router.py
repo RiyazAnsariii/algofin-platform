@@ -11,11 +11,8 @@
 #   Fees are calculated and displayed for transparency — NOT collected.
 #   No payment integration in v1.
 
-from datetime import date
-from decimal import Decimal
 
 from fastapi import APIRouter
-from sqlalchemy import select
 
 from app.billing.service import get_or_create_current_period, list_period_history
 from app.common.deps import CurrentUser, DbSession
@@ -36,17 +33,19 @@ async def current_period(
     UI label: "Estimated monthly fee" — never "Invoice" or "Performance fee".
     """
     period = await get_or_create_current_period(db, user_id=str(current_user.id))
-    return SuccessResponse(data={
-        "id":                     str(period.id),
-        "period_start":           period.period_start.isoformat(),
-        "period_end":             period.period_end.isoformat(),
-        # Locked field names (plan.md Section 9)
-        "total_realized_pnl":     float(period.total_realized_pnl),
-        "performance_fee_rate":   float(period.performance_fee_rate),
-        "performance_fee_amount": float(period.performance_fee_amount),
-        "status":                 period.status,
-        "notes":                  period.notes,
-    })
+    return SuccessResponse(
+        data={
+            "id": str(period.id),
+            "period_start": period.period_start.isoformat(),
+            "period_end": period.period_end.isoformat(),
+            # Locked field names (plan.md Section 9)
+            "total_realized_pnl": float(period.total_realized_pnl),
+            "performance_fee_rate": float(period.performance_fee_rate),
+            "performance_fee_amount": float(period.performance_fee_amount),
+            "status": period.status,
+            "notes": period.notes,
+        }
+    )
 
 
 @router.get("/periods", response_model=SuccessResponse[list[dict]])
@@ -56,16 +55,18 @@ async def period_history(
 ) -> SuccessResponse[list[dict]]:
     """List all billing periods for the current user."""
     periods = await list_period_history(db, user_id=str(current_user.id))
-    return SuccessResponse(data=[
-        {
-            "id":                     str(p.id),
-            "period_start":           p.period_start.isoformat(),
-            "period_end":             p.period_end.isoformat(),
-            "total_realized_pnl":     float(p.total_realized_pnl),
-            "performance_fee_rate":   float(p.performance_fee_rate),
-            "performance_fee_amount": float(p.performance_fee_amount),
-            "status":                 p.status,
-            "notes":                  p.notes,
-        }
-        for p in periods
-    ])
+    return SuccessResponse(
+        data=[
+            {
+                "id": str(p.id),
+                "period_start": p.period_start.isoformat(),
+                "period_end": p.period_end.isoformat(),
+                "total_realized_pnl": float(p.total_realized_pnl),
+                "performance_fee_rate": float(p.performance_fee_rate),
+                "performance_fee_amount": float(p.performance_fee_amount),
+                "status": p.status,
+                "notes": p.notes,
+            }
+            for p in periods
+        ]
+    )

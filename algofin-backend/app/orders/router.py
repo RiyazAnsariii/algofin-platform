@@ -22,7 +22,9 @@ router = APIRouter(prefix="/orders", tags=["Orders"])
 
 
 # ── POST /orders — Place order ────────────────────────────────────────────────
-@router.post("", response_model=SuccessResponse[OrderOut], status_code=status.HTTP_201_CREATED)
+@router.post(
+    "", response_model=SuccessResponse[OrderOut], status_code=status.HTTP_201_CREATED
+)
 async def place_order(
     req: PlaceOrderRequest,
     current_user: CurrentUser,
@@ -39,12 +41,20 @@ async def place_order(
             req=req,
         )
     except PermissionError:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized for this account")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized for this account",
+        )
     except ValueError:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid order request")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid order request"
+        )
     except Exception as exc:
         logger.exception(f"Order placement failed: {exc}")
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Order could not be placed")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Order could not be placed",
+        )
 
     return SuccessResponse(data=OrderOut.model_validate(order))
 
@@ -55,7 +65,9 @@ async def list_orders(
     current_user: CurrentUser,
     db: DbSession,
     symbol: str | None = Query(None, description="Filter by symbol e.g. BTCUSDT"),
-    order_status: str | None = Query(None, alias="status", description="Filter by status"),
+    order_status: str | None = Query(
+        None, alias="status", description="Filter by status"
+    ),
     limit: int = Query(50, ge=1, le=200),
 ) -> SuccessResponse[list[OrderOut]]:
     """List orders placed through AlgoFin, most recent first."""
@@ -76,12 +88,6 @@ async def get_order(
     current_user: CurrentUser,
     db: DbSession,
 ) -> SuccessResponse[OrderOut]:
-    """Get a single order by AlgoFin order ID."""
-    orders = await service.list_orders(
-        db,
-        user_id=str(current_user.id),
-        limit=1,
-    )
     # Filter inline (list_orders is the shared path; single-order fetch is low-volume)
     from sqlalchemy import select
     from app.models.exchange import UserExchangeAccount
@@ -89,7 +95,10 @@ async def get_order(
 
     result = await db.execute(
         select(OrderModel)
-        .join(UserExchangeAccount, OrderModel.exchange_account_id == UserExchangeAccount.id)
+        .join(
+            UserExchangeAccount,
+            OrderModel.exchange_account_id == UserExchangeAccount.id,
+        )
         .where(
             OrderModel.id == str(order_id),
             UserExchangeAccount.user_id == str(current_user.id),

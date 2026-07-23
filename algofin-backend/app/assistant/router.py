@@ -8,7 +8,6 @@ import json
 
 from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
-from sqlalchemy import select
 
 from app.assistant.schemas import SendMessageRequest
 from app.assistant.service import (
@@ -44,7 +43,7 @@ async def send_message(
         event_generator(),
         media_type="text/event-stream",
         headers={
-            "Cache-Control":    "no-cache",
+            "Cache-Control": "no-cache",
             "X-Accel-Buffering": "no",
         },
     )
@@ -57,22 +56,24 @@ async def get_thread(
 ) -> SuccessResponse[dict]:
     """Get or create the user's persistent chat thread + last 40 messages."""
     user_id = str(current_user.id)
-    thread  = await get_or_create_thread(db, user_id=user_id)
+    thread = await get_or_create_thread(db, user_id=user_id)
     history = await load_history(db, thread_id=str(thread.id))
 
-    return SuccessResponse(data={
-        "thread_id": str(thread.id),
-        "messages": [
-            {
-                "id":         str(m.id),
-                "role":       m.role,
-                "content":    m.content,
-                "tool_name":  None,   # kept for frontend compat; no per-message tool_name in v1 schema
-                "created_at": m.created_at.isoformat(),
-            }
-            for m in history
-        ],
-    })
+    return SuccessResponse(
+        data={
+            "thread_id": str(thread.id),
+            "messages": [
+                {
+                    "id": str(m.id),
+                    "role": m.role,
+                    "content": m.content,
+                    "tool_name": None,  # kept for frontend compat; no per-message tool_name in v1 schema
+                    "created_at": m.created_at.isoformat(),
+                }
+                for m in history
+            ],
+        }
+    )
 
 
 @router.delete("/thread", response_model=SuccessResponse[dict])

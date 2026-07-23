@@ -24,6 +24,7 @@ class ChatThread(Base):
     One thread per user. Reused across sessions.
     No thread management UI in v1. plan.md Section 6.
     """
+
     __tablename__ = "chat_threads"
 
     id: Mapped[uuid.UUID] = mapped_column(
@@ -36,7 +37,10 @@ class ChatThread(Base):
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now()
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+        onupdate=func.now(),
     )
 
     __table_args__ = (
@@ -46,7 +50,9 @@ class ChatThread(Base):
 
     # Relationships
     messages: Mapped[list["ChatMessage"]] = relationship(
-        back_populates="thread", cascade="all, delete-orphan", order_by="ChatMessage.created_at"
+        back_populates="thread",
+        cascade="all, delete-orphan",
+        order_by="ChatMessage.created_at",
     )
 
 
@@ -56,13 +62,17 @@ class ChatMessage(Base):
     Roles: user | assistant | system.
     Tool call metadata stored as JSON text for audit (plan.md Section 6).
     """
+
     __tablename__ = "chat_messages"
 
     id: Mapped[uuid.UUID] = mapped_column(
         UUIDType, primary_key=True, default=uuid.uuid4
     )
     thread_id: Mapped[uuid.UUID] = mapped_column(
-        UUIDType, ForeignKey("chat_threads.id", ondelete="CASCADE"), nullable=False, index=True
+        UUIDType,
+        ForeignKey("chat_threads.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
     role: Mapped[str] = mapped_column(String(20), nullable=False)
     # "user" | "assistant" | "system"

@@ -26,16 +26,22 @@ class RequestBodySizeLimitMiddleware:
                 break
 
         if content_length > self.max_body_size:
-            logger.warning(f"Request body too large: {content_length} bytes (max {self.max_body_size})")
-            await send({
-                "type": "http.response.start",
-                "status": 413,
-                "headers": [(b"content-type", b"application/json")],
-            })
-            await send({
-                "type": "http.response.body",
-                "body": b'{"success":false,"error":{"code":"PAYLOAD_TOO_LARGE","message":"Request body too large"}}',
-            })
+            logger.warning(
+                f"Request body too large: {content_length} bytes (max {self.max_body_size})"
+            )
+            await send(
+                {
+                    "type": "http.response.start",
+                    "status": 413,
+                    "headers": [(b"content-type", b"application/json")],
+                }
+            )
+            await send(
+                {
+                    "type": "http.response.body",
+                    "body": b'{"success":false,"error":{"code":"PAYLOAD_TOO_LARGE","message":"Request body too large"}}',
+                }
+            )
             return
 
         await self.app(scope, receive, send)

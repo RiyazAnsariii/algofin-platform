@@ -10,7 +10,7 @@ class SendMessageRequest(BaseModel):
 
 
 class MessageResponse(BaseModel):
-    role: str       # "user" | "assistant" | "tool"
+    role: str  # "user" | "assistant" | "tool"
     content: str
     thread_id: str
     message_id: str

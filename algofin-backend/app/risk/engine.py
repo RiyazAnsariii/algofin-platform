@@ -14,7 +14,6 @@ from __future__ import annotations
 import json
 import logging
 import time
-import uuid
 from datetime import date, datetime, timezone
 from decimal import Decimal
 from typing import TYPE_CHECKING
@@ -22,7 +21,6 @@ from typing import TYPE_CHECKING
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.order import Order
 from app.models.risk import RiskRule, RiskViolation
 from app.models.trading import Position, Trade
 from app.marketdata.normalizer import RiskEvent, _next_seq
@@ -41,8 +39,9 @@ def risk_event_channel(user_id: str) -> str:
 
 class RiskViolationError(Exception):
     """Raised when a risk rule blocks an order (action='reject')."""
+
     def __init__(self, rule: RiskRule, current_value: float) -> None:
-        self.rule          = rule
+        self.rule = rule
         self.current_value = current_value
         super().__init__(
             f"Risk rule '{rule.name}' triggered: "
@@ -56,7 +55,7 @@ async def evaluate_rules(
     user_id: str,
     req: "PlaceOrderRequest",
     account_ids: list[str],
-    redis_client,          # type: ignore[no-untyped-def]
+    redis_client,  # type: ignore[no-untyped-def]
 ) -> None:
     """
     Evaluate all active risk rules for the user before placing an order.
@@ -66,17 +65,18 @@ async def evaluate_rules(
     """
     # Load all active rules for this user (symbol-global first, then symbol-specific)
     result = await db.execute(
-        select(RiskRule).where(
+        select(RiskRule)
+        .where(
             RiskRule.user_id == user_id,
             RiskRule.is_active == True,  # noqa: E712
-        ).order_by(RiskRule.created_at)
+        )
+        .order_by(RiskRule.created_at)
     )
     rules = list(result.scalars().all())
     if not rules:
         return
 
     symbol = req.symbol.upper()
-    now    = datetime.now(timezone.utc)
 
     for rule in rules:
         # Skip symbol-scoped rules that don't apply to this order's symbol
@@ -84,21 +84,30 @@ async def evaluate_rules(
             continue
 
         current_value = await _evaluate_single_rule(
-            db, rule=rule, user_id=user_id,
-            account_ids=account_ids, req=req, symbol=symbol,
+            db,
+            rule=rule,
+            user_id=user_id,
+            account_ids=account_ids,
+            req=req,
+            symbol=symbol,
         )
 
         if current_value is None:
-            continue   # rule type not applicable (e.g. no data yet)
+            continue  # rule type not applicable (e.g. no data yet)
 
-        triggered = _check_threshold(rule.rule_type, current_value, float(rule.threshold))
+        triggered = _check_threshold(
+            rule.rule_type, current_value, float(rule.threshold)
+        )
         if not triggered:
             continue
 
         # ── Rule triggered ────────────────────────────────────────────────────
         violation = await _log_violation(
-            db, rule=rule, user_id=user_id,
-            current_value=current_value, symbol=symbol,
+            db,
+            rule=rule,
+            user_id=user_id,
+            current_value=current_value,
+            symbol=symbol,
             action_taken="order_rejected" if rule.action == "reject" else "alert_sent",
         )
 
@@ -133,7 +142,9 @@ async def _evaluate_single_rule(
         return await _daily_realized_pnl(db, account_ids=account_ids)
 
     elif rule.rule_type == "MAX_POSITION_SIZE":
-        return await _current_position_size(db, account_ids=account_ids, symbol=symbol, req=req)
+        return await _current_position_size(
+            db, account_ids=account_ids, symbol=symbol, req=req
+        )
 
     elif rule.rule_type == "MAX_OPEN_POSITIONS":
         return await _open_position_count(db, account_ids=account_ids)
@@ -163,6 +174,7 @@ def _check_threshold(rule_type: str, current: float, threshold: float) -> bool:
 
 # ── Metric calculators ────────────────────────────────────────────────────────
 
+
 async def _daily_realized_pnl(db: AsyncSession, *, account_ids: list[str]) -> float:
     """Sum today's realized_pnl from the trades table."""
     today = date.today()
@@ -188,7 +200,7 @@ async def _current_position_size(
     Ignores reduce_only orders (they close, not open).
     """
     if req.reduce_only:
-        return 0.0   # reduce-only can never increase position
+        return 0.0  # reduce-only can never increase position
 
     result = await db.execute(
         select(func.coalesce(func.sum(Position.size), 0)).where(
@@ -212,6 +224,7 @@ async def _open_position_count(db: AsyncSession, *, account_ids: list[str]) -> f
 
 
 # ── Violation log ─────────────────────────────────────────────────────────────
+
 
 async def _log_violation(
     db: AsyncSession,
@@ -239,11 +252,12 @@ async def _log_violation(
     rule.triggered_count += 1
     rule.last_triggered_at = datetime.now(timezone.utc)
 
-    await db.flush()   # get violation.id before publishing event
+    await db.flush()  # get violation.id before publishing event
     return violation
 
 
 # ── Risk event publisher ──────────────────────────────────────────────────────
+
 
 async def _publish_risk_event(
     redis_client,

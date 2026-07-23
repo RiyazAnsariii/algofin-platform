@@ -17,18 +17,20 @@ from typing import Protocol, runtime_checkable
 # Read models define exactly what data crosses a context boundary.
 # They are frozen (immutable) value objects, not ORM entities.
 
+
 @dataclass(frozen=True)
 class StrategyReadModel:
     """
     Data from Strategy Context that Signal Context needs at signal receipt time.
     BC1 → BC2 contract: only this data crosses the boundary.
     """
+
     id: uuid.UUID
     user_id: uuid.UUID
-    status: str                    # must be "active" to accept signals
-    is_test_mode: bool             # True → signals logged but not executed
-    current_version: int           # recorded on signal for Pine audit trail
-    exchange_account_id: uuid.UUID # which account to trade on
+    status: str  # must be "active" to accept signals
+    is_test_mode: bool  # True → signals logged but not executed
+    current_version: int  # recorded on signal for Pine audit trail
+    exchange_account_id: uuid.UUID  # which account to trade on
 
 
 @dataclass(frozen=True)
@@ -37,18 +39,20 @@ class SignalReadModel:
     Data from Signal Context that Execution Context needs to process a signal.
     BC2 → BC3 contract: only this data crosses the boundary.
     """
+
     id: uuid.UUID
     strategy_id: uuid.UUID
     user_id: uuid.UUID
-    action: str                    # "buy" | "sell"
+    action: str  # "buy" | "sell"
     ticker: str
     contracts: Decimal | None
     price: Decimal | None
     is_test: bool
-    exchange_account_id: uuid.UUID # resolved from strategy at receipt time
+    exchange_account_id: uuid.UUID  # resolved from strategy at receipt time
 
 
 # ── Repository Ports ─────────────────────────────────────────────────────────
+
 
 @runtime_checkable
 class StrategyRepository(Protocol):
@@ -66,7 +70,9 @@ class StrategyRepository(Protocol):
         """
         ...
 
-    async def find_by_id(self, strategy_id: uuid.UUID, user_id: uuid.UUID) -> object | None:
+    async def find_by_id(
+        self, strategy_id: uuid.UUID, user_id: uuid.UUID
+    ) -> object | None:
         """
         Returns full Strategy ORM object for authorized user.
         Used by StrategyService for lifecycle operations.

@@ -83,7 +83,9 @@ async def validate_telegram_config(bot_token: str, chat_id: str) -> tuple[bool, 
             if resp.status_code == 401:
                 return False, "Invalid bot token. Check your token from @BotFather."
             if not resp.json().get("ok"):
-                return False, "Telegram API error: " + resp.json().get("description", "unknown")
+                return False, "Telegram API error: " + resp.json().get(
+                    "description", "unknown"
+                )
     except Exception:
         pass
 
@@ -91,6 +93,7 @@ async def validate_telegram_config(bot_token: str, chat_id: str) -> tuple[bool, 
 
 
 # ── Message formatters ─────────────────────────────────────────────────────
+
 
 def fmt_order_filled(symbol: str, side: str, qty: str, price: str | None) -> str:
     price_line = f"\nAvg Price: <code>${float(price):,.2f}</code>" if price else ""

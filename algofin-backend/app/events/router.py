@@ -60,20 +60,22 @@ async def list_events(
             fetched = fetched.replace(tzinfo=timezone.utc)
         return (now - fetched) > stale_threshold
 
-    return SuccessResponse(data=[
-        {
-            "id":         str(e.id),
-            "title":      e.title,
-            "currency":   e.currency,
-            "country":    e.country,
-            "impact":     e.impact,
-            "event_time": e.event_time.isoformat(),
-            "forecast":   e.forecast,
-            "previous":   e.previous,
-            "actual":     e.actual,
-            "source":     e.source,
-            "fetched_at": e.fetched_at.isoformat(),
-            "is_stale":   _is_stale(e),
-        }
-        for e in events
-    ])
+    return SuccessResponse(
+        data=[
+            {
+                "id": str(e.id),
+                "title": e.title,
+                "currency": e.currency,
+                "country": e.country,
+                "impact": e.impact,
+                "event_time": e.event_time.isoformat(),
+                "forecast": e.forecast,
+                "previous": e.previous,
+                "actual": e.actual,
+                "source": e.source,
+                "fetched_at": e.fetched_at.isoformat(),
+                "is_stale": _is_stale(e),
+            }
+            for e in events
+        ]
+    )

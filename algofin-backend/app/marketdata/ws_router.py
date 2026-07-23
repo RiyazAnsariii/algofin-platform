@@ -27,10 +27,10 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/marketdata", tags=["Market Data"])
 
 # ── Protocol constants ────────────────────────────────────────────────────────
-PROTOCOL_VERSION  = 1
-AUTH_TIMEOUT_SEC  = 5.0   # close with 4001 if auth not received in time
+PROTOCOL_VERSION = 1
+AUTH_TIMEOUT_SEC = 5.0  # close with 4001 if auth not received in time
 PING_INTERVAL_SEC = 30.0  # server pings client every 30s
-PONG_TIMEOUT_SEC  = 10.0  # client must pong within 10s or server closes
+PONG_TIMEOUT_SEC = 10.0  # client must pong within 10s or server closes
 
 
 def _msg(**kwargs: Any) -> str:
@@ -82,7 +82,7 @@ async def marketdata_ws(ws: WebSocket) -> None:
         return
 
     # ── Session state ────────────────────────────────────────────
-    subscribed_symbols: set[str] = set()   # user's current symbol filter
+    subscribed_symbols: set[str] = set()  # user's current symbol filter
 
     # ── Redis pub/sub ────────────────────────────────────────────
     # Two channels:
@@ -92,12 +92,12 @@ async def marketdata_ws(ws: WebSocket) -> None:
     from app.marketdata.binance_user_stream import order_event_channel
     from app.risk.engine import risk_event_channel  # v2 Phase D
 
-    redis  = await get_redis_client()
+    redis = await get_redis_client()
     pubsub = redis.pubsub()
     await pubsub.subscribe(
         REDIS_CHANNEL,
         order_event_channel(user_id),
-        risk_event_channel(user_id),    # v2 Phase D
+        risk_event_channel(user_id),  # v2 Phase D
     )
 
     # ── Async tasks ───────────────────────────────────────────────────────────
@@ -135,16 +135,17 @@ async def marketdata_ws(ws: WebSocket) -> None:
             if ws.client_state != WebSocketState.CONNECTED:
                 break
             import time
-            await ws.send_text(
-                _msg(type="ping", timestamp=int(time.time() * 1000))
-            )
+
+            await ws.send_text(_msg(type="ping", timestamp=int(time.time() * 1000)))
 
     async def receive_messages() -> None:
         """Handle incoming client messages (subscribe / unsubscribe / pong)."""
         nonlocal subscribed_symbols
         while True:
             try:
-                raw = await asyncio.wait_for(ws.receive_text(), timeout=PING_INTERVAL_SEC + PONG_TIMEOUT_SEC)
+                raw = await asyncio.wait_for(
+                    ws.receive_text(), timeout=PING_INTERVAL_SEC + PONG_TIMEOUT_SEC
+                )
             except asyncio.TimeoutError:
                 # Client has not sent pong in time — close connection
                 logger.warning(f"[MarketDataWS] User {user_id} pong timeout.")
@@ -165,24 +166,30 @@ async def marketdata_ws(ws: WebSocket) -> None:
                 subscribed_symbols.update(new_symbols)
                 # Register with the Global Symbol Registry → may trigger stream rebuild
                 await register_symbols(new_symbols)
-                await ws.send_text(_msg(type="subscribed", symbols=sorted(subscribed_symbols)))
+                await ws.send_text(
+                    _msg(type="subscribed", symbols=sorted(subscribed_symbols))
+                )
                 logger.info(f"[MarketDataWS] User {user_id} subscribed: {new_symbols}")
 
             elif msg_type == "unsubscribe":
                 remove = {s.upper() for s in msg.get("symbols", [])}
                 subscribed_symbols -= remove
-                await ws.send_text(_msg(type="unsubscribed", symbols=sorted(subscribed_symbols)))
+                await ws.send_text(
+                    _msg(type="unsubscribed", symbols=sorted(subscribed_symbols))
+                )
 
             elif msg_type == "pong":
                 # Heartbeat acknowledged — no action needed, timer resets naturally
                 pass
 
             else:
-                await ws.send_text(_msg(
-                    type="error",
-                    code=4000,
-                    reason=f"unknown message type: {msg_type}",
-                ))
+                await ws.send_text(
+                    _msg(
+                        type="error",
+                        code=4000,
+                        reason=f"unknown message type: {msg_type}",
+                    )
+                )
 
     # ── Run all tasks concurrently ──────────────────────────────────────────
     try:
@@ -198,9 +205,9 @@ async def marketdata_ws(ws: WebSocket) -> None:
         try:
             from app.marketdata.binance_user_stream import order_event_channel as _oec
             from app.risk.engine import risk_event_channel as _rec
+
             await pubsub.unsubscribe(REDIS_CHANNEL, _oec(user_id), _rec(user_id))
             await pubsub.close()
         except Exception:
             pass
         logger.info(f"[MarketDataWS] User {user_id} disconnected.")
-

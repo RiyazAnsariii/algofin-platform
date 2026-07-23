@@ -4,7 +4,7 @@
 # GET /positions        — open positions
 # GET /trades           — recent trades
 
-from datetime import date, datetime, timezone
+from datetime import date, datetime
 
 from fastapi import APIRouter, Query
 from sqlalchemy import func, select
@@ -41,17 +41,19 @@ async def portfolio_summary(
     account_ids = [str(a.id) for a in accounts]
 
     if not account_ids:
-        return SuccessResponse(data={
-            "total_value_usdt":   0.0,
-            "open_positions":     0,
-            "realized_pnl_mtd":   0.0,
-            "connected_accounts": 0,
-            "data_freshness": {
-                "balances":  {"synced_at": None, "is_stale": True},
-                "positions": {"synced_at": None, "is_stale": True},
-                "trades":    {"synced_at": None, "is_stale": True},
-            },
-        })
+        return SuccessResponse(
+            data={
+                "total_value_usdt": 0.0,
+                "open_positions": 0,
+                "realized_pnl_mtd": 0.0,
+                "connected_accounts": 0,
+                "data_freshness": {
+                    "balances": {"synced_at": None, "is_stale": True},
+                    "positions": {"synced_at": None, "is_stale": True},
+                    "trades": {"synced_at": None, "is_stale": True},
+                },
+            }
+        )
 
     # Total USDT wallet balance
     bal_result = await db.execute(
@@ -108,13 +110,15 @@ async def portfolio_summary(
         balances_synced_at, positions_synced_at, trades_synced_at
     )
 
-    return SuccessResponse(data={
-        "total_value_usdt":   round(total_value, 2),
-        "open_positions":     open_positions,
-        "realized_pnl_mtd":   float(pnl_result.total_realized_pnl),
-        "connected_accounts": len(accounts),
-        "data_freshness":     data_freshness,
-    })
+    return SuccessResponse(
+        data={
+            "total_value_usdt": round(total_value, 2),
+            "open_positions": open_positions,
+            "realized_pnl_mtd": float(pnl_result.total_realized_pnl),
+            "connected_accounts": len(accounts),
+            "data_freshness": data_freshness,
+        }
+    )
 
 
 @router.get("/positions", response_model=SuccessResponse[list[dict]])
@@ -135,29 +139,31 @@ async def list_positions(
         return SuccessResponse(data=[])
 
     pos_result = await db.execute(
-        select(Position).where(
-            Position.exchange_account_id.in_(account_ids)
-        ).order_by(Position.synced_at.desc())
+        select(Position)
+        .where(Position.exchange_account_id.in_(account_ids))
+        .order_by(Position.synced_at.desc())
     )
     positions = pos_result.scalars().all()
 
-    return SuccessResponse(data=[
-        {
-            "id":                  str(p.id),
-            "exchange_account_id": str(p.exchange_account_id),
-            "symbol":              p.symbol,
-            "side":                p.side,
-            "size":                float(p.size),
-            "entry_price":         float(p.entry_price),
-            "mark_price":          float(p.mark_price),
-            "unrealized_pnl":      float(p.unrealized_pnl),
-            # unrealized_pnl: display only — excluded from billing
-            "leverage":            float(p.leverage),
-            "margin_type":         p.margin_type,
-            "last_updated_at":     p.last_updated_at.isoformat(),
-        }
-        for p in positions
-    ])
+    return SuccessResponse(
+        data=[
+            {
+                "id": str(p.id),
+                "exchange_account_id": str(p.exchange_account_id),
+                "symbol": p.symbol,
+                "side": p.side,
+                "size": float(p.size),
+                "entry_price": float(p.entry_price),
+                "mark_price": float(p.mark_price),
+                "unrealized_pnl": float(p.unrealized_pnl),
+                # unrealized_pnl: display only — excluded from billing
+                "leverage": float(p.leverage),
+                "margin_type": p.margin_type,
+                "last_updated_at": p.last_updated_at.isoformat(),
+            }
+            for p in positions
+        ]
+    )
 
 
 @router.get("/trades", response_model=SuccessResponse[list[dict]])
@@ -179,27 +185,28 @@ async def list_trades(
         return SuccessResponse(data=[])
 
     trade_result = await db.execute(
-        select(Trade).where(
-            Trade.exchange_account_id.in_(account_ids)
-        )
+        select(Trade)
+        .where(Trade.exchange_account_id.in_(account_ids))
         .order_by(Trade.trade_time.desc())
         .limit(limit)
     )
     trades = trade_result.scalars().all()
 
-    return SuccessResponse(data=[
-        {
-            "id":                  str(t.id),
-            "exchange_account_id": str(t.exchange_account_id),
-            "order_id":            t.order_id,
-            "symbol":              t.symbol,
-            "side":                t.side,
-            "price":               float(t.price),
-            "qty":                 float(t.qty),
-            "realized_pnl":        float(t.realized_pnl),
-            "commission":          float(t.commission),
-            "commission_asset":    t.commission_asset,
-            "trade_time":          t.trade_time.isoformat(),
-        }
-        for t in trades
-    ])
+    return SuccessResponse(
+        data=[
+            {
+                "id": str(t.id),
+                "exchange_account_id": str(t.exchange_account_id),
+                "order_id": t.order_id,
+                "symbol": t.symbol,
+                "side": t.side,
+                "price": float(t.price),
+                "qty": float(t.qty),
+                "realized_pnl": float(t.realized_pnl),
+                "commission": float(t.commission),
+                "commission_asset": t.commission_asset,
+                "trade_time": t.trade_time.isoformat(),
+            }
+            for t in trades
+        ]
+    )

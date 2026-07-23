@@ -18,7 +18,7 @@ from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Any
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, Field, field_validator
 
 
 class TVWebhookPayload(BaseModel):
@@ -114,6 +114,7 @@ class TVWebhookPayload(BaseModel):
 # Architecture rule: webhook always returns HTTP 200 with {"status": "..."}
 # NEVER return 4xx/5xx to TradingView (it retries on non-200).
 
+
 class WebhookResponse(BaseModel):
     """
     Standard webhook response.
@@ -123,5 +124,6 @@ class WebhookResponse(BaseModel):
       "invalid"       — payload validation failed (generic — no detail exposed)
       "duplicate"     — idempotency key already seen
     """
+
     status: str
     signal_id: str | None = None  # UUID of created signal (for debugging)

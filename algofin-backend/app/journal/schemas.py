@@ -1,8 +1,7 @@
 # app/journal/schemas.py
 # AlgoFin v2 — Phase G: Journal & Analytics Pydantic schemas
 
-from datetime import date, datetime
-from decimal import Decimal
+from datetime import date
 from typing import Literal
 
 from pydantic import BaseModel, Field, field_validator
@@ -81,6 +80,7 @@ class JournalEntryResponse(BaseModel):
 
 # ── Analytics ──────────────────────────────────────────────────────────────
 
+
 class DailyPnL(BaseModel):
     date: str
     pnl: str
@@ -107,13 +107,13 @@ class AnalyticsSummary(BaseModel):
     total_trades: int
     realized_pnl: str
     total_commission: str
-    net_pnl: str          # realized_pnl − commission
+    net_pnl: str  # realized_pnl − commission
 
     # Performance
     win_count: int
     loss_count: int
-    win_rate: float        # 0.0 – 1.0
-    profit_factor: float   # gross_profit / abs(gross_loss); 0 if no losses
+    win_rate: float  # 0.0 – 1.0
+    profit_factor: float  # gross_profit / abs(gross_loss); 0 if no losses
     avg_win: str
     avg_loss: str
     avg_trade: str

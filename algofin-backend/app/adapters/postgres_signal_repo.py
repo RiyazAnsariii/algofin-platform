@@ -21,6 +21,7 @@ from app.ports.repositories import SignalReadModel
 
 # ── PostgresSignalRepository ─────────────────────────────────────────────────
 
+
 class PostgresSignalRepository:
     """
     PostgreSQL implementation of SignalRepository.
@@ -108,9 +109,12 @@ class PostgresSignalRepository:
             .values(**values)
         )
 
-    async def find_stuck_processing(self, older_than_minutes: int = 5) -> list[StrategySignal]:
+    async def find_stuck_processing(
+        self, older_than_minutes: int = 5
+    ) -> list[StrategySignal]:
         """Signals stuck in PROCESSING state — for reconciliation job."""
         from datetime import timedelta
+
         cutoff = datetime.now(timezone.utc) - timedelta(minutes=older_than_minutes)
         result = await self._db.execute(
             select(StrategySignal).where(
@@ -142,6 +146,7 @@ class PostgresSignalRepository:
 
 
 # ── PostgresExecutionRepository ───────────────────────────────────────────────
+
 
 class PostgresExecutionRepository:
     """
@@ -187,6 +192,7 @@ class PostgresExecutionRepository:
 
 
 # ── PostgresAuditAdapter ──────────────────────────────────────────────────────
+
 
 class PostgresAuditAdapter:
     """
@@ -243,6 +249,7 @@ class PostgresAuditAdapter:
             # Audit log failure must NEVER break the main operation
             # Log to Python logger but do not re-raise
             import logging
+
             logging.getLogger(__name__).error(
                 "AuditPort.log() failed — audit entry may be missing",
                 extra={

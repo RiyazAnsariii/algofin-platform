@@ -12,7 +12,6 @@ from sqlalchemy import (
     ForeignKey,
     func,
     CheckConstraint,
-    UniqueConstraint,
 )
 
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -31,6 +30,7 @@ class UserExchangeAccount(Base):
       Never use exchange_billing_consents for current state.
       Never use this column as audit trail. Both must be updated atomically.
     """
+
     __tablename__ = "user_exchange_accounts"
 
     id: Mapped[uuid.UUID] = mapped_column(
@@ -51,18 +51,27 @@ class UserExchangeAccount(Base):
         String(20), nullable=False, default="pending"
     )
     # values: pending | connected | syncing | error | stale
-    last_sync_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_sync_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
     # Billing consent (current state — see dual-record rule above)
-    billing_consent: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
-    billing_consent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    billing_consent: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False
+    )
+    billing_consent_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now()
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+        onupdate=func.now(),
     )
 
     __table_args__ = (
@@ -73,7 +82,7 @@ class UserExchangeAccount(Base):
     )
 
     # Relationships
-    user: Mapped["User"] = relationship(back_populates="exchange_accounts")  # type: ignore[name-defined]
+    user: Mapped["User"] = relationship(back_populates="exchange_accounts")  # type: ignore[name-defined] # noqa: F821
     credentials: Mapped["EncryptedApiCredential | None"] = relationship(
         back_populates="exchange_account", uselist=False, cascade="all, delete-orphan"
     )
@@ -83,16 +92,16 @@ class UserExchangeAccount(Base):
     sync_runs: Mapped[list["ExchangeSyncRun"]] = relationship(
         back_populates="exchange_account", cascade="all, delete-orphan"
     )
-    balances: Mapped[list["Balance"]] = relationship(  # type: ignore[name-defined]
+    balances: Mapped[list["Balance"]] = relationship(  # type: ignore[name-defined] # noqa: F821
         back_populates="exchange_account", cascade="all, delete-orphan"
     )
-    positions: Mapped[list["Position"]] = relationship(  # type: ignore[name-defined]
+    positions: Mapped[list["Position"]] = relationship(  # type: ignore[name-defined] # noqa: F821
         back_populates="exchange_account", cascade="all, delete-orphan"
     )
-    trades: Mapped[list["Trade"]] = relationship(  # type: ignore[name-defined]
+    trades: Mapped[list["Trade"]] = relationship(  # type: ignore[name-defined] # noqa: F821
         back_populates="exchange_account", cascade="all, delete-orphan"
     )
-    orders: Mapped[list["Order"]] = relationship(  # type: ignore[name-defined]  # v2 Phase B
+    orders: Mapped[list["Order"]] = relationship(  # type: ignore[name-defined]  # v2 Phase B # noqa: F821
         back_populates="exchange_account", cascade="all, delete-orphan"
     )
 
@@ -105,6 +114,7 @@ class EncryptedApiCredential(Base):
     Frontend NEVER sees raw API keys.
     plan.md Section 4.
     """
+
     __tablename__ = "encrypted_api_credentials"
 
     id: Mapped[uuid.UUID] = mapped_column(
@@ -126,11 +136,16 @@ class EncryptedApiCredential(Base):
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now()
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+        onupdate=func.now(),
     )
 
     # Relationships
-    exchange_account: Mapped["UserExchangeAccount"] = relationship(back_populates="credentials")
+    exchange_account: Mapped["UserExchangeAccount"] = relationship(
+        back_populates="credentials"
+    )
 
 
 class ExchangeBillingConsent(Base):
@@ -142,6 +157,7 @@ class ExchangeBillingConsent(Base):
     Dual-record rule: both this table AND user_exchange_accounts.billing_consent
     must be updated atomically on any consent change. plan.md Section 3.
     """
+
     __tablename__ = "exchange_billing_consents"
 
     id: Mapped[uuid.UUID] = mapped_column(
@@ -159,7 +175,9 @@ class ExchangeBillingConsent(Base):
     consent_granted: Mapped[bool] = mapped_column(Boolean, nullable=False)
     # true = consent granted, false = consent revoked
 
-    consent_version: Mapped[str] = mapped_column(String(20), nullable=False, default="v1.0")
+    consent_version: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="v1.0"
+    )
     # version of the consent text shown to the user
 
     consented_at: Mapped[datetime] = mapped_column(
@@ -169,7 +187,9 @@ class ExchangeBillingConsent(Base):
     user_agent: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     # Relationships
-    exchange_account: Mapped["UserExchangeAccount"] = relationship(back_populates="billing_consents")
+    exchange_account: Mapped["UserExchangeAccount"] = relationship(
+        back_populates="billing_consents"
+    )
 
 
 class ExchangeSyncRun(Base):
@@ -178,6 +198,7 @@ class ExchangeSyncRun(Base):
     plan.md Section 3 — exchange_sync_runs spec.
     plan.md Part 0-A — exchange_sync_runs table is required before deploy.
     """
+
     __tablename__ = "exchange_sync_runs"
 
     id: Mapped[uuid.UUID] = mapped_column(
@@ -198,11 +219,15 @@ class ExchangeSyncRun(Base):
     started_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
-    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    finished_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     rows_processed: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
     error_code: Mapped[str | None] = mapped_column(String(50), nullable=True)
-    triggered_by: Mapped[str] = mapped_column(String(30), nullable=False, default="scheduler")
+    triggered_by: Mapped[str] = mapped_column(
+        String(30), nullable=False, default="scheduler"
+    )
     # scheduler | manual | webhook
 
     __table_args__ = (
@@ -221,4 +246,6 @@ class ExchangeSyncRun(Base):
     )
 
     # Relationships
-    exchange_account: Mapped["UserExchangeAccount"] = relationship(back_populates="sync_runs")
+    exchange_account: Mapped["UserExchangeAccount"] = relationship(
+        back_populates="sync_runs"
+    )

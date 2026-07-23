@@ -27,7 +27,7 @@ from decimal import Decimal
 from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.exchange import ExchangeBillingConsent, ExchangeSyncRun, UserExchangeAccount
+from app.models.exchange import ExchangeSyncRun, UserExchangeAccount
 from app.models.trading import Trade
 
 logger = logging.getLogger(__name__)
@@ -39,15 +39,16 @@ class PeriodPnLResult:
     Result of calculate_period_pnl().
     Field names match schema and API contract exactly (plan.md Section 5-A).
     """
+
     # Locked field names — do not alias
-    total_realized_pnl:     Decimal
-    performance_fee_rate:   Decimal
+    total_realized_pnl: Decimal
+    performance_fee_rate: Decimal
     performance_fee_amount: Decimal
 
     # Metadata
     consented_account_ids: list[str]
-    is_complete:           bool  # False if any sync run failed during the period
-    incomplete_reason:     str | None
+    is_complete: bool  # False if any sync run failed during the period
+    incomplete_reason: str | None
 
 
 async def calculate_period_pnl(
@@ -97,8 +98,18 @@ async def calculate_period_pnl(
         )
 
     # ── Step 2: Sum realized PnL from trades in the period ────────
-    period_start_dt = datetime(period_start.year, period_start.month, period_start.day, tzinfo=timezone.utc)
-    period_end_dt   = datetime(period_end.year,   period_end.month,   period_end.day,   23, 59, 59, tzinfo=timezone.utc)
+    period_start_dt = datetime(
+        period_start.year, period_start.month, period_start.day, tzinfo=timezone.utc
+    )
+    period_end_dt = datetime(
+        period_end.year,
+        period_end.month,
+        period_end.day,
+        23,
+        59,
+        59,
+        tzinfo=timezone.utc,
+    )
 
     pnl_result = await db.execute(
         select(func.sum(Trade.realized_pnl)).where(
@@ -131,7 +142,8 @@ async def calculate_period_pnl(
     is_complete = failed_count == 0
     incomplete_reason = (
         f"Fee calculation incomplete — {failed_count} sync run(s) failed during this period"
-        if not is_complete else None
+        if not is_complete
+        else None
     )
 
     # ── Step 4: Compute fee ────────────────────────────────────────

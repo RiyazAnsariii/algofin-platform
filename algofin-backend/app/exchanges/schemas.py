@@ -4,7 +4,7 @@
 
 from pydantic import BaseModel, field_validator
 
-from app.exchanges.registry import EXCHANGE_REGISTRY, VALID_EXCHANGE_IDS
+from app.exchanges.registry import VALID_EXCHANGE_IDS
 
 
 # ── Billing consent payload (per plan.md Section 9 spec) ─────────
@@ -25,7 +25,9 @@ class BillingConsentPayload(BaseModel):
     @classmethod
     def must_be_consented(cls, v: bool) -> bool:
         if not v:
-            raise ValueError("Billing consent is required to connect an exchange account")
+            raise ValueError(
+                "Billing consent is required to connect an exchange account"
+            )
         return v
 
 
@@ -35,7 +37,8 @@ class ConnectExchangeRequest(BaseModel):
     plan.md Section 9 — exact request spec.
     billing_consent is REQUIRED. If missing or consented=false, request is rejected.
     """
-    exchange_id: str        # must be "binance_usdtm" in v1
+
+    exchange_id: str  # must be "binance_usdtm" in v1
     label: str
     api_key: str
     api_secret: str
@@ -77,6 +80,7 @@ class ConnectExchangeRequest(BaseModel):
 
 class ExchangeAccountResponse(BaseModel):
     """Response schema for an exchange account (never exposes raw API keys)."""
+
     id: str
     label: str
     exchange_id: str
@@ -103,10 +107,11 @@ class TriggerSyncRequest(BaseModel):
 
 class ExchangeDefinitionResponse(BaseModel):
     """Public metadata for one exchange — returned by GET /exchanges/supported."""
+
     id: str
     name: str
     display_name: str
-    status: str          # "live" | "coming_soon"
+    status: str  # "live" | "coming_soon"
     markets: list[str]
     requires_passphrase: bool
     logo_letter: str

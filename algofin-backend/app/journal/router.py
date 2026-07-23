@@ -16,8 +16,8 @@ from collections import defaultdict
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 
-from fastapi import APIRouter, HTTPException, Query, status
-from sqlalchemy import select, desc, func
+from fastapi import APIRouter, HTTPException, Query
+from sqlalchemy import select, desc
 
 from app.common.deps import CurrentUser, DbSession
 from app.common.schemas import SuccessResponse
@@ -37,6 +37,7 @@ router = APIRouter(prefix="/journal", tags=["journal"])
 
 
 # ── Journal CRUD ───────────────────────────────────────────────────────────
+
 
 @router.get("/entries", response_model=SuccessResponse[list[JournalEntryResponse]])
 async def list_entries(
@@ -58,7 +59,9 @@ async def list_entries(
     return SuccessResponse(data=[JournalEntryResponse.from_orm_obj(e) for e in entries])
 
 
-@router.post("/entries", response_model=SuccessResponse[JournalEntryResponse], status_code=201)
+@router.post(
+    "/entries", response_model=SuccessResponse[JournalEntryResponse], status_code=201
+)
 async def create_entry(
     body: JournalEntryCreate,
     current_user: CurrentUser,
@@ -97,7 +100,9 @@ async def get_entry(
     return SuccessResponse(data=JournalEntryResponse.from_orm_obj(entry))
 
 
-@router.patch("/entries/{entry_id}", response_model=SuccessResponse[JournalEntryResponse])
+@router.patch(
+    "/entries/{entry_id}", response_model=SuccessResponse[JournalEntryResponse]
+)
 async def update_entry(
     entry_id: str,
     body: JournalEntryUpdate,
@@ -152,6 +157,7 @@ async def delete_entry(
 
 # ── Analytics ──────────────────────────────────────────────────────────────
 
+
 @router.get("/analytics", response_model=SuccessResponse[AnalyticsSummary])
 async def get_analytics(
     current_user: CurrentUser,
@@ -163,10 +169,10 @@ async def get_analytics(
     Pulls from the trades table (Binance fills) for all user exchange accounts.
     """
     tz = timezone.utc
-    to_dt   = datetime.now(tz)
+    to_dt = datetime.now(tz)
     from_dt = to_dt - timedelta(days=days)
-    from_d  = from_dt.date()
-    to_d    = to_dt.date()
+    from_d = from_dt.date()
+    to_d = to_dt.date()
 
     # Get all exchange account IDs for this user
     acct_result = await db.execute(
@@ -182,11 +188,13 @@ async def get_analytics(
 
     # Fetch all trades in the window
     trade_result = await db.execute(
-        select(Trade).where(
+        select(Trade)
+        .where(
             Trade.exchange_account_id.in_(account_ids),
             Trade.trade_time >= from_dt,
             Trade.trade_time <= to_dt,
-        ).order_by(Trade.trade_time)
+        )
+        .order_by(Trade.trade_time)
     )
     trades = trade_result.scalars().all()
 
@@ -197,6 +205,7 @@ async def get_analytics(
 
 
 # ── Analytics computation ──────────────────────────────────────────────────
+
 
 def _empty_summary(days: int, from_d: date, to_d: date) -> AnalyticsSummary:
     return AnalyticsSummary(
@@ -226,14 +235,14 @@ def _empty_summary(days: int, from_d: date, to_d: date) -> AnalyticsSummary:
 def _compute_analytics(trades, days: int, from_d: date, to_d: date) -> AnalyticsSummary:
     ZERO = Decimal("0")
 
-    total_pnl   = ZERO
-    total_comm  = ZERO
-    gross_win   = ZERO
-    gross_loss  = ZERO
-    win_count   = 0
-    loss_count  = 0
-    max_win     = ZERO
-    max_loss    = ZERO   # stored as negative value
+    total_pnl = ZERO
+    total_comm = ZERO
+    gross_win = ZERO
+    gross_loss = ZERO
+    win_count = 0
+    loss_count = 0
+    max_win = ZERO
+    max_loss = ZERO  # stored as negative value
 
     # Daily aggregates: date → {pnl, count}
     daily: dict[str, dict] = defaultdict(lambda: {"pnl": ZERO, "count": 0})
@@ -244,12 +253,12 @@ def _compute_analytics(trades, days: int, from_d: date, to_d: date) -> Analytics
     )
 
     for t in trades:
-        pnl  = Decimal(str(t.realized_pnl))
+        pnl = Decimal(str(t.realized_pnl))
         comm = Decimal(str(t.commission))
-        sym  = t.symbol
-        d    = t.trade_time.date().isoformat()
+        sym = t.symbol
+        d = t.trade_time.date().isoformat()
 
-        total_pnl  += pnl
+        total_pnl += pnl
         total_comm += comm
 
         if pnl > ZERO:
@@ -260,33 +269,34 @@ def _compute_analytics(trades, days: int, from_d: date, to_d: date) -> Analytics
             by_sym[sym]["wins"] += 1
         elif pnl < ZERO:
             loss_count += 1
-            gross_loss += pnl   # negative
+            gross_loss += pnl  # negative
             if pnl < max_loss:
                 max_loss = pnl
             by_sym[sym]["losses"] += 1
 
-        daily[d]["pnl"]   += pnl
+        daily[d]["pnl"] += pnl
         daily[d]["count"] += 1
         by_sym[sym]["count"] += 1
-        by_sym[sym]["pnl"]   += pnl
+        by_sym[sym]["pnl"] += pnl
 
     total_trades = len(trades)
     win_rate = win_count / total_trades if total_trades else 0.0
     profit_factor = (
         float(gross_win / abs(gross_loss))
-        if gross_loss != ZERO else (float("inf") if gross_win > ZERO else 0.0)
+        if gross_loss != ZERO
+        else (float("inf") if gross_win > ZERO else 0.0)
     )
-    profit_factor = min(profit_factor, 9999.0)   # cap for JSON safety
+    profit_factor = min(profit_factor, 9999.0)  # cap for JSON safety
 
-    avg_win   = gross_win / win_count   if win_count   else ZERO
-    avg_loss  = gross_loss / loss_count if loss_count  else ZERO
+    avg_win = gross_win / win_count if win_count else ZERO
+    avg_loss = gross_loss / loss_count if loss_count else ZERO
     avg_trade = total_pnl / total_trades
 
     # Daily PnL series with cumulative
     sorted_days = sorted(daily.keys())
-    cumulative  = ZERO
+    cumulative = ZERO
     daily_series: list[DailyPnL] = []
-    best_day  = ZERO
+    best_day = ZERO
     worst_day = ZERO
     for d in sorted_days:
         dp = daily[d]["pnl"]
@@ -295,12 +305,14 @@ def _compute_analytics(trades, days: int, from_d: date, to_d: date) -> Analytics
             best_day = dp
         if dp < worst_day:
             worst_day = dp
-        daily_series.append(DailyPnL(
-            date=d,
-            pnl=str(round(dp, 4)),
-            trade_count=daily[d]["count"],
-            cumulative_pnl=str(round(cumulative, 4)),
-        ))
+        daily_series.append(
+            DailyPnL(
+                date=d,
+                pnl=str(round(dp, 4)),
+                trade_count=daily[d]["count"],
+                cumulative_pnl=str(round(cumulative, 4)),
+            )
+        )
 
     # Symbol breakdown (top 10)
     sym_list = sorted(by_sym.items(), key=lambda x: x[1]["count"], reverse=True)[:10]

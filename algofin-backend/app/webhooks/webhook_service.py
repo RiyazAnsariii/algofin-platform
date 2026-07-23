@@ -23,17 +23,16 @@
 
 import logging
 import uuid
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
 
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.ports.signal_source import SignalPayload, SignalSourcePort
-from app.ports.repositories import StrategyReadModel
 from app.adapters.postgres_strategy_repo import PostgresStrategyRepository
 from app.webhooks.secret_service import SecretService
-from app.webhooks.signal_service import SignalService, SignalStatus
+from app.webhooks.signal_service import SignalService
 from app.adapters.redis_queue import RedisQueueAdapter
 from app.ports.queue import QueueMessage
 
@@ -172,7 +171,9 @@ class WebhookService:
 
         # ── Step 7: Replay detection ─────────────────────────────────────────
         if signal_payload.tv_timestamp:
-            age = (datetime.now(timezone.utc) - signal_payload.tv_timestamp).total_seconds()
+            age = (
+                datetime.now(timezone.utc) - signal_payload.tv_timestamp
+            ).total_seconds()
             if age > settings.webhook_replay_window_seconds:
                 logger.warning(
                     "Webhook rejected: signal too old (replay attack?)",
@@ -229,7 +230,9 @@ class WebhookService:
             return {"status": "invalid"}
 
         # ── Step 11: Enqueue for worker (only for non-test, active signals) ───
-        is_test_signal = signal.is_test or strategy.is_test_mode or strategy.status == "paused"
+        is_test_signal = (
+            signal.is_test or strategy.is_test_mode or strategy.status == "paused"
+        )
         if not is_test_signal:
             try:
                 await self._queue.enqueue(

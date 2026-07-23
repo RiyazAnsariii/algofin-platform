@@ -6,7 +6,6 @@
 # Business logic lives in StrategyService.
 
 import uuid
-from decimal import Decimal
 
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession

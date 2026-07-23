@@ -9,18 +9,18 @@
 #   coming_soon — UI visible, but connect form is disabled; API stub only
 #   planned     — internal tracking; not visible in UI
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 
 @dataclass(frozen=True)
 class ExchangeDefinition:
-    id: str                   # exchange_id stored in DB (e.g. "binance_usdtm")
-    name: str                 # human-readable (e.g. "Binance")
-    display_name: str         # full display (e.g. "Binance USDT-M Futures")
-    status: str               # "live" | "coming_soon" | "planned"
-    markets: list[str]        # e.g. ["USDT-M Futures"]
+    id: str  # exchange_id stored in DB (e.g. "binance_usdtm")
+    name: str  # human-readable (e.g. "Binance")
+    display_name: str  # full display (e.g. "Binance USDT-M Futures")
+    status: str  # "live" | "coming_soon" | "planned"
+    markets: list[str]  # e.g. ["USDT-M Futures"]
     requires_passphrase: bool = False  # OKX needs a passphrase
-    logo_letter: str = ""     # single letter for placeholder logo
+    logo_letter: str = ""  # single letter for placeholder logo
     description: str = ""
     api_docs_url: str = ""
 
@@ -82,6 +82,8 @@ EXCHANGE_REGISTRY: dict[str, ExchangeDefinition] = {
 }
 
 # Convenience helpers
-LIVE_EXCHANGES      = {k: v for k, v in EXCHANGE_REGISTRY.items() if v.status == "live"}
-ALL_VISIBLE         = {k: v for k, v in EXCHANGE_REGISTRY.items() if v.status in ("live", "coming_soon")}
-VALID_EXCHANGE_IDS  = set(EXCHANGE_REGISTRY.keys())
+LIVE_EXCHANGES = {k: v for k, v in EXCHANGE_REGISTRY.items() if v.status == "live"}
+ALL_VISIBLE = {
+    k: v for k, v in EXCHANGE_REGISTRY.items() if v.status in ("live", "coming_soon")
+}
+VALID_EXCHANGE_IDS = set(EXCHANGE_REGISTRY.keys())

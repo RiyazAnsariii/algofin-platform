@@ -11,9 +11,7 @@
 #
 # System prompt: injected with user's portfolio context on every call.
 
-import json
 import logging
-from datetime import datetime, timezone
 from typing import AsyncGenerator
 
 import google.generativeai as genai
@@ -23,7 +21,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.assistant.tools import GEMINI_TOOL_DECLARATIONS, dispatch_tool
 from app.config import settings
 from app.models.assistant import ChatMessage, ChatThread
-from app.models.user import User
 
 logger = logging.getLogger(__name__)
 
@@ -54,11 +51,10 @@ Always be helpful about trading context (market dynamics, risk, strategy concept
 
 # ── Thread helpers ────────────────────────────────────────────────
 
+
 async def get_or_create_thread(db: AsyncSession, *, user_id: str) -> ChatThread:
     """Get or create the single persistent thread for this user."""
-    result = await db.execute(
-        select(ChatThread).where(ChatThread.user_id == user_id)
-    )
+    result = await db.execute(select(ChatThread).where(ChatThread.user_id == user_id))
     thread = result.scalar_one_or_none()
     if thread is None:
         thread = ChatThread(user_id=user_id)
@@ -96,6 +92,7 @@ async def save_message(
 ) -> ChatMessage:
     """Persist a message to the DB."""
     import json as _json
+
     msg = ChatMessage(
         thread_id=thread_id,
         role=role,
@@ -111,11 +108,13 @@ async def save_message(
 async def clear_thread(db: AsyncSession, *, thread_id: str) -> None:
     """Delete all messages in a thread (keeps the thread row)."""
     from sqlalchemy import delete
+
     await db.execute(delete(ChatMessage).where(ChatMessage.thread_id == thread_id))
     await db.commit()
 
 
 # ── Gemini client builder ─────────────────────────────────────────
+
 
 def _make_tools_proto():
     """Build the Gemini tools proto (shared across model builds)."""
@@ -166,14 +165,13 @@ def _build_gemini_model(model_name: str | None = None) -> genai.GenerativeModel:
 def _get_model_candidates() -> list[str]:
     """Return primary + fallback models to try in order."""
     fallbacks = [
-        m.strip()
-        for m in settings.gemini_fallback_models.split(",")
-        if m.strip()
+        m.strip() for m in settings.gemini_fallback_models.split(",") if m.strip()
     ]
     return [settings.gemini_model] + fallbacks
 
 
 # ── History → Gemini format ───────────────────────────────────────
+
 
 def _messages_to_gemini_history(messages: list[ChatMessage]) -> list[dict]:
     """Convert DB ChatMessage rows to Gemini chat history format."""
@@ -188,6 +186,7 @@ def _messages_to_gemini_history(messages: list[ChatMessage]) -> list[dict]:
 
 
 # ── Main: streaming chat ──────────────────────────────────────────
+
 
 async def chat_stream(
     db: AsyncSession,
@@ -209,7 +208,10 @@ async def chat_stream(
       {"type": "error", "message": "..."}
     """
     if not settings.gemini_api_key:
-        yield {"type": "error", "message": "GEMINI_API_KEY not configured. Get a free key at https://aistudio.google.com/app/apikey"}
+        yield {
+            "type": "error",
+            "message": "GEMINI_API_KEY not configured. Get a free key at https://aistudio.google.com/app/apikey",
+        }
         return
 
     try:
@@ -218,14 +220,15 @@ async def chat_stream(
         history = await load_history(db, thread_id=str(thread.id))
 
         # Save user message to DB
-        await save_message(db, thread_id=str(thread.id), role="user", content=user_message)
+        await save_message(
+            db, thread_id=str(thread.id), role="user", content=user_message
+        )
 
         yield {"type": "start"}
 
         # Try primary model, then fallbacks on quota errors
         model_candidates = _get_model_candidates()
         response = None
-        used_model = None
 
         for attempt, model_name in enumerate(model_candidates):
             try:
@@ -233,15 +236,20 @@ async def chat_stream(
                 gemini_history = _messages_to_gemini_history(history)
                 chat = model.start_chat(history=gemini_history)
                 response = await chat.send_message_async(user_message, stream=False)
-                used_model = model_name
                 if attempt > 0:
                     logger.info(f"[Assistant] Fell back to model: {model_name}")
                 break
             except Exception as model_exc:
                 err_str = str(model_exc)
-                is_quota = "429" in err_str or "ResourceExhausted" in err_str or "quota" in err_str.lower()
+                is_quota = (
+                    "429" in err_str
+                    or "ResourceExhausted" in err_str
+                    or "quota" in err_str.lower()
+                )
                 if is_quota and attempt < len(model_candidates) - 1:
-                    logger.warning(f"[Assistant] Model {model_name} quota exceeded, trying next fallback...")
+                    logger.warning(
+                        f"[Assistant] Model {model_name} quota exceeded, trying next fallback..."
+                    )
                     continue
                 elif is_quota:
                     # All models exhausted
@@ -251,14 +259,17 @@ async def chat_stream(
                             "⚠️ The AI assistant is temporarily unavailable — Gemini API quota has been "
                             "reached for today. This resets at midnight Pacific Time. "
                             "You can try again later or get a new API key at https://aistudio.google.com/app/apikey"
-                        )
+                        ),
                     }
                     return
                 else:
                     raise model_exc
 
         if response is None:
-            yield {"type": "error", "message": "Could not connect to AI model. Please try again."}
+            yield {
+                "type": "error",
+                "message": "Could not connect to AI model. Please try again.",
+            }
             return
 
         # Function calling loop
@@ -325,7 +336,10 @@ async def chat_stream(
 
         # Save assistant response to DB
         saved = await save_message(
-            db, thread_id=str(thread.id), role="assistant", content=full_response.strip()
+            db,
+            thread_id=str(thread.id),
+            role="assistant",
+            content=full_response.strip(),
         )
 
         yield {"type": "done", "message_id": str(saved.id)}
@@ -340,7 +354,7 @@ async def chat_stream(
                     "⚠️ Gemini API quota exceeded for today. The assistant will be available again "
                     "after midnight Pacific Time. You can also get a new API key at "
                     "https://aistudio.google.com/app/apikey"
-                )
+                ),
             }
         else:
             yield {"type": "error", "message": f"Assistant error: {str(exc)}"}

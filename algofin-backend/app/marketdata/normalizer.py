@@ -9,7 +9,6 @@
 from __future__ import annotations
 
 import itertools
-import time
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -41,11 +40,12 @@ class BaseRealtimeEvent:
         ├── RiskEvent         (Phase D)
         └── AlertEvent        (Phase E)
     """
-    type: str           # message discriminator: "price_update", "order_event", …
-    version: int        # protocol version — increment on breaking changes
-    sequence: int       # monotonically increasing per exchange; frontend drops ≤ last seen
-    exchange: str       # "binance" | "bybit" | "okx"
-    event_time: int     # unix ms — from the exchange
+
+    type: str  # message discriminator: "price_update", "order_event", …
+    version: int  # protocol version — increment on breaking changes
+    sequence: int  # monotonically increasing per exchange; frontend drops ≤ last seen
+    exchange: str  # "binance" | "bybit" | "okx"
+    event_time: int  # unix ms — from the exchange
     meta: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
@@ -56,19 +56,20 @@ class BaseRealtimeEvent:
 @dataclass
 class MarketDataEvent(BaseRealtimeEvent):
     """Live mark price update — display only in the frontend."""
+
     symbol: str = ""
     mark_price: float = 0.0
 
     def to_dict(self) -> dict[str, Any]:
         return {
-            "type":       self.type,
-            "version":    self.version,
-            "sequence":   self.sequence,
-            "exchange":   self.exchange,
-            "symbol":     self.symbol,
-            "markPrice":  self.mark_price,
-            "eventTime":  self.event_time,
-            "meta":       self.meta,
+            "type": self.type,
+            "version": self.version,
+            "sequence": self.sequence,
+            "exchange": self.exchange,
+            "symbol": self.symbol,
+            "markPrice": self.mark_price,
+            "eventTime": self.event_time,
+            "meta": self.meta,
         }
 
 
@@ -80,43 +81,44 @@ class OrderEvent(BaseRealtimeEvent):
     Published to Redis algofin:order_events:<user_id>.
     Relayed to the authenticated user's WebSocket connection.
     """
-    order_id:        str   = ""    # Binance order ID (string)
-    algofin_order_id: str  = ""    # Our internal UUID (if placed through AlgoFin)
-    client_order_id: str   = ""    # algofin_<hex> if placed through us
-    symbol:          str   = ""    # e.g. "BTCUSDT"
-    side:            str   = ""    # "BUY" | "SELL"
-    order_type:      str   = ""    # "MARKET" | "LIMIT" | ...
-    status:          str   = ""    # NEW | PARTIALLY_FILLED | FILLED | CANCELLED | EXPIRED
-    quantity:        float = 0.0   # original order quantity
-    filled_qty:      float = 0.0   # cumulative filled quantity
-    avg_price:       float = 0.0   # average fill price (0 for unfilled)
-    price:           float = 0.0   # limit price (0 for MARKET)
-    reduce_only:     bool  = False
+
+    order_id: str = ""  # Binance order ID (string)
+    algofin_order_id: str = ""  # Our internal UUID (if placed through AlgoFin)
+    client_order_id: str = ""  # algofin_<hex> if placed through us
+    symbol: str = ""  # e.g. "BTCUSDT"
+    side: str = ""  # "BUY" | "SELL"
+    order_type: str = ""  # "MARKET" | "LIMIT" | ...
+    status: str = ""  # NEW | PARTIALLY_FILLED | FILLED | CANCELLED | EXPIRED
+    quantity: float = 0.0  # original order quantity
+    filled_qty: float = 0.0  # cumulative filled quantity
+    avg_price: float = 0.0  # average fill price (0 for unfilled)
+    price: float = 0.0  # limit price (0 for MARKET)
+    reduce_only: bool = False
     # user_id is NOT in the payload (user data stream is already user-scoped)
     # included here for Redis channel routing only, stripped before sending to client
-    user_id:         str   = ""
+    user_id: str = ""
 
     def to_dict(self) -> dict[str, Any]:
         """JSON payload sent over WebSocket to the frontend."""
         return {
-            "type":           self.type,
-            "version":        self.version,
-            "sequence":       self.sequence,
-            "exchange":       self.exchange,
-            "orderId":        self.order_id,
+            "type": self.type,
+            "version": self.version,
+            "sequence": self.sequence,
+            "exchange": self.exchange,
+            "orderId": self.order_id,
             "algofinOrderId": self.algofin_order_id,
-            "clientOrderId":  self.client_order_id,
-            "symbol":         self.symbol,
-            "side":           self.side,
-            "orderType":      self.order_type,
-            "status":         self.status,
-            "quantity":       self.quantity,
-            "filledQty":      self.filled_qty,
-            "avgPrice":       self.avg_price,
-            "price":          self.price,
-            "reduceOnly":     self.reduce_only,
-            "eventTime":      self.event_time,
-            "meta":           self.meta,
+            "clientOrderId": self.client_order_id,
+            "symbol": self.symbol,
+            "side": self.side,
+            "orderType": self.order_type,
+            "status": self.status,
+            "quantity": self.quantity,
+            "filledQty": self.filled_qty,
+            "avgPrice": self.avg_price,
+            "price": self.price,
+            "reduceOnly": self.reduce_only,
+            "eventTime": self.event_time,
+            "meta": self.meta,
         }
 
 
@@ -128,32 +130,33 @@ class RiskEvent(BaseRealtimeEvent):
     Published to Redis algofin:risk_events:<user_id>.
     Relayed to the authenticated user's WebSocket connection.
     """
-    rule_id:        str   = ""     # AlgoFin risk rule UUID
-    rule_name:      str   = ""     # human-readable name
-    rule_type:      str   = ""     # MAX_DAILY_LOSS | MAX_POSITION_SIZE | ...
-    threshold:      float = 0.0    # the configured limit
-    current_value:  float = 0.0    # the value that breached the limit
-    action_taken:   str   = ""     # "order_rejected" | "alert_only"
-    symbol:         str   = ""     # symbol context (empty if global)
-    user_id:        str   = ""     # for Redis channel routing
-    violation_id:   str   = ""     # RiskViolation DB UUID
+
+    rule_id: str = ""  # AlgoFin risk rule UUID
+    rule_name: str = ""  # human-readable name
+    rule_type: str = ""  # MAX_DAILY_LOSS | MAX_POSITION_SIZE | ...
+    threshold: float = 0.0  # the configured limit
+    current_value: float = 0.0  # the value that breached the limit
+    action_taken: str = ""  # "order_rejected" | "alert_only"
+    symbol: str = ""  # symbol context (empty if global)
+    user_id: str = ""  # for Redis channel routing
+    violation_id: str = ""  # RiskViolation DB UUID
 
     def to_dict(self) -> dict[str, Any]:
         return {
-            "type":         self.type,
-            "version":      self.version,
-            "sequence":     self.sequence,
-            "exchange":     self.exchange,
-            "ruleId":       self.rule_id,
-            "ruleName":     self.rule_name,
-            "ruleType":     self.rule_type,
-            "threshold":    self.threshold,
+            "type": self.type,
+            "version": self.version,
+            "sequence": self.sequence,
+            "exchange": self.exchange,
+            "ruleId": self.rule_id,
+            "ruleName": self.rule_name,
+            "ruleType": self.rule_type,
+            "threshold": self.threshold,
             "currentValue": self.current_value,
-            "actionTaken":  self.action_taken,
-            "symbol":       self.symbol,
-            "violationId":  self.violation_id,
-            "eventTime":    self.event_time,
-            "meta":         self.meta,
+            "actionTaken": self.action_taken,
+            "symbol": self.symbol,
+            "violationId": self.violation_id,
+            "eventTime": self.event_time,
+            "meta": self.meta,
         }
 
 
@@ -161,19 +164,20 @@ class RiskEvent(BaseRealtimeEvent):
 @dataclass
 class AlertEvent(BaseRealtimeEvent):
     """Stubbed for Phase E."""
-    channel:  str = ""   # "telegram" | "discord" | "email"
-    message:  str = ""
+
+    channel: str = ""  # "telegram" | "discord" | "email"
+    message: str = ""
 
     def to_dict(self) -> dict[str, Any]:
         return {
-            "type":      self.type,
-            "version":   self.version,
-            "sequence":  self.sequence,
-            "exchange":  self.exchange,
-            "channel":   self.channel,
-            "message":   self.message,
+            "type": self.type,
+            "version": self.version,
+            "sequence": self.sequence,
+            "exchange": self.exchange,
+            "channel": self.channel,
+            "message": self.message,
             "eventTime": self.event_time,
-            "meta":      self.meta,
+            "meta": self.meta,
         }
 
 
@@ -199,7 +203,7 @@ class BinanceNormalizer:
     @classmethod
     def normalize(cls, raw: dict[str, Any]) -> MarketDataEvent | None:
         try:
-            data = raw.get("data", raw)   # handle both combined-stream and single-stream
+            data = raw.get("data", raw)  # handle both combined-stream and single-stream
             if data.get("e") != "markPriceUpdate":
                 return None
             return MarketDataEvent(
@@ -247,14 +251,14 @@ class BinanceUserStreamNormalizer:
     EXCHANGE = "binance"
     # Binance status → our canonical status
     STATUS_MAP = {
-        "NEW":              "NEW",
+        "NEW": "NEW",
         "PARTIALLY_FILLED": "PARTIALLY_FILLED",
-        "FILLED":           "FILLED",
-        "CANCELED":         "CANCELLED",
-        "CANCELLED":        "CANCELLED",
-        "EXPIRED":          "EXPIRED",
-        "NEW_INSURANCE":    "NEW",
-        "NEW_ADL":          "NEW",
+        "FILLED": "FILLED",
+        "CANCELED": "CANCELLED",
+        "CANCELLED": "CANCELLED",
+        "EXPIRED": "EXPIRED",
+        "NEW_INSURANCE": "NEW",
+        "NEW_ADL": "NEW",
     }
 
     @classmethod

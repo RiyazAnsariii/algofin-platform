@@ -27,20 +27,24 @@ logger = logging.getLogger(__name__)
 
 # ── CCXT client factory ───────────────────────────────────────────────────────
 
+
 def _make_binance_client(api_key: str, api_secret: str) -> ccxt.binanceusdm:
     """
     Create an authenticated CCXT Binance USDT-M Futures client.
     options['defaultType'] = 'future' is required for USDT-M.
     """
-    return ccxt.binanceusdm({
-        "apiKey":  api_key,
-        "secret":  api_secret,
-        "options": {"defaultType": "future"},
-        "enableRateLimit": True,
-    })
+    return ccxt.binanceusdm(
+        {
+            "apiKey": api_key,
+            "secret": api_secret,
+            "options": {"defaultType": "future"},
+            "enableRateLimit": True,
+        }
+    )
 
 
 # ── Authorization helper ──────────────────────────────────────────────────────
+
 
 async def _get_authorized_account(
     db: AsyncSession,
@@ -60,6 +64,7 @@ async def _get_authorized_account(
 
 
 # ── Place order ───────────────────────────────────────────────────────────────
+
 
 async def place_order(
     db: AsyncSession,
@@ -84,9 +89,11 @@ async def place_order(
     # Step 2: Evaluate risk rules BEFORE touching credentials or exchange
     try:
         from app.database import get_redis_client  # avoid circular at module level
+
         redis = await get_redis_client()
         # Collect all active account IDs for this user (needed for daily PnL calc)
         from sqlalchemy import select as sa_select
+
         acct_result = await db.execute(
             sa_select(UserExchangeAccount.id).where(
                 UserExchangeAccount.user_id == user_id,
@@ -133,7 +140,7 @@ async def place_order(
     try:
         params: dict[str, Any] = {
             "newClientOrderId": client_order_id,
-            "reduceOnly":       req.reduce_only,
+            "reduceOnly": req.reduce_only,
         }
         if req.time_in_force and req.order_type == "LIMIT":
             params["timeInForce"] = req.time_in_force
@@ -174,6 +181,7 @@ async def place_order(
 
 # ── Cancel order ──────────────────────────────────────────────────────────────
 
+
 async def cancel_order(
     db: AsyncSession,
     *,
@@ -197,7 +205,9 @@ async def cancel_order(
     if order.status not in ("NEW", "PARTIALLY_FILLED"):
         raise ValueError(f"Order cannot be cancelled in status: {order.status}")
 
-    creds = await get_decrypted_credentials(db, exchange_account_id=str(order.exchange_account_id))
+    creds = await get_decrypted_credentials(
+        db, exchange_account_id=str(order.exchange_account_id)
+    )
     client = _make_binance_client(creds["api_key"], creds["api_secret"])
     try:
         await client.cancel_order(
@@ -220,6 +230,7 @@ async def cancel_order(
 
 
 # ── Amend order ───────────────────────────────────────────────────────────────
+
 
 async def amend_order(
     db: AsyncSession,
@@ -250,11 +261,15 @@ async def amend_order(
     if order.status not in ("NEW", "PARTIALLY_FILLED"):
         raise ValueError(f"Order cannot be amended in status: {order.status}")
 
-    creds = await get_decrypted_credentials(db, exchange_account_id=str(order.exchange_account_id))
+    creds = await get_decrypted_credentials(
+        db, exchange_account_id=str(order.exchange_account_id)
+    )
     client = _make_binance_client(creds["api_key"], creds["api_secret"])
     try:
-        new_price  = float(req.new_price)  if req.new_price    else float(order.price)
-        new_amount = float(req.new_quantity) if req.new_quantity else float(order.quantity)
+        new_price = float(req.new_price) if req.new_price else float(order.price)
+        new_amount = (
+            float(req.new_quantity) if req.new_quantity else float(order.quantity)
+        )
 
         raw = await client.edit_order(
             id=order.binance_order_id,
@@ -283,6 +298,7 @@ async def amend_order(
 
 
 # ── List orders ───────────────────────────────────────────────────────────────
+
 
 async def list_orders(
     db: AsyncSession,
@@ -314,15 +330,16 @@ async def list_orders(
 
 # ── Status mapper ─────────────────────────────────────────────────────────────
 
+
 def _map_status(binance_status: str) -> str:
     """Map Binance order status to our canonical status."""
     mapping = {
-        "NEW":              "NEW",
+        "NEW": "NEW",
         "PARTIALLY_FILLED": "PARTIALLY_FILLED",
-        "FILLED":           "FILLED",
-        "CANCELED":         "CANCELLED",   # Binance uses CANCELED (one L)
-        "CANCELLED":        "CANCELLED",
-        "EXPIRED":          "EXPIRED",
-        "REJECTED":         "REJECTED",
+        "FILLED": "FILLED",
+        "CANCELED": "CANCELLED",  # Binance uses CANCELED (one L)
+        "CANCELLED": "CANCELLED",
+        "EXPIRED": "EXPIRED",
+        "REJECTED": "REJECTED",
     }
     return mapping.get(binance_status.upper(), binance_status.upper())

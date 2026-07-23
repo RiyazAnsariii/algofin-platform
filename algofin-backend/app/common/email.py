@@ -12,7 +12,9 @@ from app.config import settings
 logger = logging.getLogger("algofin.email")
 
 
-def _send_smtp_email(to_email: str, subject: str, html_content: str, text_content: str) -> bool:
+def _send_smtp_email(
+    to_email: str, subject: str, html_content: str, text_content: str
+) -> bool:
     """Synchronous SMTP email delivery."""
     if not settings.smtp_user or not settings.smtp_password:
         logger.warning(
@@ -91,4 +93,6 @@ async def send_reset_code_email(to_email: str, code: str) -> bool:
     </html>
     """
 
-    return await asyncio.to_thread(_send_smtp_email, to_email, subject, html_content, text_content)
+    return await asyncio.to_thread(
+        _send_smtp_email, to_email, subject, html_content, text_content
+    )

@@ -10,7 +10,6 @@ from app.common.security import decrypt_credential, encrypt_credential
 from app.models.exchange import (
     EncryptedApiCredential,
     ExchangeBillingConsent,
-    ExchangeSyncRun,
     UserExchangeAccount,
 )
 from app.models.user import User
@@ -159,7 +158,9 @@ async def get_decrypted_credentials(
         return {}
 
     return {
-        "api_key":    decrypt_credential(cred.encrypted_api_key),
+        "api_key": decrypt_credential(cred.encrypted_api_key),
         "api_secret": decrypt_credential(cred.encrypted_api_secret),
-        "passphrase": decrypt_credential(cred.encrypted_passphrase) if cred.encrypted_passphrase else None,
+        "passphrase": decrypt_credential(cred.encrypted_passphrase)
+        if cred.encrypted_passphrase
+        else None,
     }

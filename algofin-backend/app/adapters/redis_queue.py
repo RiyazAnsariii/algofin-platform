@@ -12,11 +12,10 @@
 
 import json
 import time
-import uuid
 from datetime import datetime, timezone
 
 from app.config import settings
-from app.ports.queue import QueueMessage, QueuePort
+from app.ports.queue import QueueMessage
 
 
 class RedisQueueAdapter:

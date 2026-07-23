@@ -12,7 +12,6 @@ from typing import Any
 
 from cryptography.fernet import Fernet
 from jose import JWTError, jwt
-from passlib.context import CryptContext
 
 from app.config import settings
 
@@ -24,7 +23,9 @@ import bcrypt as _bcrypt
 
 def hash_password(password: str) -> str:
     """Hash a password with bcrypt (12 rounds)."""
-    return _bcrypt.hashpw(password.encode("utf-8"), _bcrypt.gensalt(rounds=12)).decode("utf-8")
+    return _bcrypt.hashpw(password.encode("utf-8"), _bcrypt.gensalt(rounds=12)).decode(
+        "utf-8"
+    )
 
 
 def verify_password(plain: str, hashed: str) -> bool:
@@ -79,10 +80,13 @@ def decode_access_token(token: str) -> dict[str, Any] | None:
 def create_password_reset_code() -> str:
     """Generate a random 6-digit numeric verification code."""
     import random
+
     return f"{random.randint(100000, 999999)}"
 
 
-def create_password_reset_token(user_id: str, email: str, code: str | None = None, verified: bool = False) -> str:
+def create_password_reset_token(
+    user_id: str, email: str, code: str | None = None, verified: bool = False
+) -> str:
     """Create a short-lived (15 min) password reset JWT token."""
     expire = datetime.now(timezone.utc) + timedelta(minutes=15)
     token_type = "password_reset_verified" if verified else "password_reset"
@@ -97,7 +101,9 @@ def create_password_reset_token(user_id: str, email: str, code: str | None = Non
     return jwt.encode(payload, settings.secret_key, algorithm=settings.jwt_algorithm)
 
 
-def decode_password_reset_token(token: str, expected_type: str = "password_reset") -> dict[str, Any] | None:
+def decode_password_reset_token(
+    token: str, expected_type: str = "password_reset"
+) -> dict[str, Any] | None:
     """Decode and verify a password reset token."""
     try:
         payload = jwt.decode(
@@ -116,7 +122,7 @@ def _get_fernet() -> Fernet:
     if not settings.fernet_key:
         raise ValueError(
             "FERNET_KEY is not set. "
-            "Generate one with: python -c \"from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())\""
+            'Generate one with: python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"'
         )
     return Fernet(settings.fernet_key.encode())
 

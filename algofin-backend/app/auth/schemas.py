@@ -39,13 +39,13 @@ class LoginRequest(BaseModel):
 
 
 class UserResponse(BaseModel):
-    id:         str
-    email:      str
-    full_name:  str
-    role:       str
+    id: str
+    email: str
+    full_name: str
+    role: str
     created_at: str
     # Google OAuth fields
-    google_id:  str | None = None
+    google_id: str | None = None
     avatar_url: str | None = None
 
     model_config = {"from_attributes": True}
@@ -53,6 +53,7 @@ class UserResponse(BaseModel):
 
 class AuthDataResponse(BaseModel):
     """Response body for login and signup."""
+
     access_token: str
     token_type: str = "bearer"
     user: UserResponse
@@ -60,6 +61,7 @@ class AuthDataResponse(BaseModel):
 
 class RefreshResponse(BaseModel):
     """Response body for token refresh."""
+
     access_token: str
     token_type: str = "bearer"
     user: UserResponse

@@ -33,16 +33,17 @@ class SignalPayload:
     - is_test: True if signal was sent via test endpoint (?test=1)
     - raw_payload: original dict for forensic storage in StrategySignal.raw_payload
     """
+
     strategy_id: uuid.UUID
-    action: str               # "buy" | "sell"
-    ticker: str               # e.g. "BTCUSDT"
+    action: str  # "buy" | "sell"
+    ticker: str  # e.g. "BTCUSDT"
     contracts: Decimal | None
     price: Decimal | None
-    tv_timestamp: datetime | None   # UTC. Used for replay attack detection.
+    tv_timestamp: datetime | None  # UTC. Used for replay attack detection.
     is_test: bool
-    source_name: str          # "tradingview" | "manual" | "price_feed"
-    sender_ip: str | None     # for IP allowlist audit
-    raw_payload: dict         # stored as-is in StrategySignal.raw_payload
+    source_name: str  # "tradingview" | "manual" | "price_feed"
+    sender_ip: str | None  # for IP allowlist audit
+    raw_payload: dict  # stored as-is in StrategySignal.raw_payload
 
 
 @runtime_checkable

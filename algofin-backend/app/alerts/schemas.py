@@ -1,8 +1,6 @@
 # app/alerts/schemas.py
 # AlgoFin v2 — Phase E: Alert Pydantic schemas
 
-import uuid
-from datetime import datetime
 from decimal import Decimal
 from typing import Literal
 
@@ -11,8 +9,10 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 
 # ── Telegram Config ────────────────────────────────────────────────────────
 
+
 class TelegramConfigCreate(BaseModel):
     """Request body for saving / updating Telegram config."""
+
     bot_token: str = Field(..., max_length=100, min_length=1)
     chat_id: str = Field(..., max_length=100, min_length=1)
 
@@ -35,9 +35,10 @@ class TelegramConfigCreate(BaseModel):
 
 class TelegramConfigResponse(BaseModel):
     """Response — bot_token is NEVER returned to client, only masked."""
+
     id: str
     chat_id: str
-    bot_token_masked: str   # e.g.  "123456:ABC***XYZ"
+    bot_token_masked: str  # e.g.  "123456:ABC***XYZ"
     is_active: bool
     created_at: str
 
@@ -59,7 +60,7 @@ class AlertRuleCreate(BaseModel):
     alert_type: VALID_ALERT_TYPES
 
     # PRICE_ALERT only
-    symbol:    str | None    = None
+    symbol: str | None = None
     threshold: Decimal | None = None
     direction: Literal["above", "below"] | None = None
 
@@ -81,8 +82,8 @@ class AlertRuleCreate(BaseModel):
 class AlertRuleResponse(BaseModel):
     id: str
     alert_type: str
-    symbol:    str | None
-    threshold: str | None     # serialized as string for safe JSON
+    symbol: str | None
+    threshold: str | None  # serialized as string for safe JSON
     direction: str | None
     is_active: bool
     triggered_count: int
@@ -101,12 +102,15 @@ class AlertRuleResponse(BaseModel):
             direction=obj.direction,
             is_active=obj.is_active,
             triggered_count=obj.triggered_count,
-            last_triggered_at=obj.last_triggered_at.isoformat() if obj.last_triggered_at else None,
+            last_triggered_at=obj.last_triggered_at.isoformat()
+            if obj.last_triggered_at
+            else None,
             created_at=obj.created_at.isoformat(),
         )
 
 
 # ── Deliveries ─────────────────────────────────────────────────────────────
+
 
 class AlertDeliveryResponse(BaseModel):
     id: str

@@ -23,16 +23,16 @@ from app.models.user import User
 
 router = APIRouter(prefix="/auth/google", tags=["auth"])
 
-GOOGLE_AUTH_URL   = "https://accounts.google.com/o/oauth2/v2/auth"
-GOOGLE_TOKEN_URL  = "https://oauth2.googleapis.com/token"
-GOOGLE_USERINFO   = "https://www.googleapis.com/oauth2/v3/userinfo"
+GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
+GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
+GOOGLE_USERINFO = "https://www.googleapis.com/oauth2/v3/userinfo"
 
 # In-memory state store (dev-only; production should use Redis)
 _pending_states: dict[str, float] = {}
 
 
-@router.get("")          # matches /api/v1/auth/google  (no trailing slash)
-@router.get("/")         # matches /api/v1/auth/google/ (with trailing slash)
+@router.get("")  # matches /api/v1/auth/google  (no trailing slash)
+@router.get("/")  # matches /api/v1/auth/google/ (with trailing slash)
 async def google_login() -> RedirectResponse:
     """
     Step 1: Redirect browser to Google consent screen.
@@ -48,13 +48,13 @@ async def google_login() -> RedirectResponse:
     _pending_states[state] = datetime.now(timezone.utc).timestamp()
 
     params = {
-        "client_id":     settings.google_client_id,
-        "redirect_uri":  settings.google_redirect_uri,
+        "client_id": settings.google_client_id,
+        "redirect_uri": settings.google_redirect_uri,
         "response_type": "code",
-        "scope":         "openid email profile",
-        "state":         state,
-        "access_type":   "offline",
-        "prompt":        "select_account",
+        "scope": "openid email profile",
+        "state": state,
+        "access_type": "offline",
+        "prompt": "select_account",
     }
     url = f"{GOOGLE_AUTH_URL}?{urllib.parse.urlencode(params)}"
     return RedirectResponse(url=url)
@@ -64,7 +64,7 @@ async def google_login() -> RedirectResponse:
 async def google_callback(
     db: DbSession,
     request: Request,
-    code:  str | None = Query(default=None),
+    code: str | None = Query(default=None),
     state: str | None = Query(default=None),
     error: str | None = Query(default=None),
 ) -> RedirectResponse:
@@ -75,33 +75,41 @@ async def google_callback(
     """
     # Fail gracefully on OAuth errors (user denied access, etc.)
     if error:
-        return RedirectResponse(url=f"{settings.frontend_url}/login?error={urllib.parse.quote(error)}")
+        return RedirectResponse(
+            url=f"{settings.frontend_url}/login?error={urllib.parse.quote(error)}"
+        )
 
     # Missing code means something went wrong with the flow
     if not code or not state:
-        return RedirectResponse(url=f"{settings.frontend_url}/login?error=missing_params")
+        return RedirectResponse(
+            url=f"{settings.frontend_url}/login?error=missing_params"
+        )
 
     # Validate state (CSRF protection)
     now_ts = datetime.now(timezone.utc).timestamp()
     stored_ts = _pending_states.pop(state, None)
     if stored_ts is None or (now_ts - stored_ts) > 300:  # 5 min expiry
-        return RedirectResponse(url=f"{settings.frontend_url}/login?error=invalid_state")
+        return RedirectResponse(
+            url=f"{settings.frontend_url}/login?error=invalid_state"
+        )
 
     # Exchange code for tokens
     async with httpx.AsyncClient() as client:
         token_resp = await client.post(
             GOOGLE_TOKEN_URL,
             data={
-                "code":          code,
-                "client_id":     settings.google_client_id,
+                "code": code,
+                "client_id": settings.google_client_id,
                 "client_secret": settings.google_client_secret,
-                "redirect_uri":  settings.google_redirect_uri,
-                "grant_type":    "authorization_code",
+                "redirect_uri": settings.google_redirect_uri,
+                "grant_type": "authorization_code",
             },
         )
 
     if token_resp.status_code != 200:
-        return RedirectResponse(url=f"{settings.frontend_url}/login?error=token_exchange_failed")
+        return RedirectResponse(
+            url=f"{settings.frontend_url}/login?error=token_exchange_failed"
+        )
 
     token_data = token_resp.json()
     access_token_google = token_data.get("access_token")
@@ -114,21 +122,23 @@ async def google_callback(
         )
 
     if info_resp.status_code != 200:
-        return RedirectResponse(url=f"{settings.frontend_url}/login?error=userinfo_failed")
+        return RedirectResponse(
+            url=f"{settings.frontend_url}/login?error=userinfo_failed"
+        )
 
     info = info_resp.json()
-    google_id  = info.get("sub")
-    email      = info.get("email", "").lower().strip()
-    full_name  = info.get("name", email.split("@")[0])
+    google_id = info.get("sub")
+    email = info.get("email", "").lower().strip()
+    full_name = info.get("name", email.split("@")[0])
     avatar_url = info.get("picture")
 
     if not google_id or not email:
-        return RedirectResponse(url=f"{settings.frontend_url}/login?error=missing_user_info")
+        return RedirectResponse(
+            url=f"{settings.frontend_url}/login?error=missing_user_info"
+        )
 
     # Upsert user: find by google_id OR email
-    result = await db.execute(
-        select(User).where(User.google_id == google_id)
-    )
+    result = await db.execute(select(User).where(User.google_id == google_id))
     user = result.scalar_one_or_none()
 
     if user is None:
@@ -138,7 +148,7 @@ async def google_callback(
 
         if user:
             # Link Google ID to existing account
-            user.google_id  = google_id
+            user.google_id = google_id
             user.avatar_url = avatar_url
         else:
             # Brand new user via Google
@@ -171,20 +181,19 @@ async def google_callback(
     from datetime import timedelta
 
     user_dict = {
-        "id":         str(user.id),
-        "email":      user.email,
-        "full_name":  user.full_name,
-        "role":       user.role,
+        "id": str(user.id),
+        "email": user.email,
+        "full_name": user.full_name,
+        "role": user.role,
         "created_at": user.created_at.isoformat(),
-        "google_id":  user.google_id,
+        "google_id": user.google_id,
         "avatar_url": user.avatar_url,
     }
     # base64url-encode the user JSON so it's safe to put in a URL query param
-    user_b64 = base64.urlsafe_b64encode(
-        json_mod.dumps(user_dict).encode()
-    ).decode()
+    user_b64 = base64.urlsafe_b64encode(json_mod.dumps(user_dict).encode()).decode()
 
     from app.config import settings as cfg
+
     redirect_url = (
         f"{cfg.frontend_url}/auth/google/success"
         f"?token={algofin_access_token}"
@@ -192,6 +201,7 @@ async def google_callback(
     )
 
     from starlette.responses import RedirectResponse as SR
+
     response = SR(url=redirect_url, status_code=302)
 
     # Still set the httpOnly refresh cookie on the BACKEND domain so that
@@ -207,4 +217,3 @@ async def google_callback(
         path="/",
     )
     return response
-

@@ -14,15 +14,18 @@
 #   realized_pnl = exchange API 'realizedPnl' field ONLY.
 #   Funding payments excluded. Fees not double-subtracted.
 
-import asyncio
 import logging
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation
 
-from sqlalchemy import select, delete, and_
+from sqlalchemy import select, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.exchanges.ccxt_adapter import create_ccxt_client, get_market_filter, is_futures_exchange
+from app.exchanges.ccxt_adapter import (
+    create_ccxt_client,
+    get_market_filter,
+    is_futures_exchange,
+)
 from app.exchanges.service import get_decrypted_credentials
 from app.models.exchange import ExchangeSyncRun, UserExchangeAccount
 from app.models.trading import Balance, Position, Trade
@@ -32,6 +35,7 @@ logger = logging.getLogger(__name__)
 
 
 # ── Decimal helper ────────────────────────────────────────────────
+
 
 def _dec(val, default: str = "0") -> Decimal:
     """Safely convert to Decimal, returning default on failure."""
@@ -43,55 +47,81 @@ def _dec(val, default: str = "0") -> Decimal:
 
 # ── Upsert helper (SQLite + PostgreSQL compatible) ─────────────────
 
-async def _upsert_balance(db: AsyncSession, *, exchange_account_id, asset: str, **fields):
+
+async def _upsert_balance(
+    db: AsyncSession, *, exchange_account_id, asset: str, **fields
+):
     """Upsert a balance row — works on both SQLite (dev) and PostgreSQL (prod)."""
     from sqlalchemy.dialects.sqlite import insert as sqlite_insert
     from sqlalchemy.dialects.postgresql import insert as pg_insert
 
     if "sqlite" in settings.database_url:
-        stmt = sqlite_insert(Balance).values(
-            exchange_account_id=exchange_account_id, asset=asset, **fields
-        ).on_conflict_do_update(
-            index_elements=["exchange_account_id", "asset"],
-            set_=fields,
+        stmt = (
+            sqlite_insert(Balance)
+            .values(exchange_account_id=exchange_account_id, asset=asset, **fields)
+            .on_conflict_do_update(
+                index_elements=["exchange_account_id", "asset"],
+                set_=fields,
+            )
         )
     else:
-        stmt = pg_insert(Balance).values(
-            exchange_account_id=exchange_account_id, asset=asset, **fields
-        ).on_conflict_do_update(
-            constraint="uq_balance_account_asset",
-            set_=fields,
+        stmt = (
+            pg_insert(Balance)
+            .values(exchange_account_id=exchange_account_id, asset=asset, **fields)
+            .on_conflict_do_update(
+                constraint="uq_balance_account_asset",
+                set_=fields,
+            )
         )
     await db.execute(stmt)
 
 
-async def _upsert_trade(db: AsyncSession, *, exchange_account_id, trade_id: str, **fields):
+async def _upsert_trade(
+    db: AsyncSession, *, exchange_account_id, trade_id: str, **fields
+):
     """Upsert a trade row — works on both SQLite (dev) and PostgreSQL (prod)."""
     from sqlalchemy.dialects.sqlite import insert as sqlite_insert
     from sqlalchemy.dialects.postgresql import insert as pg_insert
 
     if "sqlite" in settings.database_url:
-        stmt = sqlite_insert(Trade).values(
-            exchange_account_id=exchange_account_id,
-            binance_trade_id=trade_id,
-            **fields,
-        ).on_conflict_do_update(
-            index_elements=["exchange_account_id", "binance_trade_id"],
-            set_={k: v for k, v in fields.items() if k in ("realized_pnl", "synced_at")},
+        stmt = (
+            sqlite_insert(Trade)
+            .values(
+                exchange_account_id=exchange_account_id,
+                binance_trade_id=trade_id,
+                **fields,
+            )
+            .on_conflict_do_update(
+                index_elements=["exchange_account_id", "binance_trade_id"],
+                set_={
+                    k: v
+                    for k, v in fields.items()
+                    if k in ("realized_pnl", "synced_at")
+                },
+            )
         )
     else:
-        stmt = pg_insert(Trade).values(
-            exchange_account_id=exchange_account_id,
-            binance_trade_id=trade_id,
-            **fields,
-        ).on_conflict_do_update(
-            constraint="uq_trade_account_binance_id",
-            set_={k: v for k, v in fields.items() if k in ("realized_pnl", "synced_at")},
+        stmt = (
+            pg_insert(Trade)
+            .values(
+                exchange_account_id=exchange_account_id,
+                binance_trade_id=trade_id,
+                **fields,
+            )
+            .on_conflict_do_update(
+                constraint="uq_trade_account_binance_id",
+                set_={
+                    k: v
+                    for k, v in fields.items()
+                    if k in ("realized_pnl", "synced_at")
+                },
+            )
         )
     await db.execute(stmt)
 
 
 # ── Sync run ledger helpers ───────────────────────────────────────
+
 
 async def _start_sync_run(
     db: AsyncSession,
@@ -122,15 +152,16 @@ async def _finish_sync_run(
     error_message: str | None = None,
     error_code: str | None = None,
 ) -> None:
-    run.status         = status
-    run.finished_at    = datetime.now(timezone.utc)
+    run.status = status
+    run.finished_at = datetime.now(timezone.utc)
     run.rows_processed = rows_processed
-    run.error_message  = error_message
-    run.error_code     = error_code
+    run.error_message = error_message
+    run.error_code = error_code
     await db.commit()
 
 
 # ── Balance sync ──────────────────────────────────────────────────
+
 
 async def sync_balances(
     db: AsyncSession,
@@ -152,7 +183,9 @@ async def sync_balances(
 
     creds = await get_decrypted_credentials(db, exchange_account_id=str(account.id))
     if not creds or not creds.get("api_key"):
-        await _finish_sync_run(db, run, status="error", error_message="No credentials found")
+        await _finish_sync_run(
+            db, run, status="error", error_message="No credentials found"
+        )
         return run
 
     client = create_ccxt_client(
@@ -185,14 +218,15 @@ async def sync_balances(
                 available_balance=_dec(usdt.get("free", 0)),
                 synced_at=now,
             )
-            await _upsert_balance(db, exchange_account_id=account.id, asset="USDT", **fields)
+            await _upsert_balance(
+                db, exchange_account_id=account.id, asset="USDT", **fields
+            )
             rows = 1
 
         elif account.exchange_id == "bybit_linear":
             # Bybit: balance in info.result.list[].coin[]
-            accounts_list = (
-                info.get("result", {}).get("list", [])
-                or info.get("list", [])
+            accounts_list = info.get("result", {}).get("list", []) or info.get(
+                "list", []
             )
             for acct_info in accounts_list:
                 for coin in acct_info.get("coin", []):
@@ -206,7 +240,9 @@ async def sync_balances(
                         available_balance=_dec(coin.get("availableToWithdraw", 0)),
                         synced_at=now,
                     )
-                    await _upsert_balance(db, exchange_account_id=account.id, asset="USDT", **fields)
+                    await _upsert_balance(
+                        db, exchange_account_id=account.id, asset="USDT", **fields
+                    )
                     rows += 1
 
         elif account.exchange_id == "okx_swap":
@@ -224,7 +260,9 @@ async def sync_balances(
                         available_balance=_dec(detail.get("availEq", 0)),
                         synced_at=now,
                     )
-                    await _upsert_balance(db, exchange_account_id=account.id, asset="USDT", **fields)
+                    await _upsert_balance(
+                        db, exchange_account_id=account.id, asset="USDT", **fields
+                    )
                     rows += 1
 
         else:
@@ -239,20 +277,32 @@ async def sync_balances(
                     available_balance=_dec(raw.get("free", {}).get(asset, 0)),
                     synced_at=now,
                 )
-                await _upsert_balance(db, exchange_account_id=account.id, asset=asset, **fields)
+                await _upsert_balance(
+                    db, exchange_account_id=account.id, asset=asset, **fields
+                )
                 rows += 1
 
-        account.sync_status  = "connected"
+        account.sync_status = "connected"
         account.last_sync_at = now
         await db.commit()
         await _finish_sync_run(db, run, status="success", rows_processed=rows)
-        logger.info(f"[{account.exchange_id}] Balance sync OK account={account.id} rows={rows}")
+        logger.info(
+            f"[{account.exchange_id}] Balance sync OK account={account.id} rows={rows}"
+        )
 
     except Exception as exc:
-        logger.exception(f"[{account.exchange_id}] Balance sync FAILED account={account.id}: {exc}")
+        logger.exception(
+            f"[{account.exchange_id}] Balance sync FAILED account={account.id}: {exc}"
+        )
         account.sync_status = "error"
         await db.commit()
-        await _finish_sync_run(db, run, status="error", error_message=str(exc), error_code=type(exc).__name__)
+        await _finish_sync_run(
+            db,
+            run,
+            status="error",
+            error_message=str(exc),
+            error_code=type(exc).__name__,
+        )
     finally:
         await client.close()
 
@@ -260,6 +310,7 @@ async def sync_balances(
 
 
 # ── Position sync ─────────────────────────────────────────────────
+
 
 async def sync_positions(
     db: AsyncSession,
@@ -281,13 +332,20 @@ async def sync_positions(
 
     if not is_futures_exchange(account.exchange_id):
         # Spot account — no positions concept
-        await _finish_sync_run(db, run, status="success", rows_processed=0,
-                               error_message="Spot account — no positions")
+        await _finish_sync_run(
+            db,
+            run,
+            status="success",
+            rows_processed=0,
+            error_message="Spot account — no positions",
+        )
         return run
 
     creds = await get_decrypted_credentials(db, exchange_account_id=str(account.id))
     if not creds or not creds.get("api_key"):
-        await _finish_sync_run(db, run, status="error", error_message="No credentials found")
+        await _finish_sync_run(
+            db, run, status="error", error_message="No credentials found"
+        )
         return run
 
     client = create_ccxt_client(
@@ -302,7 +360,9 @@ async def sync_positions(
         positions_raw = await client.fetch_positions()
 
         # Snapshot: delete existing positions for this account
-        await db.execute(delete(Position).where(Position.exchange_account_id == account.id))
+        await db.execute(
+            delete(Position).where(Position.exchange_account_id == account.id)
+        )
 
         rows = 0
         for pos in positions_raw:
@@ -311,7 +371,9 @@ async def sync_positions(
             if size == 0:
                 continue
 
-            side_raw = pos.get("side") or ("long" if float(contracts or 0) > 0 else "short")
+            side_raw = pos.get("side") or (
+                "long" if float(contracts or 0) > 0 else "short"
+            )
             side = "long" if side_raw in ("long", "buy") else "short"
 
             p = Position(
@@ -319,28 +381,46 @@ async def sync_positions(
                 symbol=pos.get("symbol", ""),
                 side=side,
                 size=size,
-                entry_price=_dec(pos.get("entryPrice") or pos.get("info", {}).get("avgPrice", 0)),
-                mark_price=_dec(pos.get("markPrice") or pos.get("info", {}).get("markPrice", 0)),
-                unrealized_pnl=_dec(pos.get("unrealizedPnl") or pos.get("info", {}).get("unrealisedPnl", 0)),
+                entry_price=_dec(
+                    pos.get("entryPrice") or pos.get("info", {}).get("avgPrice", 0)
+                ),
+                mark_price=_dec(
+                    pos.get("markPrice") or pos.get("info", {}).get("markPrice", 0)
+                ),
+                unrealized_pnl=_dec(
+                    pos.get("unrealizedPnl")
+                    or pos.get("info", {}).get("unrealisedPnl", 0)
+                ),
                 leverage=_dec(pos.get("leverage") or 1),
-                margin_type=pos.get("marginType") or pos.get("info", {}).get("tradeMode", "cross"),
+                margin_type=pos.get("marginType")
+                or pos.get("info", {}).get("tradeMode", "cross"),
                 last_updated_at=now,
                 synced_at=now,
             )
             db.add(p)
             rows += 1
 
-        account.sync_status  = "connected"
+        account.sync_status = "connected"
         account.last_sync_at = now
         await db.commit()
         await _finish_sync_run(db, run, status="success", rows_processed=rows)
-        logger.info(f"[{account.exchange_id}] Position sync OK account={account.id} positions={rows}")
+        logger.info(
+            f"[{account.exchange_id}] Position sync OK account={account.id} positions={rows}"
+        )
 
     except Exception as exc:
-        logger.exception(f"[{account.exchange_id}] Position sync FAILED account={account.id}: {exc}")
+        logger.exception(
+            f"[{account.exchange_id}] Position sync FAILED account={account.id}: {exc}"
+        )
         account.sync_status = "error"
         await db.commit()
-        await _finish_sync_run(db, run, status="error", error_message=str(exc), error_code=type(exc).__name__)
+        await _finish_sync_run(
+            db,
+            run,
+            status="error",
+            error_message=str(exc),
+            error_code=type(exc).__name__,
+        )
     finally:
         await client.close()
 
@@ -348,6 +428,7 @@ async def sync_positions(
 
 
 # ── Trade sync ────────────────────────────────────────────────────
+
 
 async def sync_trades(
     db: AsyncSession,
@@ -373,7 +454,9 @@ async def sync_trades(
 
     creds = await get_decrypted_credentials(db, exchange_account_id=str(account.id))
     if not creds or not creds.get("api_key"):
-        await _finish_sync_run(db, run, status="error", error_message="No credentials found")
+        await _finish_sync_run(
+            db, run, status="error", error_message="No credentials found"
+        )
         return run
 
     client = create_ccxt_client(
@@ -388,8 +471,11 @@ async def sync_trades(
         # Determine since timestamp
         if since_ms is None:
             from sqlalchemy import func as sqlfunc
+
             last_result = await db.execute(
-                select(sqlfunc.max(Trade.trade_time)).where(Trade.exchange_account_id == account.id)
+                select(sqlfunc.max(Trade.trade_time)).where(
+                    Trade.exchange_account_id == account.id
+                )
             )
             last_trade_time = last_result.scalar_one_or_none()
             if last_trade_time:
@@ -403,11 +489,12 @@ async def sync_trades(
 
         if is_futures:
             markets = await client.load_markets()
-            settle  = mkt_filter.get("settle")
-            mtype   = mkt_filter.get("market_type")
+            settle = mkt_filter.get("settle")
+            mtype = mkt_filter.get("market_type")
 
             futures_symbols = [
-                s for s, m in markets.items()
+                s
+                for s, m in markets.items()
                 if m.get("type") == mtype
                 and (settle is None or m.get("settle") == settle)
             ]
@@ -415,15 +502,19 @@ async def sync_trades(
             # Limit to 50 symbols per sync to respect rate limits
             for symbol in futures_symbols[:50]:
                 try:
-                    trades_raw = await client.fetch_my_trades(symbol, since=since_ms, limit=1000)
+                    trades_raw = await client.fetch_my_trades(
+                        symbol, since=since_ms, limit=1000
+                    )
                     if not trades_raw:
                         continue
 
                     for t in trades_raw:
-                        info        = t.get("info", {})
-                        trade_id    = str(t.get("id", ""))
+                        info = t.get("info", {})
+                        trade_id = str(t.get("id", ""))
                         realized_pnl = _get_realized_pnl(account.exchange_id, t, info)
-                        trade_time  = datetime.fromtimestamp(t["timestamp"] / 1000, tz=timezone.utc)
+                        trade_time = datetime.fromtimestamp(
+                            t["timestamp"] / 1000, tz=timezone.utc
+                        )
 
                         await _upsert_trade(
                             db,
@@ -436,7 +527,8 @@ async def sync_trades(
                             qty=_dec(t.get("amount", 0)),
                             realized_pnl=realized_pnl,
                             commission=_dec((t.get("fee") or {}).get("cost", 0)),
-                            commission_asset=(t.get("fee") or {}).get("currency") or "USDT",
+                            commission_asset=(t.get("fee") or {}).get("currency")
+                            or "USDT",
                             is_maker=t.get("takerOrMaker") == "maker",
                             trade_time=trade_time,
                             synced_at=now,
@@ -444,7 +536,9 @@ async def sync_trades(
                         total_rows += 1
 
                 except Exception as sym_exc:
-                    logger.warning(f"[{account.exchange_id}] Trade sync skipped {symbol}: {sym_exc}")
+                    logger.warning(
+                        f"[{account.exchange_id}] Trade sync skipped {symbol}: {sym_exc}"
+                    )
                     continue
 
         else:
@@ -452,7 +546,7 @@ async def sync_trades(
             try:
                 trades_raw = await client.fetch_my_trades(since=since_ms, limit=500)
                 for t in trades_raw:
-                    info     = t.get("info", {})
+                    info = t.get("info", {})
                     trade_id = str(t.get("id", ""))
 
                     await _upsert_trade(
@@ -468,24 +562,38 @@ async def sync_trades(
                         commission=_dec((t.get("fee") or {}).get("cost", 0)),
                         commission_asset=(t.get("fee") or {}).get("currency") or "USD",
                         is_maker=t.get("takerOrMaker") == "maker",
-                        trade_time=datetime.fromtimestamp(t["timestamp"] / 1000, tz=timezone.utc),
+                        trade_time=datetime.fromtimestamp(
+                            t["timestamp"] / 1000, tz=timezone.utc
+                        ),
                         synced_at=now,
                     )
                     total_rows += 1
             except Exception as exc:
-                logger.warning(f"[{account.exchange_id}] Spot trade fetch failed: {exc}")
+                logger.warning(
+                    f"[{account.exchange_id}] Spot trade fetch failed: {exc}"
+                )
 
-        account.sync_status  = "connected"
+        account.sync_status = "connected"
         account.last_sync_at = now
         await db.commit()
         await _finish_sync_run(db, run, status="success", rows_processed=total_rows)
-        logger.info(f"[{account.exchange_id}] Trade sync OK account={account.id} trades={total_rows}")
+        logger.info(
+            f"[{account.exchange_id}] Trade sync OK account={account.id} trades={total_rows}"
+        )
 
     except Exception as exc:
-        logger.exception(f"[{account.exchange_id}] Trade sync FAILED account={account.id}: {exc}")
+        logger.exception(
+            f"[{account.exchange_id}] Trade sync FAILED account={account.id}: {exc}"
+        )
         account.sync_status = "error"
         await db.commit()
-        await _finish_sync_run(db, run, status="error", error_message=str(exc), error_code=type(exc).__name__)
+        await _finish_sync_run(
+            db,
+            run,
+            status="error",
+            error_message=str(exc),
+            error_code=type(exc).__name__,
+        )
     finally:
         await client.close()
 
@@ -516,6 +624,7 @@ def _get_realized_pnl(exchange_id: str, trade: dict, info: dict) -> Decimal:
 
 
 # ── Full sync ─────────────────────────────────────────────────────
+
 
 async def sync_full(
     db: AsyncSession,

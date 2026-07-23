@@ -30,7 +30,10 @@ router = APIRouter(prefix="/exchanges", tags=["exchanges"])
 
 # ── Supported exchanges (public — no auth needed) ─────────────────────────
 
-@router.get("/supported", response_model=SuccessResponse[list[ExchangeDefinitionResponse]])
+
+@router.get(
+    "/supported", response_model=SuccessResponse[list[ExchangeDefinitionResponse]]
+)
 async def list_supported() -> SuccessResponse:
     """
     Returns all exchanges that are visible in the UI, including
@@ -61,7 +64,9 @@ def _account_to_response(account: UserExchangeAccount) -> ExchangeAccountRespons
         sync_status=account.sync_status,
         billing_consent=account.billing_consent,
         last_sync_at=account.last_sync_at.isoformat() if account.last_sync_at else None,
-        billing_consent_at=account.billing_consent_at.isoformat() if account.billing_consent_at else None,
+        billing_consent_at=account.billing_consent_at.isoformat()
+        if account.billing_consent_at
+        else None,
         created_at=account.created_at.isoformat(),
     )
 
@@ -87,6 +92,7 @@ async def connect(
 
     # Phase H guard: block non-live exchanges until their integration is ready
     from app.exchanges.registry import EXCHANGE_REGISTRY
+
     exc_def = EXCHANGE_REGISTRY.get(body.exchange_id)
     if exc_def and exc_def.status != "live":
         raise HTTPException(

@@ -22,16 +22,16 @@ from app.marketdata.normalizer import BinanceNormalizer
 logger = logging.getLogger(__name__)
 
 # ── Constants ─────────────────────────────────────────────────────────────────
-BINANCE_FSTREAM_WS  = "wss://fstream.binance.com/stream"
-REDIS_CHANNEL        = "algofin:prices"
-DEBOUNCE_SECONDS     = 3.0   # wait this long after last symbol change before rebuilding
-RECONNECT_BASE       = 2.0   # seconds — doubles on each failure (max 60)
-RECONNECT_MAX        = 60.0
+BINANCE_FSTREAM_WS = "wss://fstream.binance.com/stream"
+REDIS_CHANNEL = "algofin:prices"
+DEBOUNCE_SECONDS = 3.0  # wait this long after last symbol change before rebuilding
+RECONNECT_BASE = 2.0  # seconds — doubles on each failure (max 60)
+RECONNECT_MAX = 60.0
 
 # ── Global Symbol Registry ────────────────────────────────────────────────────
 _symbol_registry: set[str] = set()
 _registry_lock = asyncio.Lock()
-_rebuild_event = asyncio.Event()   # signals that a rebuild is needed
+_rebuild_event = asyncio.Event()  # signals that a rebuild is needed
 
 
 async def register_symbols(symbols: set[str]) -> None:
@@ -44,9 +44,7 @@ async def register_symbols(symbols: set[str]) -> None:
         _symbol_registry.update(s.lower() for s in symbols)
         if len(_symbol_registry) != before:
             _rebuild_event.set()
-            logger.info(
-                f"[BinanceStream] Registry updated: {sorted(_symbol_registry)}"
-            )
+            logger.info(f"[BinanceStream] Registry updated: {sorted(_symbol_registry)}")
 
 
 def _build_stream_url(symbols: set[str]) -> str:
@@ -129,12 +127,12 @@ class BinanceStreamRunner:
                 logger.info(f"[BinanceStream] Connecting to: {url}")
                 async with websockets.connect(
                     url,
-                    ping_interval=None,   # Binance handles keepalive
+                    ping_interval=None,  # Binance handles keepalive
                     open_timeout=10,
                     close_timeout=5,
                 ) as ws:
                     self._ws = ws
-                    backoff = RECONNECT_BASE   # reset on successful connect
+                    backoff = RECONNECT_BASE  # reset on successful connect
                     logger.info("[BinanceStream] Connected.")
 
                     async for raw_message in ws:

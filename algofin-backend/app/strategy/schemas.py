@@ -1,7 +1,6 @@
 # app/strategy/schemas.py
 # AlgoFin v2 — Phase F: Strategy Engine Pydantic schemas
 
-import uuid
 from decimal import Decimal
 from typing import Literal
 
@@ -16,6 +15,7 @@ Direction = Literal["above", "below"]
 
 
 # ── Create / Update ────────────────────────────────────────────────────────
+
 
 class StrategyCreate(BaseModel):
     name: str
@@ -36,7 +36,7 @@ class StrategyCreate(BaseModel):
     direction: Direction | None = None
 
     # Execution limit
-    max_executions: int | None = None   # None = unlimited
+    max_executions: int | None = None  # None = unlimited
 
     @field_validator("symbol", mode="before")
     @classmethod
@@ -67,12 +67,14 @@ class StrategyCreate(BaseModel):
 
 class StrategyUpdate(BaseModel):
     """Partial update — only status and name/description can be changed after creation."""
+
     name: str | None = None
     description: str | None = None
     status: StrategyStatus | None = None
 
 
 # ── Responses ──────────────────────────────────────────────────────────────
+
 
 class StrategyResponse(BaseModel):
     id: str
@@ -119,7 +121,9 @@ class StrategyResponse(BaseModel):
             direction=s.direction,
             max_executions=s.max_executions,
             execution_count=s.execution_count,
-            last_executed_at=s.last_executed_at.isoformat() if s.last_executed_at else None,
+            last_executed_at=s.last_executed_at.isoformat()
+            if s.last_executed_at
+            else None,
             created_at=s.created_at.isoformat(),
             updated_at=s.updated_at.isoformat(),
         )
@@ -149,8 +153,10 @@ class StrategyExecutionResponse(BaseModel):
 
 # ── Phase M: pine_webhook schemas ─────────────────────────────────────────────
 
+
 class PineWebhookCreate(BaseModel):
     """Request body for creating a pine_webhook strategy (starts in DRAFT)."""
+
     name: str = Field(..., min_length=1, max_length=100)
     description: str | None = None
     exchange_account_id: str
@@ -215,7 +221,9 @@ class PineWebhookResponse(BaseModel):
             pine_code=getattr(s, "pine_code", None),
             max_executions=s.max_executions,
             execution_count=s.execution_count,
-            last_executed_at=s.last_executed_at.isoformat() if s.last_executed_at else None,
+            last_executed_at=s.last_executed_at.isoformat()
+            if s.last_executed_at
+            else None,
             webhook_url=webhook_url,
             created_at=s.created_at.isoformat(),
             updated_at=s.updated_at.isoformat(),
@@ -224,12 +232,13 @@ class PineWebhookResponse(BaseModel):
 
 class WebhookSecretResponse(BaseModel):
     """Returned ONCE — never retrievable again."""
+
     secret: str
     strategy_id: str
     webhook_url: str
     message: str = (
         "Store this secret immediately. "
-        "Add it to your TradingView alert: {\"secret\": \"<value>\", \"action\": \"{{strategy.order.action}}\", ...}"
+        'Add it to your TradingView alert: {"secret": "<value>", "action": "{{strategy.order.action}}", ...}'
     )
 
 

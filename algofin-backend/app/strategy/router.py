@@ -9,6 +9,8 @@
 # POST   /strategy/{id}/trigger — manually trigger a strategy (manual type)
 # GET    /strategy/{id}/history — execution log for a strategy
 
+import uuid as _uuid
+
 from fastapi import APIRouter, HTTPException, status
 from sqlalchemy import select, desc
 
@@ -20,12 +22,27 @@ from app.strategy.schemas import (
     StrategyExecutionResponse,
     StrategyResponse,
     StrategyUpdate,
+    PineWebhookCreate,
+    PineWebhookResponse,
+    WebhookSecretResponse,
+    SavePineRequest,
+    PineVersionResponse,
+    SignalHistoryResponse,
+    ExecutionHistoryResponse,
+)
+from app.strategy.service import StrategyService, DomainError
+from app.webhooks.secret_service import SecretService
+from app.webhooks.version_service import VersionService
+from app.adapters.postgres_signal_repo import (
+    PostgresSignalRepository,
+    PostgresExecutionRepository,
 )
 
 router = APIRouter(prefix="/strategy", tags=["strategy"])
 
 
 # ── List ───────────────────────────────────────────────────────────────────
+
 
 @router.get("", response_model=SuccessResponse[list[StrategyResponse]])
 async def list_strategies(
@@ -44,6 +61,7 @@ async def list_strategies(
 
 # ── Create ─────────────────────────────────────────────────────────────────
 
+
 @router.post("", response_model=SuccessResponse[StrategyResponse], status_code=201)
 async def create_strategy(
     body: StrategyCreate,
@@ -52,6 +70,7 @@ async def create_strategy(
 ) -> SuccessResponse:
     # Verify the exchange account belongs to this user
     from app.models.exchange import UserExchangeAccount
+
     acct_result = await db.execute(
         select(UserExchangeAccount).where(
             UserExchangeAccount.id == body.exchange_account_id,
@@ -90,6 +109,7 @@ async def create_strategy(
 
 # ── Get single ─────────────────────────────────────────────────────────────
 
+
 @router.get("/{strategy_id}", response_model=SuccessResponse[StrategyResponse])
 async def get_strategy(
     strategy_id: str,
@@ -109,6 +129,7 @@ async def get_strategy(
 
 
 # ── Update ─────────────────────────────────────────────────────────────────
+
 
 @router.patch("/{strategy_id}", response_model=SuccessResponse[StrategyResponse])
 async def update_strategy(
@@ -141,6 +162,7 @@ async def update_strategy(
 
 # ── Delete ─────────────────────────────────────────────────────────────────
 
+
 @router.delete("/{strategy_id}", response_model=SuccessResponse[dict])
 async def delete_strategy(
     strategy_id: str,
@@ -163,7 +185,10 @@ async def delete_strategy(
 
 # ── Manual trigger ─────────────────────────────────────────────────────────
 
-@router.post("/{strategy_id}/trigger", response_model=SuccessResponse[StrategyExecutionResponse])
+
+@router.post(
+    "/{strategy_id}/trigger", response_model=SuccessResponse[StrategyExecutionResponse]
+)
 async def trigger_strategy(
     strategy_id: str,
     current_user: CurrentUser,
@@ -182,10 +207,11 @@ async def trigger_strategy(
     if s.status == "stopped":
         raise HTTPException(
             status_code=400,
-            detail="Strategy is stopped. Re-activate it before triggering."
+            detail="Strategy is stopped. Re-activate it before triggering.",
         )
 
     from app.strategy.engine import _execute_strategy
+
     await _execute_strategy(s, trigger_price=None)
 
     # Return latest execution record
@@ -204,7 +230,11 @@ async def trigger_strategy(
 
 # ── Execution history ──────────────────────────────────────────────────────
 
-@router.get("/{strategy_id}/history", response_model=SuccessResponse[list[StrategyExecutionResponse]])
+
+@router.get(
+    "/{strategy_id}/history",
+    response_model=SuccessResponse[list[StrategyExecutionResponse]],
+)
 async def get_execution_history(
     strategy_id: str,
     current_user: CurrentUser,
@@ -229,188 +259,364 @@ async def get_execution_history(
         .limit(limit)
     )
     executions = exec_result.scalars().all()
-    return SuccessResponse(data=[StrategyExecutionResponse.from_orm_obj(e) for e in executions])
-
+    return SuccessResponse(
+        data=[StrategyExecutionResponse.from_orm_obj(e) for e in executions]
+    )
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Phase M: pine_webhook lifecycle endpoints
 # ═══════════════════════════════════════════════════════════════════════════════
 
-import uuid as _uuid
-from app.strategy.schemas import (
-    PineWebhookCreate, PineWebhookResponse, WebhookSecretResponse,
-    SavePineRequest, PineVersionResponse,
-    SignalHistoryResponse, ExecutionHistoryResponse,
-)
-from app.strategy.service import StrategyService, DomainError
-from app.webhooks.secret_service import SecretService
-from app.webhooks.version_service import VersionService
-from app.adapters.postgres_signal_repo import PostgresSignalRepository, PostgresExecutionRepository
-
 
 def _webhook_url(strategy_id: str) -> str:
-    return f'https://algofin-api.onrender.com/api/v1/webhooks/tv/{strategy_id}'
+    return f"https://algofin-api.onrender.com/api/v1/webhooks/tv/{strategy_id}"
 
 
-@router.post('/pine', response_model=SuccessResponse[PineWebhookResponse], status_code=201,
-             summary='Create pine_webhook strategy (DRAFT)')
+@router.post(
+    "/pine",
+    response_model=SuccessResponse[PineWebhookResponse],
+    status_code=201,
+    summary="Create pine_webhook strategy (DRAFT)",
+)
 async def create_pine_webhook_strategy(
-    body: PineWebhookCreate, current_user: CurrentUser, db: DbSession,
+    body: PineWebhookCreate,
+    current_user: CurrentUser,
+    db: DbSession,
 ) -> SuccessResponse:
     from app.models.exchange import UserExchangeAccount
     from app.models.strategy import Strategy
+
     acct = await db.execute(
         select(UserExchangeAccount).where(
             UserExchangeAccount.id == body.exchange_account_id,
             UserExchangeAccount.user_id == str(current_user.id),
-            UserExchangeAccount.is_active == True,
+            UserExchangeAccount.is_active.is_(True),
         )
     )
     if not acct.scalar_one_or_none():
-        raise HTTPException(status_code=400, detail='Exchange account not found or not active')
+        raise HTTPException(
+            status_code=400, detail="Exchange account not found or not active"
+        )
     s = Strategy(
         user_id=current_user.id,
         exchange_account_id=_uuid.UUID(body.exchange_account_id),
-        strategy_type='pine_webhook', status='draft',
-        name=body.name, description=body.description,
-        symbol=body.symbol, timeframe=body.timeframe,
-        quantity=body.quantity, reduce_only=body.reduce_only,
+        strategy_type="pine_webhook",
+        status="draft",
+        name=body.name,
+        description=body.description,
+        symbol=body.symbol,
+        timeframe=body.timeframe,
+        quantity=body.quantity,
+        reduce_only=body.reduce_only,
         max_executions=body.max_executions,
-        is_test_mode=False, current_version=0, execution_count=0, order_type='MARKET',
+        is_test_mode=False,
+        current_version=0,
+        execution_count=0,
+        order_type="MARKET",
     )
     db.add(s)
     await db.commit()
     await db.refresh(s)
-    return SuccessResponse(data=PineWebhookResponse.from_orm_obj(s, webhook_url=_webhook_url(str(s.id))))
+    return SuccessResponse(
+        data=PineWebhookResponse.from_orm_obj(s, webhook_url=_webhook_url(str(s.id)))
+    )
 
 
-@router.post('/{strategy_id}/publish', response_model=SuccessResponse[WebhookSecretResponse])
-async def publish_strategy(strategy_id: str, current_user: CurrentUser, db: DbSession) -> SuccessResponse:
+@router.post(
+    "/{strategy_id}/publish", response_model=SuccessResponse[WebhookSecretResponse]
+)
+async def publish_strategy(
+    strategy_id: str, current_user: CurrentUser, db: DbSession
+) -> SuccessResponse:
     from app.models.strategy import Strategy
-    result = await db.execute(select(Strategy).where(Strategy.id == strategy_id, Strategy.user_id == str(current_user.id)))
+
+    result = await db.execute(
+        select(Strategy).where(
+            Strategy.id == strategy_id, Strategy.user_id == str(current_user.id)
+        )
+    )
     s = result.scalar_one_or_none()
     if not s:
-        raise HTTPException(status_code=404, detail='Strategy not found')
-    if s.strategy_type != 'pine_webhook':
-        raise HTTPException(status_code=400, detail='Only pine_webhook strategies use this endpoint')
+        raise HTTPException(status_code=404, detail="Strategy not found")
+    if s.strategy_type != "pine_webhook":
+        raise HTTPException(
+            status_code=400, detail="Only pine_webhook strategies use this endpoint"
+        )
     try:
         await StrategyService(db).publish(s, actor_id=current_user.id)
     except DomainError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
     plain = await SecretService(db).generate(s.id)
     await db.commit()
-    return SuccessResponse(data=WebhookSecretResponse(secret=plain, strategy_id=strategy_id, webhook_url=_webhook_url(strategy_id)))
+    return SuccessResponse(
+        data=WebhookSecretResponse(
+            secret=plain, strategy_id=strategy_id, webhook_url=_webhook_url(strategy_id)
+        )
+    )
 
 
-@router.post('/{strategy_id}/pause', response_model=SuccessResponse[PineWebhookResponse])
-async def pause_strategy(strategy_id: str, current_user: CurrentUser, db: DbSession) -> SuccessResponse:
+@router.post(
+    "/{strategy_id}/pause", response_model=SuccessResponse[PineWebhookResponse]
+)
+async def pause_strategy(
+    strategy_id: str, current_user: CurrentUser, db: DbSession
+) -> SuccessResponse:
     from app.models.strategy import Strategy
-    result = await db.execute(select(Strategy).where(Strategy.id == strategy_id, Strategy.user_id == str(current_user.id)))
+
+    result = await db.execute(
+        select(Strategy).where(
+            Strategy.id == strategy_id, Strategy.user_id == str(current_user.id)
+        )
+    )
     s = result.scalar_one_or_none()
-    if not s: raise HTTPException(status_code=404, detail='Strategy not found')
-    try: await StrategyService(db).transition(s, 'paused')
-    except DomainError as exc: raise HTTPException(status_code=400, detail=str(exc))
-    await db.commit(); await db.refresh(s)
-    return SuccessResponse(data=PineWebhookResponse.from_orm_obj(s, webhook_url=_webhook_url(strategy_id)))
+    if not s:
+        raise HTTPException(status_code=404, detail="Strategy not found")
+    try:
+        await StrategyService(db).transition(s, "paused")
+    except DomainError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    await db.commit()
+    await db.refresh(s)
+    return SuccessResponse(
+        data=PineWebhookResponse.from_orm_obj(s, webhook_url=_webhook_url(strategy_id))
+    )
 
 
-@router.post('/{strategy_id}/resume', response_model=SuccessResponse[PineWebhookResponse])
-async def resume_strategy(strategy_id: str, current_user: CurrentUser, db: DbSession) -> SuccessResponse:
+@router.post(
+    "/{strategy_id}/resume", response_model=SuccessResponse[PineWebhookResponse]
+)
+async def resume_strategy(
+    strategy_id: str, current_user: CurrentUser, db: DbSession
+) -> SuccessResponse:
     from app.models.strategy import Strategy
-    result = await db.execute(select(Strategy).where(Strategy.id == strategy_id, Strategy.user_id == str(current_user.id)))
+
+    result = await db.execute(
+        select(Strategy).where(
+            Strategy.id == strategy_id, Strategy.user_id == str(current_user.id)
+        )
+    )
     s = result.scalar_one_or_none()
-    if not s: raise HTTPException(status_code=404, detail='Strategy not found')
-    try: await StrategyService(db).transition(s, 'active')
-    except DomainError as exc: raise HTTPException(status_code=400, detail=str(exc))
-    await db.commit(); await db.refresh(s)
-    return SuccessResponse(data=PineWebhookResponse.from_orm_obj(s, webhook_url=_webhook_url(strategy_id)))
+    if not s:
+        raise HTTPException(status_code=404, detail="Strategy not found")
+    try:
+        await StrategyService(db).transition(s, "active")
+    except DomainError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    await db.commit()
+    await db.refresh(s)
+    return SuccessResponse(
+        data=PineWebhookResponse.from_orm_obj(s, webhook_url=_webhook_url(strategy_id))
+    )
 
 
-@router.post('/{strategy_id}/stop', response_model=SuccessResponse[PineWebhookResponse])
-async def stop_strategy(strategy_id: str, current_user: CurrentUser, db: DbSession) -> SuccessResponse:
+@router.post("/{strategy_id}/stop", response_model=SuccessResponse[PineWebhookResponse])
+async def stop_strategy(
+    strategy_id: str, current_user: CurrentUser, db: DbSession
+) -> SuccessResponse:
     from app.models.strategy import Strategy
-    result = await db.execute(select(Strategy).where(Strategy.id == strategy_id, Strategy.user_id == str(current_user.id)))
+
+    result = await db.execute(
+        select(Strategy).where(
+            Strategy.id == strategy_id, Strategy.user_id == str(current_user.id)
+        )
+    )
     s = result.scalar_one_or_none()
-    if not s: raise HTTPException(status_code=404, detail='Strategy not found')
-    try: await StrategyService(db).transition(s, 'stopped')
-    except DomainError as exc: raise HTTPException(status_code=400, detail=str(exc))
-    await db.commit(); await db.refresh(s)
-    return SuccessResponse(data=PineWebhookResponse.from_orm_obj(s, webhook_url=_webhook_url(strategy_id)))
+    if not s:
+        raise HTTPException(status_code=404, detail="Strategy not found")
+    try:
+        await StrategyService(db).transition(s, "stopped")
+    except DomainError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    await db.commit()
+    await db.refresh(s)
+    return SuccessResponse(
+        data=PineWebhookResponse.from_orm_obj(s, webhook_url=_webhook_url(strategy_id))
+    )
 
 
-@router.post('/{strategy_id}/archive', response_model=SuccessResponse[PineWebhookResponse])
-async def archive_strategy(strategy_id: str, current_user: CurrentUser, db: DbSession) -> SuccessResponse:
+@router.post(
+    "/{strategy_id}/archive", response_model=SuccessResponse[PineWebhookResponse]
+)
+async def archive_strategy(
+    strategy_id: str, current_user: CurrentUser, db: DbSession
+) -> SuccessResponse:
     from app.models.strategy import Strategy
-    result = await db.execute(select(Strategy).where(Strategy.id == strategy_id, Strategy.user_id == str(current_user.id)))
+
+    result = await db.execute(
+        select(Strategy).where(
+            Strategy.id == strategy_id, Strategy.user_id == str(current_user.id)
+        )
+    )
     s = result.scalar_one_or_none()
-    if not s: raise HTTPException(status_code=404, detail='Strategy not found')
-    try: await StrategyService(db).transition(s, 'archived')
-    except DomainError as exc: raise HTTPException(status_code=400, detail=str(exc))
+    if not s:
+        raise HTTPException(status_code=404, detail="Strategy not found")
+    try:
+        await StrategyService(db).transition(s, "archived")
+    except DomainError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
     await SecretService(db).revoke_all(s.id)
-    await db.commit(); await db.refresh(s)
+    await db.commit()
+    await db.refresh(s)
     return SuccessResponse(data=PineWebhookResponse.from_orm_obj(s))
 
 
-@router.post('/{strategy_id}/rotate-secret', response_model=SuccessResponse[WebhookSecretResponse])
-async def rotate_secret(strategy_id: str, current_user: CurrentUser, db: DbSession) -> SuccessResponse:
+@router.post(
+    "/{strategy_id}/rotate-secret",
+    response_model=SuccessResponse[WebhookSecretResponse],
+)
+async def rotate_secret(
+    strategy_id: str, current_user: CurrentUser, db: DbSession
+) -> SuccessResponse:
     from app.models.strategy import Strategy
-    result = await db.execute(select(Strategy).where(Strategy.id == strategy_id, Strategy.user_id == str(current_user.id)))
+
+    result = await db.execute(
+        select(Strategy).where(
+            Strategy.id == strategy_id, Strategy.user_id == str(current_user.id)
+        )
+    )
     s = result.scalar_one_or_none()
-    if not s: raise HTTPException(status_code=404, detail='Strategy not found')
-    if s.status == 'archived': raise HTTPException(status_code=400, detail='Cannot rotate secret of archived strategy')
+    if not s:
+        raise HTTPException(status_code=404, detail="Strategy not found")
+    if s.status == "archived":
+        raise HTTPException(
+            status_code=400, detail="Cannot rotate secret of archived strategy"
+        )
     new_secret = await SecretService(db).rotate(s.id)
     await db.commit()
-    return SuccessResponse(data=WebhookSecretResponse(secret=new_secret, strategy_id=strategy_id, webhook_url=_webhook_url(strategy_id)))
+    return SuccessResponse(
+        data=WebhookSecretResponse(
+            secret=new_secret,
+            strategy_id=strategy_id,
+            webhook_url=_webhook_url(strategy_id),
+        )
+    )
 
 
-@router.post('/{strategy_id}/pine', response_model=SuccessResponse[PineVersionResponse], status_code=201)
-async def save_pine_version(strategy_id: str, body: SavePineRequest, current_user: CurrentUser, db: DbSession) -> SuccessResponse:
+@router.post(
+    "/{strategy_id}/pine",
+    response_model=SuccessResponse[PineVersionResponse],
+    status_code=201,
+)
+async def save_pine_version(
+    strategy_id: str, body: SavePineRequest, current_user: CurrentUser, db: DbSession
+) -> SuccessResponse:
     from app.models.strategy import Strategy
-    result = await db.execute(select(Strategy).where(Strategy.id == strategy_id, Strategy.user_id == str(current_user.id)))
+
+    result = await db.execute(
+        select(Strategy).where(
+            Strategy.id == strategy_id, Strategy.user_id == str(current_user.id)
+        )
+    )
     s = result.scalar_one_or_none()
-    if not s: raise HTTPException(status_code=404, detail='Strategy not found')
-    if s.status == 'archived': raise HTTPException(status_code=400, detail='Cannot save Pine code to archived strategy')
-    try: version = await VersionService(db).save_version(s, body.pine_code)
-    except ValueError as exc: raise HTTPException(status_code=400, detail=str(exc))
-    await db.commit(); await db.refresh(version)
+    if not s:
+        raise HTTPException(status_code=404, detail="Strategy not found")
+    if s.status == "archived":
+        raise HTTPException(
+            status_code=400, detail="Cannot save Pine code to archived strategy"
+        )
+    try:
+        version = await VersionService(db).save_version(s, body.pine_code)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    await db.commit()
+    await db.refresh(version)
     return SuccessResponse(data=PineVersionResponse.from_orm_obj(version))
 
 
-@router.get('/{strategy_id}/pine', response_model=SuccessResponse[list[PineVersionResponse]])
-async def list_pine_versions(strategy_id: str, current_user: CurrentUser, db: DbSession) -> SuccessResponse:
+@router.get(
+    "/{strategy_id}/pine", response_model=SuccessResponse[list[PineVersionResponse]]
+)
+async def list_pine_versions(
+    strategy_id: str, current_user: CurrentUser, db: DbSession
+) -> SuccessResponse:
     from app.models.strategy import Strategy
-    result = await db.execute(select(Strategy).where(Strategy.id == strategy_id, Strategy.user_id == str(current_user.id)))
-    if not result.scalar_one_or_none(): raise HTTPException(status_code=404, detail='Strategy not found')
+
+    result = await db.execute(
+        select(Strategy).where(
+            Strategy.id == strategy_id, Strategy.user_id == str(current_user.id)
+        )
+    )
+    if not result.scalar_one_or_none():
+        raise HTTPException(status_code=404, detail="Strategy not found")
     versions = await VersionService(db).list_versions(strategy_id)
     return SuccessResponse(data=[PineVersionResponse.from_orm_obj(v) for v in versions])
 
 
-@router.get('/{strategy_id}/signals', response_model=SuccessResponse[list[SignalHistoryResponse]])
-async def list_signals(strategy_id: str, current_user: CurrentUser, db: DbSession, limit: int = 50, offset: int = 0) -> SuccessResponse:
+@router.get(
+    "/{strategy_id}/signals",
+    response_model=SuccessResponse[list[SignalHistoryResponse]],
+)
+async def list_signals(
+    strategy_id: str,
+    current_user: CurrentUser,
+    db: DbSession,
+    limit: int = 50,
+    offset: int = 0,
+) -> SuccessResponse:
     from app.models.strategy import Strategy
-    result = await db.execute(select(Strategy).where(Strategy.id == strategy_id, Strategy.user_id == str(current_user.id)))
-    if not result.scalar_one_or_none(): raise HTTPException(status_code=404, detail='Strategy not found')
-    signals = await PostgresSignalRepository(db).list_by_strategy(_uuid.UUID(strategy_id), current_user.id, limit=min(limit, 200), offset=offset)
-    return SuccessResponse(data=[SignalHistoryResponse.from_orm_obj(s) for s in signals])
+
+    result = await db.execute(
+        select(Strategy).where(
+            Strategy.id == strategy_id, Strategy.user_id == str(current_user.id)
+        )
+    )
+    if not result.scalar_one_or_none():
+        raise HTTPException(status_code=404, detail="Strategy not found")
+    signals = await PostgresSignalRepository(db).list_by_strategy(
+        _uuid.UUID(strategy_id), current_user.id, limit=min(limit, 200), offset=offset
+    )
+    return SuccessResponse(
+        data=[SignalHistoryResponse.from_orm_obj(s) for s in signals]
+    )
 
 
-@router.get('/{strategy_id}/executions', response_model=SuccessResponse[list[ExecutionHistoryResponse]])
-async def list_webhook_executions(strategy_id: str, current_user: CurrentUser, db: DbSession, limit: int = 50) -> SuccessResponse:
+@router.get(
+    "/{strategy_id}/executions",
+    response_model=SuccessResponse[list[ExecutionHistoryResponse]],
+)
+async def list_webhook_executions(
+    strategy_id: str, current_user: CurrentUser, db: DbSession, limit: int = 50
+) -> SuccessResponse:
     from app.models.strategy import Strategy
-    result = await db.execute(select(Strategy).where(Strategy.id == strategy_id, Strategy.user_id == str(current_user.id)))
-    if not result.scalar_one_or_none(): raise HTTPException(status_code=404, detail='Strategy not found')
-    records = await PostgresExecutionRepository(db).list_by_strategy(_uuid.UUID(strategy_id), current_user.id, limit=min(limit, 200))
-    return SuccessResponse(data=[ExecutionHistoryResponse.from_orm_obj(e) for e in records])
+
+    result = await db.execute(
+        select(Strategy).where(
+            Strategy.id == strategy_id, Strategy.user_id == str(current_user.id)
+        )
+    )
+    if not result.scalar_one_or_none():
+        raise HTTPException(status_code=404, detail="Strategy not found")
+    records = await PostgresExecutionRepository(db).list_by_strategy(
+        _uuid.UUID(strategy_id), current_user.id, limit=min(limit, 200)
+    )
+    return SuccessResponse(
+        data=[ExecutionHistoryResponse.from_orm_obj(e) for e in records]
+    )
 
 
-@router.patch('/{strategy_id}/test-mode', response_model=SuccessResponse[PineWebhookResponse])
-async def set_test_mode(strategy_id: str, current_user: CurrentUser, db: DbSession, enabled: bool = True) -> SuccessResponse:
+@router.patch(
+    "/{strategy_id}/test-mode", response_model=SuccessResponse[PineWebhookResponse]
+)
+async def set_test_mode(
+    strategy_id: str, current_user: CurrentUser, db: DbSession, enabled: bool = True
+) -> SuccessResponse:
     from app.models.strategy import Strategy
-    result = await db.execute(select(Strategy).where(Strategy.id == strategy_id, Strategy.user_id == str(current_user.id)))
+
+    result = await db.execute(
+        select(Strategy).where(
+            Strategy.id == strategy_id, Strategy.user_id == str(current_user.id)
+        )
+    )
     s = result.scalar_one_or_none()
-    if not s: raise HTTPException(status_code=404, detail='Strategy not found')
-    try: await StrategyService(db).toggle_test_mode(s, enabled=enabled)
-    except DomainError as exc: raise HTTPException(status_code=400, detail=str(exc))
-    await db.commit(); await db.refresh(s)
-    return SuccessResponse(data=PineWebhookResponse.from_orm_obj(s, webhook_url=_webhook_url(strategy_id)))
+    if not s:
+        raise HTTPException(status_code=404, detail="Strategy not found")
+    try:
+        await StrategyService(db).toggle_test_mode(s, enabled=enabled)
+    except DomainError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    await db.commit()
+    await db.refresh(s)
+    return SuccessResponse(
+        data=PineWebhookResponse.from_orm_obj(s, webhook_url=_webhook_url(strategy_id))
+    )

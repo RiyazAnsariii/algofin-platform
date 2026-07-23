@@ -14,19 +14,29 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 OrderType = Literal["MARKET", "LIMIT", "STOP_MARKET", "TAKE_PROFIT_MARKET"]
 OrderSide = Literal["BUY", "SELL"]
 TimeInForce = Literal["GTC", "IOC", "FOK", "GTX"]
-OrderStatus = Literal["NEW", "PARTIALLY_FILLED", "FILLED", "CANCELLED", "EXPIRED", "REJECTED"]
+OrderStatus = Literal[
+    "NEW", "PARTIALLY_FILLED", "FILLED", "CANCELLED", "EXPIRED", "REJECTED"
+]
 
 
 # ── Request schemas ───────────────────────────────────────────────────────────
 class PlaceOrderRequest(BaseModel):
-    exchange_account_id: UUID = Field(..., description="Which connected Binance account to use")
+    exchange_account_id: UUID = Field(
+        ..., description="Which connected Binance account to use"
+    )
     symbol: str = Field(..., min_length=2, max_length=30, description="e.g. BTCUSDT")
     side: OrderSide
     order_type: OrderType
     quantity: Decimal = Field(..., gt=0, description="Contract quantity")
-    price: Optional[Decimal] = Field(None, gt=0, description="Required for LIMIT orders")
-    reduce_only: bool = Field(False, description="Close-only order — will not increase position size")
-    time_in_force: Optional[TimeInForce] = Field("GTC", description="Required for LIMIT orders")
+    price: Optional[Decimal] = Field(
+        None, gt=0, description="Required for LIMIT orders"
+    )
+    reduce_only: bool = Field(
+        False, description="Close-only order — will not increase position size"
+    )
+    time_in_force: Optional[TimeInForce] = Field(
+        "GTC", description="Required for LIMIT orders"
+    )
 
     @model_validator(mode="after")
     def validate_limit_fields(self) -> "PlaceOrderRequest":
@@ -37,18 +47,20 @@ class PlaceOrderRequest(BaseModel):
                 raise ValueError("time_in_force is required for LIMIT orders")
         return self
 
-    model_config = {"json_schema_extra": {
-        "example": {
-            "exchange_account_id": "uuid-here",
-            "symbol": "BTCUSDT",
-            "side": "BUY",
-            "order_type": "LIMIT",
-            "quantity": "0.01",
-            "price": "60000.00",
-            "reduce_only": False,
-            "time_in_force": "GTC",
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "exchange_account_id": "uuid-here",
+                "symbol": "BTCUSDT",
+                "side": "BUY",
+                "order_type": "LIMIT",
+                "quantity": "0.01",
+                "price": "60000.00",
+                "reduce_only": False,
+                "time_in_force": "GTC",
+            }
         }
-    }}
+    }
 
 
 class CancelOrderRequest(BaseModel):
@@ -59,6 +71,7 @@ class CancelOrderRequest(BaseModel):
 
 class AmendOrderRequest(BaseModel):
     """Modify price and/or quantity of an open LIMIT order."""
+
     exchange_account_id: UUID
     symbol: str = Field(..., min_length=2, max_length=30)
     new_price: Optional[Decimal] = Field(None, gt=0)
@@ -67,7 +80,9 @@ class AmendOrderRequest(BaseModel):
     @model_validator(mode="after")
     def at_least_one_field(self) -> "AmendOrderRequest":
         if self.new_price is None and self.new_quantity is None:
-            raise ValueError("At least one of new_price or new_quantity must be provided")
+            raise ValueError(
+                "At least one of new_price or new_quantity must be provided"
+            )
         return self
 
 
@@ -95,6 +110,7 @@ class OrderOut(BaseModel):
         if v and len(v) > 200:
             return v[:200] + "..."
         return v
+
     placed_at: str
     updated_at: str
     filled_at: Optional[str]

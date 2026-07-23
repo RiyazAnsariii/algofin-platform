@@ -15,13 +15,13 @@
 import hashlib
 import uuid
 from datetime import datetime, timezone
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
-from app.models.strategy import Strategy, StrategySignal
+from app.models.strategy import StrategySignal
 from app.ports.repositories import StrategyReadModel, SignalReadModel
 from app.ports.signal_source import SignalPayload
 
@@ -29,37 +29,49 @@ from app.ports.signal_source import SignalPayload
 # ── Signal status constants ───────────────────────────────────────────────────
 # All defined in one place so they are never hard-coded as raw strings elsewhere.
 
-class SignalStatus:
-    QUEUED          = "QUEUED"
-    PROCESSING      = "PROCESSING"
-    ORDER_SUBMITTED = "ORDER_SUBMITTED"
-    ORDER_FILLED    = "ORDER_FILLED"
-    ORDER_REJECTED  = "ORDER_REJECTED"
-    ORDER_CANCELLED = "ORDER_CANCELLED"
-    RISK_BLOCKED    = "RISK_BLOCKED"
-    FAILED          = "FAILED"
-    TIMEOUT         = "TIMEOUT"
-    DUPLICATE       = "DUPLICATE"
-    STALE           = "STALE"
-    INVALID         = "INVALID"
-    STRATEGY_PAUSED = "STRATEGY_PAUSED"
-    TEST_ACCEPTED   = "TEST_ACCEPTED"
 
-    TERMINAL = frozenset({
-        ORDER_FILLED, ORDER_REJECTED, ORDER_CANCELLED,
-        RISK_BLOCKED, FAILED, TIMEOUT,
-        DUPLICATE, STALE, INVALID,
-        STRATEGY_PAUSED, TEST_ACCEPTED,
-    })
+class SignalStatus:
+    QUEUED = "QUEUED"
+    PROCESSING = "PROCESSING"
+    ORDER_SUBMITTED = "ORDER_SUBMITTED"
+    ORDER_FILLED = "ORDER_FILLED"
+    ORDER_REJECTED = "ORDER_REJECTED"
+    ORDER_CANCELLED = "ORDER_CANCELLED"
+    RISK_BLOCKED = "RISK_BLOCKED"
+    FAILED = "FAILED"
+    TIMEOUT = "TIMEOUT"
+    DUPLICATE = "DUPLICATE"
+    STALE = "STALE"
+    INVALID = "INVALID"
+    STRATEGY_PAUSED = "STRATEGY_PAUSED"
+    TEST_ACCEPTED = "TEST_ACCEPTED"
+
+    TERMINAL = frozenset(
+        {
+            ORDER_FILLED,
+            ORDER_REJECTED,
+            ORDER_CANCELLED,
+            RISK_BLOCKED,
+            FAILED,
+            TIMEOUT,
+            DUPLICATE,
+            STALE,
+            INVALID,
+            STRATEGY_PAUSED,
+            TEST_ACCEPTED,
+        }
+    )
 
 
 class SignalValidationError(Exception):
     """Raised when a signal fails validation (before DB write)."""
+
     pass
 
 
 class DuplicateSignalError(Exception):
     """Raised when Redis fast-path detects a duplicate idempotency key."""
+
     pass
 
 
@@ -104,13 +116,15 @@ class SignalService:
         that dedup is weakened for non-timestamped signals.
         """
         ts_str = str(int(tv_timestamp.timestamp())) if tv_timestamp else "none"
-        raw = "|".join([
-            str(strategy_id).lower(),
-            action.lower(),
-            ticker.upper(),
-            str(contracts) if contracts is not None else "none",
-            ts_str,
-        ])
+        raw = "|".join(
+            [
+                str(strategy_id).lower(),
+                action.lower(),
+                ticker.upper(),
+                str(contracts) if contracts is not None else "none",
+                ts_str,
+            ]
+        )
         return hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
     # ── Dedup (Redis fast path) ───────────────────────────────────────────────
@@ -289,6 +303,7 @@ class SignalService:
         These are moved to TIMEOUT status.
         """
         from datetime import timedelta
+
         cutoff = datetime.now(timezone.utc) - timedelta(
             minutes=settings.webhook_processing_timeout_minutes
         )

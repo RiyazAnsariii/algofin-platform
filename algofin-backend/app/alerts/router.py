@@ -15,7 +15,6 @@
 # Delivery log:
 #   GET  /alerts/history           — last N deliveries
 
-from datetime import datetime, timezone
 
 from fastapi import APIRouter, HTTPException, status
 from sqlalchemy import select, desc
@@ -38,6 +37,7 @@ router = APIRouter(prefix="/alerts", tags=["alerts"])
 
 # ── Helper ─────────────────────────────────────────────────────────────────
 
+
 def _mask_token(token: str) -> str:
     """Return first 10 chars + *** + last 5."""
     if len(token) <= 15:
@@ -57,6 +57,7 @@ def _config_response(cfg: TelegramConfig, raw_token: str) -> TelegramConfigRespo
 
 # ── Telegram Config endpoints ──────────────────────────────────────────────
 
+
 @router.put("/telegram", response_model=SuccessResponse[TelegramConfigResponse])
 async def upsert_telegram_config(
     body: TelegramConfigCreate,
@@ -68,7 +69,9 @@ async def upsert_telegram_config(
     Validates by sending a test message before saving.
     """
     # Validate the token + chat_id by test-messaging
-    ok, err = await validate_telegram_config(body.bot_token.strip(), body.chat_id.strip())
+    ok, err = await validate_telegram_config(
+        body.bot_token.strip(), body.chat_id.strip()
+    )
     if not ok:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -132,6 +135,7 @@ async def delete_telegram_config(
 
 # ── Alert Rules endpoints ──────────────────────────────────────────────────
 
+
 @router.get("/rules", response_model=SuccessResponse[list[AlertRuleResponse]])
 async def list_rules(
     current_user: CurrentUser,
@@ -146,7 +150,9 @@ async def list_rules(
     return SuccessResponse(data=[AlertRuleResponse.from_orm_obj(r) for r in rules])
 
 
-@router.post("/rules", response_model=SuccessResponse[AlertRuleResponse], status_code=201)
+@router.post(
+    "/rules", response_model=SuccessResponse[AlertRuleResponse], status_code=201
+)
 async def create_rule(
     body: AlertRuleCreate,
     current_user: CurrentUser,
@@ -210,6 +216,7 @@ async def delete_rule(
 
 # ── Delivery history ───────────────────────────────────────────────────────
 
+
 @router.get("/history", response_model=SuccessResponse[list[AlertDeliveryResponse]])
 async def get_history(
     current_user: CurrentUser,
@@ -224,4 +231,6 @@ async def get_history(
         .limit(limit)
     )
     deliveries = result.scalars().all()
-    return SuccessResponse(data=[AlertDeliveryResponse.from_orm_obj(d) for d in deliveries])
+    return SuccessResponse(
+        data=[AlertDeliveryResponse.from_orm_obj(d) for d in deliveries]
+    )

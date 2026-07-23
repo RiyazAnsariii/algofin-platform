@@ -45,6 +45,7 @@ class UserProfitPeriod(Base):
       waived      — fee waived (e.g. data_complete=false periods)
       incomplete  — sync data was missing; fee not finalised
     """
+
     __tablename__ = "user_profit_periods"
 
     id: Mapped[uuid.UUID] = mapped_column(
@@ -57,14 +58,20 @@ class UserProfitPeriod(Base):
     period_end: Mapped[date] = mapped_column(Date, nullable=False)
 
     # Locked field names — plan.md Section 5-A
-    total_realized_pnl: Mapped[Decimal] = mapped_column(Numeric(20, 8), nullable=False, default=0)
+    total_realized_pnl: Mapped[Decimal] = mapped_column(
+        Numeric(20, 8), nullable=False, default=0
+    )
     # net realized PnL across all consented accounts for the period
     # = SUM(billing_period_records.account_realized_pnl) — never store independently
 
-    performance_fee_rate: Mapped[Decimal] = mapped_column(Numeric(5, 4), nullable=False, default=Decimal("0.20"))
+    performance_fee_rate: Mapped[Decimal] = mapped_column(
+        Numeric(5, 4), nullable=False, default=Decimal("0.20")
+    )
     # 0.20 = 20%. May change per user in future but not in v1.
 
-    performance_fee_amount: Mapped[Decimal] = mapped_column(Numeric(20, 8), nullable=False, default=0)
+    performance_fee_amount: Mapped[Decimal] = mapped_column(
+        Numeric(20, 8), nullable=False, default=0
+    )
     # max(0, total_realized_pnl) * performance_fee_rate
     # Zero if total_realized_pnl <= 0 (no fee in loss months)
 
@@ -74,7 +81,10 @@ class UserProfitPeriod(Base):
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now()
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+        onupdate=func.now(),
     )
 
     __table_args__ = (
@@ -105,6 +115,7 @@ class BillingPeriodRecord(Base):
     NO fee_amount column here — the fee is computed at UserProfitPeriod level only.
     plan.md Section 3 — billing_period_records spec.
     """
+
     __tablename__ = "billing_period_records"
 
     id: Mapped[uuid.UUID] = mapped_column(
@@ -125,7 +136,9 @@ class BillingPeriodRecord(Base):
     period_start: Mapped[date] = mapped_column(Date, nullable=False)
     period_end: Mapped[date] = mapped_column(Date, nullable=False)
 
-    account_realized_pnl: Mapped[Decimal] = mapped_column(Numeric(20, 8), nullable=False, default=0)
+    account_realized_pnl: Mapped[Decimal] = mapped_column(
+        Numeric(20, 8), nullable=False, default=0
+    )
     # sum of qualifying realized PnL for this account in this period
     # See plan.md Section 5-A for inclusion/exclusion rules
 
@@ -138,15 +151,21 @@ class BillingPeriodRecord(Base):
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now()
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+        onupdate=func.now(),
     )
 
     __table_args__ = (
         UniqueConstraint(
-            "profit_period_id", "exchange_account_id",
+            "profit_period_id",
+            "exchange_account_id",
             name="uq_billing_record_period_account",
         ),
     )
 
     # Relationships
-    profit_period: Mapped["UserProfitPeriod"] = relationship(back_populates="billing_records")
+    profit_period: Mapped["UserProfitPeriod"] = relationship(
+        back_populates="billing_records"
+    )

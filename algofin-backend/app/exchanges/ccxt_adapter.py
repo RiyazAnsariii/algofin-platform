@@ -21,27 +21,27 @@ logger = logging.getLogger(__name__)
 EXCHANGE_OPTIONS: dict[str, dict] = {
     "binance_usdtm": {
         "ccxt_class": "binanceusdm",
-        "options":    {"defaultType": "future"},
+        "options": {"defaultType": "future"},
         "market_type": "future",
-        "settle":      "USDT",
+        "settle": "USDT",
     },
     "bybit_linear": {
         "ccxt_class": "bybit",
-        "options":    {"defaultType": "linear"},
+        "options": {"defaultType": "linear"},
         "market_type": "swap",
-        "settle":      "USDT",
+        "settle": "USDT",
     },
     "okx_swap": {
         "ccxt_class": "okx",
-        "options":    {"defaultType": "swap"},
+        "options": {"defaultType": "swap"},
         "market_type": "swap",
-        "settle":      "USDT",
+        "settle": "USDT",
     },
     "coinbase_advanced": {
         "ccxt_class": "coinbase",
-        "options":    {},
+        "options": {},
         "market_type": "spot",
-        "settle":      None,
+        "settle": None,
     },
 }
 
@@ -66,10 +66,10 @@ def create_ccxt_client(
         raise ValueError(f"CCXT class not found: {cls_name!r}")
 
     init_kwargs: dict = {
-        "apiKey":          api_key,
-        "secret":          api_secret,
+        "apiKey": api_key,
+        "secret": api_secret,
         "enableRateLimit": True,
-        "options":         cfg["options"],
+        "options": cfg["options"],
     }
 
     if passphrase:
@@ -85,10 +85,13 @@ def get_market_filter(exchange_id: str) -> dict:
     cfg = EXCHANGE_OPTIONS.get(exchange_id, {})
     return {
         "market_type": cfg.get("market_type", "spot"),
-        "settle":      cfg.get("settle"),
+        "settle": cfg.get("settle"),
     }
 
 
 def is_futures_exchange(exchange_id: str) -> bool:
     """Return True if this exchange trades futures/perpetuals (not spot)."""
-    return EXCHANGE_OPTIONS.get(exchange_id, {}).get("market_type") in ("future", "swap")
+    return EXCHANGE_OPTIONS.get(exchange_id, {}).get("market_type") in (
+        "future",
+        "swap",
+    )

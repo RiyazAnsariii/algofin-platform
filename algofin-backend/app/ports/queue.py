@@ -25,8 +25,9 @@ class QueueMessage:
     retry_count is incremented by the worker on transient failure.
     Max retries: 3 (defined in config.py Tier 2). After 3 → DLQ.
     """
+
     signal_id: uuid.UUID
-    strategy_id: uuid.UUID          # for logging/routing without extra DB query
+    strategy_id: uuid.UUID  # for logging/routing without extra DB query
     retry_count: int = 0
     enqueued_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 

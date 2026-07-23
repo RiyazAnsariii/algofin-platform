@@ -19,7 +19,6 @@
 
 import asyncio
 import logging
-import uuid
 from datetime import datetime, timezone
 
 from app.config import settings
@@ -37,6 +36,7 @@ _reconcile_task: asyncio.Task | None = None
 
 
 # ── Worker loop ───────────────────────────────────────────────────────────────
+
 
 async def _worker_loop() -> None:
     """
@@ -146,13 +146,14 @@ async def _process_with_retry(queue: RedisQueueAdapter, message: QueueMessage) -
             await queue.send_to_dlq(
                 message,
                 reason=f"Max retries ({settings.webhook_max_retries}) exhausted. "
-                       f"Final status: {final_status}",
+                f"Final status: {final_status}",
             )
 
     return final_status
 
 
 # ── Reconciliation loop ───────────────────────────────────────────────────────
+
 
 async def _reconcile_loop() -> None:
     """
@@ -179,6 +180,7 @@ async def _reconcile_loop() -> None:
             async with AsyncSessionLocal() as db:
                 # ── Task 1: Fix stuck PROCESSING signals ─────────────────────
                 from app.webhooks.signal_service import SignalService
+
                 signal_svc = SignalService(db, redis)
                 stuck = await signal_svc.find_stuck_processing()
                 if stuck:
@@ -200,6 +202,7 @@ async def _reconcile_loop() -> None:
 
                 # ── Task 2: Expire grace-period secrets ───────────────────────
                 from app.webhooks.secret_service import SecretService
+
                 secret_svc = SecretService(db)
                 expired_count = await secret_svc.expire_grace_periods()
                 if expired_count:
@@ -215,13 +218,14 @@ async def _reconcile_loop() -> None:
                 from datetime import timedelta
 
                 orphan_result = await db.execute(
-                    select(StrategySignal).where(
+                    select(StrategySignal)
+                    .where(
                         StrategySignal.status == SignalStatus.QUEUED,
-                        StrategySignal.received_at < (
-                            datetime.now(timezone.utc) - timedelta(minutes=2)
-                        ),
+                        StrategySignal.received_at
+                        < (datetime.now(timezone.utc) - timedelta(minutes=2)),
                         StrategySignal.is_test == False,  # noqa: E712
-                    ).limit(20)
+                    )
+                    .limit(20)
                 )
                 orphans = orphan_result.scalars().all()
                 if orphans:
@@ -260,6 +264,7 @@ async def _reconcile_loop() -> None:
 
 # ── Start / Stop (called from main.py) ───────────────────────────────────────
 
+
 def start_webhook_worker() -> None:
     """
     Starts the worker and reconciliation asyncio tasks.
@@ -272,7 +277,9 @@ def start_webhook_worker() -> None:
         logger.info("[Worker] Webhook worker task created.")
 
     if _reconcile_task is None or _reconcile_task.done():
-        _reconcile_task = asyncio.create_task(_reconcile_loop(), name="webhook_reconcile")
+        _reconcile_task = asyncio.create_task(
+            _reconcile_loop(), name="webhook_reconcile"
+        )
         logger.info("[Reconcile] Reconciliation task created.")
 
 

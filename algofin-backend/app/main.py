@@ -10,7 +10,10 @@ from fastapi.responses import JSONResponse
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
-from app.common.middleware import RequestBodySizeLimitMiddleware, RequestLoggingMiddleware
+from app.common.middleware import (
+    RequestBodySizeLimitMiddleware,
+    RequestLoggingMiddleware,
+)
 
 from app.admin.router import router as admin_router
 from app.auth.router import router as auth_router
@@ -23,10 +26,10 @@ from app.events.router import router as events_router
 from app.exchanges.router import router as exchanges_router
 from app.marketdata.ws_router import router as marketdata_router
 from app.orders.router import router as orders_router  # v2 Phase B
-from app.risk.router import router as risk_router      # v2 Phase D
+from app.risk.router import router as risk_router  # v2 Phase D
 from app.alerts.router import router as alerts_router  # v2 Phase E
 from app.strategy.router import router as strategy_router  # v2 Phase F
-from app.journal.router import router as journal_router    # v2 Phase G
+from app.journal.router import router as journal_router  # v2 Phase G
 from app.portfolio.router import router as portfolio_router
 from app.webhooks.router import router as webhooks_router  # v2 Phase M
 from app.webhooks.worker import start_webhook_worker, stop_webhook_worker  # v2 Phase M
@@ -76,33 +79,44 @@ app.add_middleware(
     ),
 )
 
+
 # ── Global exception handler ──────────────────────────────────────
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     logger.exception(f"Unhandled exception on {request.url}: {exc}")
     return JSONResponse(
         status_code=500,
-        content={"success": False, "error": {"code": "INTERNAL_ERROR", "message": "An unexpected error occurred"}},
+        content={
+            "success": False,
+            "error": {
+                "code": "INTERNAL_ERROR",
+                "message": "An unexpected error occurred",
+            },
+        },
     )
+
 
 # ── Routers ───────────────────────────────────────────────────────
 API_PREFIX = "/api/v1"
 
-app.include_router(auth_router,         prefix=API_PREFIX)
-app.include_router(google_oauth_router,  prefix=API_PREFIX)  # Google OAuth
-app.include_router(exchanges_router,  prefix=API_PREFIX)
-app.include_router(portfolio_router,  prefix=API_PREFIX)
-app.include_router(billing_router,    prefix=API_PREFIX)
-app.include_router(events_router,     prefix=API_PREFIX)
-app.include_router(assistant_router,  prefix=API_PREFIX)
-app.include_router(admin_router,      prefix=API_PREFIX)
+app.include_router(auth_router, prefix=API_PREFIX)
+app.include_router(google_oauth_router, prefix=API_PREFIX)  # Google OAuth
+app.include_router(exchanges_router, prefix=API_PREFIX)
+app.include_router(portfolio_router, prefix=API_PREFIX)
+app.include_router(billing_router, prefix=API_PREFIX)
+app.include_router(events_router, prefix=API_PREFIX)
+app.include_router(assistant_router, prefix=API_PREFIX)
+app.include_router(admin_router, prefix=API_PREFIX)
 app.include_router(marketdata_router, prefix=API_PREFIX)  # v2 Phase A: real-time WS
-app.include_router(orders_router,     prefix=API_PREFIX)  # v2 Phase B: order management
-app.include_router(risk_router,       prefix=API_PREFIX)  # v2 Phase D: risk controls
-app.include_router(alerts_router,     prefix=API_PREFIX)  # v2 Phase E: Telegram alerts
-app.include_router(strategy_router,   prefix=API_PREFIX)  # v2 Phase F: strategy engine
-app.include_router(journal_router,    prefix=API_PREFIX)  # v2 Phase G: journal & analytics
-app.include_router(webhooks_router,   prefix=API_PREFIX)  # v2 Phase M: TradingView webhooks
+app.include_router(orders_router, prefix=API_PREFIX)  # v2 Phase B: order management
+app.include_router(risk_router, prefix=API_PREFIX)  # v2 Phase D: risk controls
+app.include_router(alerts_router, prefix=API_PREFIX)  # v2 Phase E: Telegram alerts
+app.include_router(strategy_router, prefix=API_PREFIX)  # v2 Phase F: strategy engine
+app.include_router(journal_router, prefix=API_PREFIX)  # v2 Phase G: journal & analytics
+app.include_router(
+    webhooks_router, prefix=API_PREFIX
+)  # v2 Phase M: TradingView webhooks
+
 
 # ── Health check ──────────────────────────────────────────────────
 @app.get("/health", tags=["health"])
@@ -111,14 +125,17 @@ async def health() -> dict:
     redis_ok = False
     try:
         from app.database import AsyncSessionLocal
+
         async with AsyncSessionLocal() as session:
             from sqlalchemy import text
+
             await session.execute(text("SELECT 1"))
             db_ok = True
     except Exception:
         pass
     try:
         from app.database import get_redis_client
+
         r = await get_redis_client()
         await r.ping()
         redis_ok = True
@@ -137,6 +154,7 @@ async def health() -> dict:
 @app.head("/health", tags=["health"])
 async def health_head():
     from fastapi.responses import Response
+
     return Response(status_code=200)
 
 
@@ -152,6 +170,7 @@ async def ping() -> dict:
 @app.head("/api/v1/ping", tags=["health"])
 async def ping_head():
     from fastapi.responses import Response
+
     return Response(status_code=200)
 
 
@@ -166,6 +185,7 @@ async def startup() -> None:
     try:
         from app.database import get_redis_client
         from app.marketdata.binance_stream import start_binance_stream
+
         redis = await get_redis_client()
         await start_binance_stream(redis)
         logger.info("[MarketData] Binance mark price stream started.")
@@ -176,6 +196,7 @@ async def startup() -> None:
     try:
         from app.database import get_redis_client, AsyncSessionLocal
         from app.marketdata.binance_user_stream import start_all_user_streams
+
         redis = await get_redis_client()
         await start_all_user_streams(redis, AsyncSessionLocal)
         logger.info("[UserStream] User data streams started.")
@@ -185,6 +206,7 @@ async def startup() -> None:
     # v2 Phase E: start Telegram alert dispatcher
     try:
         from app.alerts.engine import start_alert_dispatcher
+
         start_alert_dispatcher()
         logger.info("[AlertEngine] Telegram alert dispatcher started.")
     except Exception as exc:
@@ -193,6 +215,7 @@ async def startup() -> None:
     # v2 Phase F: start Strategy Engine
     try:
         from app.strategy.engine import start_strategy_engine
+
         start_strategy_engine()
         logger.info("[StrategyEngine] Strategy engine started.")
     except Exception as exc:
@@ -216,9 +239,11 @@ async def startup() -> None:
 
         async def _keep_alive_loop() -> None:
             external_url = _os.getenv("RENDER_EXTERNAL_URL", "").rstrip("/")
-            ping_url  = f"{external_url}/health"
-            interval  = int(_os.getenv("KEEP_ALIVE_INTERVAL_SECONDS", "840"))  # 14 min
-            logger.info(f"[KeepAlive] Self-pinger started -> {ping_url} every {interval}s")
+            ping_url = f"{external_url}/health"
+            interval = int(_os.getenv("KEEP_ALIVE_INTERVAL_SECONDS", "840"))  # 14 min
+            logger.info(
+                f"[KeepAlive] Self-pinger started -> {ping_url} every {interval}s"
+            )
             await _asyncio.sleep(60)  # wait 1 min after boot before first ping
             while True:
                 try:
@@ -246,9 +271,10 @@ async def shutdown() -> None:
     from app.database import close_redis_client
     from app.marketdata.binance_stream import stop_binance_stream
     from app.marketdata.binance_user_stream import stop_all_user_streams
-    stop_webhook_worker()            # v2 Phase M
-    stop_strategy_engine()           # v2 Phase F
-    stop_alert_dispatcher()          # v2 Phase E
+
+    stop_webhook_worker()  # v2 Phase M
+    stop_strategy_engine()  # v2 Phase F
+    stop_alert_dispatcher()  # v2 Phase E
     await stop_all_user_streams()
     await stop_binance_stream()
     await close_redis_client()

@@ -5,11 +5,10 @@
 # POST /auth/refresh  (reads httpOnly cookie, issues new access token)
 # POST /auth/logout
 
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Cookie, HTTPException, Request, Response, status
 from sqlalchemy import select
-from sqlalchemy.exc import IntegrityError
 
 from app.auth.schemas import (
     AuthDataResponse,
@@ -43,7 +42,7 @@ from app.common.deps import CurrentUser, DbSession
 from app.common.rate_limit import limiter
 from app.common.schemas import SuccessResponse
 from app.config import settings
-from app.models.user import User
+from app.models.user import RefreshToken, User
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -112,7 +111,9 @@ async def signup(
 
     ip = request.client.host if request.client else None
     ua = request.headers.get("user-agent")
-    access_token, refresh_raw = await issue_tokens(db, user=user, ip_address=ip, user_agent=ua)
+    access_token, refresh_raw = await issue_tokens(
+        db, user=user, ip_address=ip, user_agent=ua
+    )
 
     _set_refresh_cookie(response, refresh_raw)
 
@@ -142,7 +143,9 @@ async def login(
 
     ip = request.client.host if request.client else None
     ua = request.headers.get("user-agent")
-    access_token, refresh_raw = await issue_tokens(db, user=user, ip_address=ip, user_agent=ua)
+    access_token, refresh_raw = await issue_tokens(
+        db, user=user, ip_address=ip, user_agent=ua
+    )
 
     _set_refresh_cookie(response, refresh_raw)
 
@@ -285,7 +288,9 @@ async def forgot_password(
     )
 
 
-@router.post("/verify-reset-code", response_model=SuccessResponse[VerifyResetCodeResponse])
+@router.post(
+    "/verify-reset-code", response_model=SuccessResponse[VerifyResetCodeResponse]
+)
 @limiter.limit("5/minute")
 async def verify_reset_code(
     body: VerifyResetCodeRequest,
@@ -294,8 +299,6 @@ async def verify_reset_code(
 ) -> SuccessResponse[VerifyResetCodeResponse]:
     """Verify the 6-digit code sent to user's email."""
     email = body.email.lower().strip()
-    code = body.code.strip()
-
     result = await db.execute(select(User).where(User.email == email))
     user = result.scalar_one_or_none()
 
@@ -306,7 +309,9 @@ async def verify_reset_code(
         )
 
     # Issue verified reset token
-    verified_token = create_password_reset_token(str(user.id), user.email, verified=True)
+    verified_token = create_password_reset_token(
+        str(user.id), user.email, verified=True
+    )
 
     return SuccessResponse(
         data=VerifyResetCodeResponse(
@@ -324,9 +329,13 @@ async def reset_password(
     db: DbSession,
 ) -> SuccessResponse[dict]:
     """Reset password using verified reset token."""
-    payload = decode_password_reset_token(body.token, expected_type="password_reset_verified")
+    payload = decode_password_reset_token(
+        body.token, expected_type="password_reset_verified"
+    )
     if not payload:
-        payload = decode_password_reset_token(body.token, expected_type="password_reset")
+        payload = decode_password_reset_token(
+            body.token, expected_type="password_reset"
+        )
 
     if not payload or "sub" not in payload:
         raise HTTPException(
@@ -336,6 +345,7 @@ async def reset_password(
 
     user_id = payload["sub"]
     import uuid as _uuid
+
     try:
         uid = _uuid.UUID(user_id)
     except ValueError:
@@ -357,7 +367,11 @@ async def reset_password(
     await revoke_all_tokens(db, user_id=str(user.id))
     await db.commit()
 
-    return SuccessResponse(data={"message": "Password reset successfully. You can now log in with your new password."})
+    return SuccessResponse(
+        data={
+            "message": "Password reset successfully. You can now log in with your new password."
+        }
+    )
 
 
 @router.delete("/me", response_model=SuccessResponse[dict])
@@ -378,9 +392,6 @@ async def delete_account(
 
 # ── Session management ────────────────────────────────────────────────
 
-from app.models.user import RefreshToken
-from datetime import datetime, timezone
-
 
 @router.get("/sessions", response_model=SuccessResponse[list[dict]])
 async def list_sessions(
@@ -390,22 +401,26 @@ async def list_sessions(
     """List all active (non-revoked, non-expired) refresh token sessions."""
     now = datetime.now(timezone.utc)
     result = await db.execute(
-        select(RefreshToken).where(
+        select(RefreshToken)
+        .where(
             RefreshToken.user_id == current_user.id,
-            RefreshToken.revoked  == False,  # noqa: E712
+            RefreshToken.revoked == False,  # noqa: E712
             RefreshToken.expires_at > now,
-        ).order_by(RefreshToken.created_at.desc())
+        )
+        .order_by(RefreshToken.created_at.desc())
     )
     tokens = result.scalars().all()
 
-    return SuccessResponse(data=[
-        {
-            "id":         str(t.id),
-            "created_at": t.created_at.isoformat(),
-            "expires_at": t.expires_at.isoformat(),
-        }
-        for t in tokens
-    ])
+    return SuccessResponse(
+        data=[
+            {
+                "id": str(t.id),
+                "created_at": t.created_at.isoformat(),
+                "expires_at": t.expires_at.isoformat(),
+            }
+            for t in tokens
+        ]
+    )
 
 
 @router.delete("/sessions/{token_id}", response_model=SuccessResponse[dict])
@@ -416,24 +431,28 @@ async def revoke_session(
 ) -> SuccessResponse[dict]:
     """Revoke a specific refresh token session."""
     import uuid as _uuid
+
     try:
         tid = _uuid.UUID(token_id)
     except ValueError:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid session ID")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid session ID"
+        )
 
     result = await db.execute(
         select(RefreshToken).where(
-            RefreshToken.id      == tid,
+            RefreshToken.id == tid,
             RefreshToken.user_id == current_user.id,
         )
     )
     token = result.scalar_one_or_none()
     if not token:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Session not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Session not found"
+        )
 
-    token.revoked    = True
+    token.revoked = True
     token.revoked_at = datetime.now(timezone.utc)
     await db.commit()
 
     return SuccessResponse(data={"message": "Session revoked."})
-

@@ -22,7 +22,6 @@ from typing import Optional
 import ccxt.async_support as ccxt
 import websockets
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 from websockets.exceptions import ConnectionClosed
 
 from app.marketdata.normalizer import BinanceUserStreamNormalizer, OrderEvent
@@ -30,11 +29,11 @@ from app.marketdata.normalizer import BinanceUserStreamNormalizer, OrderEvent
 logger = logging.getLogger(__name__)
 
 # ── Constants ─────────────────────────────────────────────────────────────────
-BINANCE_USER_STREAM_WS   = "wss://fstream.binance.com/ws"
-LISTEN_KEY_REFRESH_SEC   = 30 * 60      # refresh every 30 min (key expires in 60)
-RECONNECT_BASE           = 2.0
-RECONNECT_MAX            = 60.0
-ORDER_EVENT_CHANNEL      = "algofin:order_events:{user_id}"
+BINANCE_USER_STREAM_WS = "wss://fstream.binance.com/ws"
+LISTEN_KEY_REFRESH_SEC = 30 * 60  # refresh every 30 min (key expires in 60)
+RECONNECT_BASE = 2.0
+RECONNECT_MAX = 60.0
+ORDER_EVENT_CHANNEL = "algofin:order_events:{user_id}"
 
 
 def order_event_channel(user_id: str) -> str:
@@ -61,16 +60,16 @@ class BinanceUserStreamManager:
         user_id: str,
         api_key: str,
         api_secret: str,
-        redis_client,             # type: ignore[no-untyped-def]
-        db_session_factory,       # type: ignore[no-untyped-def]
+        redis_client,  # type: ignore[no-untyped-def]
+        db_session_factory,  # type: ignore[no-untyped-def]
     ) -> None:
-        self.account_id         = account_id
-        self.user_id            = user_id
-        self._api_key           = api_key
-        self._api_secret        = api_secret
-        self._redis             = redis_client
-        self._db_factory        = db_session_factory   # async session maker
-        self._running           = False
+        self.account_id = account_id
+        self.user_id = user_id
+        self._api_key = api_key
+        self._api_secret = api_secret
+        self._redis = redis_client
+        self._db_factory = db_session_factory  # async session maker
+        self._running = False
         self._listen_key: str | None = None
         self._ws: Optional[websockets.WebSocketClientProtocol] = None
 
@@ -96,7 +95,9 @@ class BinanceUserStreamManager:
                 # Step 1: Get listen key
                 self._listen_key = await self._get_listen_key()
                 if not self._listen_key:
-                    logger.warning(f"[UserStream] Could not get listenKey for {self.account_id}")
+                    logger.warning(
+                        f"[UserStream] Could not get listenKey for {self.account_id}"
+                    )
                     await asyncio.sleep(backoff)
                     backoff = min(backoff * 2, RECONNECT_MAX)
                     continue
@@ -112,7 +113,7 @@ class BinanceUserStreamManager:
                     close_timeout=5,
                 ) as ws:
                     self._ws = ws
-                    backoff = RECONNECT_BASE   # reset on success
+                    backoff = RECONNECT_BASE  # reset on success
 
                     # Step 3: Schedule listen key refresh
                     refresh_task = asyncio.create_task(self._refresh_listen_key_loop())
@@ -137,7 +138,9 @@ class BinanceUserStreamManager:
             if not self._running:
                 break
 
-            logger.info(f"[UserStream] {self.account_id} reconnecting in {backoff:.0f}s …")
+            logger.info(
+                f"[UserStream] {self.account_id} reconnecting in {backoff:.0f}s …"
+            )
             await asyncio.sleep(backoff)
             backoff = min(backoff * 2, RECONNECT_MAX)
 
@@ -192,7 +195,9 @@ class BinanceUserStreamManager:
             pass
 
         elif event_type == "listenKeyExpired":
-            logger.warning(f"[UserStream] listenKey expired for {self.account_id} — reconnecting")
+            logger.warning(
+                f"[UserStream] listenKey expired for {self.account_id} — reconnecting"
+            )
             if self._ws:
                 await self._ws.close()
 
@@ -203,10 +208,11 @@ class BinanceUserStreamManager:
         Only updates orders placed through AlgoFin (matching client_order_id prefix).
         """
         if not event.client_order_id.startswith("algofin_"):
-            return   # Skip orders not placed through AlgoFin
+            return  # Skip orders not placed through AlgoFin
 
         try:
             from app.models.order import Order  # avoid circular import
+
             async with self._db_factory() as session:
                 result = await session.execute(
                     select(Order).where(
@@ -234,20 +240,20 @@ class BinanceUserStreamManager:
                     order.cancelled_at = now
 
                 await session.commit()
-                logger.info(
-                    f"[UserStream] Order {order.id} updated to {event.status}"
-                )
+                logger.info(f"[UserStream] Order {order.id} updated to {event.status}")
         except Exception as exc:
             logger.exception(f"[UserStream] DB update failed: {exc}")
 
     # ── CCXT factory ──────────────────────────────────────────────────────────
     def _make_client(self) -> ccxt.binanceusdm:
-        return ccxt.binanceusdm({
-            "apiKey":  self._api_key,
-            "secret":  self._api_secret,
-            "options": {"defaultType": "future"},
-            "enableRateLimit": True,
-        })
+        return ccxt.binanceusdm(
+            {
+                "apiKey": self._api_key,
+                "secret": self._api_secret,
+                "options": {"defaultType": "future"},
+                "enableRateLimit": True,
+            }
+        )
 
 
 # ── Global registry of running managers ──────────────────────────────────────
@@ -327,7 +333,9 @@ async def start_all_user_streams(redis_client, db_session_factory) -> None:
                     db_session_factory=db_session_factory,
                 )
             except Exception as exc:
-                logger.warning(f"[UserStream] Could not start stream for {account.id}: {exc}")
+                logger.warning(
+                    f"[UserStream] Could not start stream for {account.id}: {exc}"
+                )
 
         logger.info(f"[UserStream] Started {len(_managers)} user stream(s).")
     except Exception as exc:

@@ -44,9 +44,7 @@ async def authenticate_user(
     password: str,
 ) -> User | None:
     """Return User if credentials are valid, None otherwise."""
-    result = await db.execute(
-        select(User).where(User.email == email.lower().strip())
-    )
+    result = await db.execute(select(User).where(User.email == email.lower().strip()))
     user = result.scalar_one_or_none()
     if user is None or not user.is_active:
         return None
@@ -74,7 +72,9 @@ async def issue_tokens(
     # Create refresh token
     refresh_raw = create_refresh_token_raw()
     refresh_hash = hash_refresh_token(refresh_raw)
-    expires = datetime.now(timezone.utc) + timedelta(days=settings.jwt_refresh_expire_days)
+    expires = datetime.now(timezone.utc) + timedelta(
+        days=settings.jwt_refresh_expire_days
+    )
 
     db_token = RefreshToken(
         user_id=user.id,
@@ -149,12 +149,14 @@ async def rotate_refresh_token(
     db.add(new_db_token)
 
     # Log activity
-    db.add(LoginActivity(
-        user_id=user.id,
-        event="token_refreshed",
-        ip_address=ip_address,
-        user_agent=user_agent,
-    ))
+    db.add(
+        LoginActivity(
+            user_id=user.id,
+            event="token_refreshed",
+            ip_address=ip_address,
+            user_agent=user_agent,
+        )
+    )
 
     await db.commit()
     return access_token, new_refresh_raw, user

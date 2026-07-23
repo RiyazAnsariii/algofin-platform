@@ -18,7 +18,6 @@
 #   DRAFT → ARCHIVED (archive/delete)
 #   ARCHIVED → * (FORBIDDEN — terminal state)
 
-import secrets
 import uuid
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING
@@ -27,7 +26,7 @@ from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
-from app.models.strategy import Strategy, StrategyWebhookSecret, StrategyTarget
+from app.models.strategy import Strategy
 
 if TYPE_CHECKING:
     pass
@@ -36,28 +35,29 @@ if TYPE_CHECKING:
 # ── Allowed state transitions (Principle 4: Explicit State Transitions) ────────
 
 _ALLOWED_TRANSITIONS: dict[str, set[str]] = {
-    "draft":    {"active", "archived"},
-    "active":   {"paused", "stopped", "archived"},
-    "paused":   {"active", "archived"},
-    "stopped":  {"archived"},
-    "archived": set(),   # terminal — no transitions out
+    "draft": {"active", "archived"},
+    "active": {"paused", "stopped", "archived"},
+    "paused": {"active", "archived"},
+    "stopped": {"archived"},
+    "archived": set(),  # terminal — no transitions out
 }
 
 # Human-readable trigger names for audit log
 _TRANSITION_ACTIONS: dict[tuple[str, str], str] = {
-    ("draft",   "active"):   "published",
-    ("active",  "paused"):   "paused",
-    ("active",  "stopped"):  "stopped",
-    ("active",  "archived"): "archived",
-    ("paused",  "active"):   "resumed",
-    ("paused",  "archived"): "archived",
+    ("draft", "active"): "published",
+    ("active", "paused"): "paused",
+    ("active", "stopped"): "stopped",
+    ("active", "archived"): "archived",
+    ("paused", "active"): "resumed",
+    ("paused", "archived"): "archived",
     ("stopped", "archived"): "archived",
-    ("draft",   "archived"): "archived",
+    ("draft", "archived"): "archived",
 }
 
 
 class DomainError(Exception):
     """Raised when a domain invariant or state machine rule is violated."""
+
     pass
 
 
@@ -208,7 +208,10 @@ class StrategyService:
         strategy.execution_count += 1
         strategy.last_executed_at = datetime.now(timezone.utc)
 
-        if strategy.max_executions and strategy.execution_count >= strategy.max_executions:
+        if (
+            strategy.max_executions
+            and strategy.execution_count >= strategy.max_executions
+        ):
             await self.transition(strategy, "stopped")
             return True
         return False

@@ -38,6 +38,7 @@ _dispatcher_task: asyncio.Task | None = None
 
 # ── DB helpers ─────────────────────────────────────────────────────────────
 
+
 async def _get_telegram_config(db: AsyncSession, user_id: str) -> TelegramConfig | None:
     result = await db.execute(
         select(TelegramConfig).where(
@@ -94,12 +95,13 @@ async def _send_and_log(
 
 # ── Event handlers ─────────────────────────────────────────────────────────
 
+
 async def _handle_order_event(user_id: str, event: dict) -> None:
     status = event.get("status", "")
     type_map = {
-        "FILLED":    "ORDER_FILLED",
+        "FILLED": "ORDER_FILLED",
         "CANCELLED": "ORDER_CANCELLED",
-        "REJECTED":  "ORDER_REJECTED",
+        "REJECTED": "ORDER_REJECTED",
     }
     alert_type = type_map.get(status)
     if not alert_type:
@@ -114,9 +116,9 @@ async def _handle_order_event(user_id: str, event: dict) -> None:
             return
 
         symbol = event.get("symbol", "?")
-        side   = event.get("side", "?")
-        qty    = str(event.get("filled_quantity") or event.get("quantity", "?"))
-        price  = str(event.get("avg_fill_price") or "")
+        side = event.get("side", "?")
+        qty = str(event.get("filled_quantity") or event.get("quantity", "?"))
+        price = str(event.get("avg_fill_price") or "")
 
         if alert_type == "ORDER_FILLED":
             msg = fmt_order_filled(symbol, side, qty, price or None)
@@ -148,9 +150,9 @@ async def _handle_risk_event(user_id: str, event: dict) -> None:
             return
 
         rule_name = event.get("rule_name", "Unknown rule")
-        action    = event.get("action", "alert")
-        detail    = event.get("detail", "")
-        msg       = fmt_risk_triggered(rule_name, detail, action)
+        action = event.get("action", "alert")
+        detail = event.get("detail", "")
+        msg = fmt_risk_triggered(rule_name, detail, action)
 
         bot_token = decrypt_credential(tg.bot_token_encrypted)
         for rule in rules:
@@ -171,8 +173,8 @@ async def _handle_price_update(event: dict) -> None:
     Simple edge-triggered: fires whenever the price crosses the threshold.
     (Debounce / cooldown can be added later via last_triggered_at.)
     """
-    symbol       = event.get("symbol", "")
-    current_str  = str(event.get("price") or event.get("mark_price") or "")
+    symbol = event.get("symbol", "")
+    current_str = str(event.get("price") or event.get("mark_price") or "")
     if not symbol or not current_str:
         return
 
@@ -183,12 +185,12 @@ async def _handle_price_update(event: dict) -> None:
 
     async with AsyncSessionLocal() as db:
         result = await db.execute(
-            select(AlertRule, TelegramConfig).join(
-                TelegramConfig, TelegramConfig.user_id == AlertRule.user_id
-            ).where(
+            select(AlertRule, TelegramConfig)
+            .join(TelegramConfig, TelegramConfig.user_id == AlertRule.user_id)
+            .where(
                 AlertRule.alert_type == "PRICE_ALERT",
                 AlertRule.symbol == symbol,
-                AlertRule.is_active == True,   # noqa: E712
+                AlertRule.is_active == True,  # noqa: E712
                 TelegramConfig.is_active == True,  # noqa: E712
             )
         )
@@ -200,14 +202,15 @@ async def _handle_price_update(event: dict) -> None:
             if rule.threshold is None or rule.direction is None:
                 continue
             threshold = float(rule.threshold)
-            triggered = (
-                (rule.direction == "above" and current_price >= threshold) or
-                (rule.direction == "below" and current_price <= threshold)
+            triggered = (rule.direction == "above" and current_price >= threshold) or (
+                rule.direction == "below" and current_price <= threshold
             )
             if not triggered:
                 continue
 
-            msg       = fmt_price_alert(symbol, rule.direction, str(rule.threshold), current_str)
+            msg = fmt_price_alert(
+                symbol, rule.direction, str(rule.threshold), current_str
+            )
             bot_token = decrypt_credential(tg.bot_token_encrypted)
             await _send_and_log(
                 db,
@@ -222,12 +225,15 @@ async def _handle_price_update(event: dict) -> None:
 
 # ── Redis subscriber loop ──────────────────────────────────────────────────
 
+
 async def _run_dispatcher() -> None:
     """
     Long-running background task.
     Pattern-subscribes to order_events and risk_events channels.
     """
-    from app.database import get_redis_client as get_redis  # imported here to avoid circular
+    from app.database import (
+        get_redis_client as get_redis,
+    )  # imported here to avoid circular
 
     logger.info("[AlertEngine] Starting dispatcher...")
     try:
@@ -238,7 +244,9 @@ async def _run_dispatcher() -> None:
             "algofin:risk_events:*",
             "algofin:price_updates",
         )
-        logger.info("[AlertEngine] Subscribed to order_events, risk_events, price_updates")
+        logger.info(
+            "[AlertEngine] Subscribed to order_events, risk_events, price_updates"
+        )
 
         async for raw in pubsub.listen():
             if raw["type"] not in ("pmessage", "message"):
@@ -265,7 +273,7 @@ async def _run_dispatcher() -> None:
     except asyncio.CancelledError:
         logger.info("[AlertEngine] Dispatcher stopped.")
     except Exception as exc:
-        return exc   # bubble up to the retry wrapper
+        return exc  # bubble up to the retry wrapper
 
 
 async def _run_dispatcher_with_backoff() -> None:
@@ -283,11 +291,14 @@ async def _run_dispatcher_with_backoff() -> None:
     while attempt < max_attempts:
         exc = await _run_dispatcher()
         if exc is None:
-            return   # clean shutdown
+            return  # clean shutdown
         attempt += 1
         logger.warning(
             "[AlertEngine] Connection failed (%s/%s): %s — retrying in %ss",
-            attempt, max_attempts, exc, delay,
+            attempt,
+            max_attempts,
+            exc,
+            delay,
         )
         await asyncio.sleep(delay)
         delay = min(delay * 2, max_delay)

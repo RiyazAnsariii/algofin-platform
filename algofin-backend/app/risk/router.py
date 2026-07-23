@@ -10,7 +10,7 @@
 
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException, Query, status
+from fastapi import APIRouter, HTTPException, Query
 from sqlalchemy import select
 
 from app.common.deps import CurrentUser, DbSession
@@ -80,11 +80,16 @@ async def update_rule(
 ) -> SuccessResponse[RuleOut]:
     """Update rule fields. Use is_active=false to temporarily disable."""
     rule = await _get_owned_rule(db, rule_id=str(rule_id), user_id=str(current_user.id))
-    if req.name      is not None: rule.name      = req.name
-    if req.threshold is not None: rule.threshold = req.threshold
-    if req.action    is not None: rule.action    = req.action
-    if req.is_active is not None: rule.is_active = req.is_active
-    if req.symbol    is not None: rule.symbol    = req.symbol.upper() if req.symbol else None
+    if req.name is not None:
+        rule.name = req.name
+    if req.threshold is not None:
+        rule.threshold = req.threshold
+    if req.action is not None:
+        rule.action = req.action
+    if req.is_active is not None:
+        rule.is_active = req.is_active
+    if req.symbol is not None:
+        rule.symbol = req.symbol.upper() if req.symbol else None
     await db.commit()
     await db.refresh(rule)
     return SuccessResponse(data=_out(rule))
@@ -122,6 +127,7 @@ async def list_violations(
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
+
 async def _get_owned_rule(db: DbSession, *, rule_id: str, user_id: str) -> RiskRule:
     result = await db.execute(
         select(RiskRule).where(
@@ -145,7 +151,9 @@ def _out(rule: RiskRule) -> RuleOut:
         symbol=rule.symbol,
         is_active=rule.is_active,
         triggered_count=rule.triggered_count,
-        last_triggered_at=rule.last_triggered_at.isoformat() if rule.last_triggered_at else None,
+        last_triggered_at=rule.last_triggered_at.isoformat()
+        if rule.last_triggered_at
+        else None,
         created_at=rule.created_at.isoformat(),
     )
 

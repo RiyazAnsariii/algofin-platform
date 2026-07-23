@@ -16,6 +16,7 @@ from sqlalchemy import String
 from sqlalchemy.types import TypeDecorator
 import uuid as uuid_module
 
+import redis.asyncio as aioredis  # type: ignore[import]
 from app.config import settings
 
 _is_sqlite = settings.database_url.startswith("sqlite")
@@ -76,13 +77,13 @@ def _build_pg_engine_args(raw_url: str) -> tuple[str, dict]:
     return clean_url, connect_args
 
 
-
 # ── UUIDType — works on both PostgreSQL and SQLite ────────────────
 class UUIDType(TypeDecorator):
     """
     UUID stored as native UUID on PostgreSQL, VARCHAR(36) on SQLite.
     All models use this type for primary keys and foreign keys.
     """
+
     impl = String(36)
     cache_ok = True
 
@@ -157,8 +158,6 @@ async def get_db() -> AsyncSession:  # type: ignore[misc]
 
 # ── Async Redis client (singleton) ────────────────────────────────
 # Used by: Market Data WebSocket (pub/sub) and future event streams
-import redis.asyncio as aioredis  # type: ignore[import]
-
 _redis_client: aioredis.Redis | None = None
 
 

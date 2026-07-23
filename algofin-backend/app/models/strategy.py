@@ -14,16 +14,22 @@
 #   StrategyTarget        — which exchange accounts a strategy executes on
 #   DomainEventOutbox     — transactional outbox for reliable cross-context events
 
-import hashlib
-import json
-import secrets
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime
 from decimal import Decimal
 
 from sqlalchemy import (
-    Boolean, DateTime, Integer, Numeric, String, Text,
-    ForeignKey, UniqueConstraint, Index, func, JSON,
+    Boolean,
+    DateTime,
+    Integer,
+    Numeric,
+    String,
+    Text,
+    ForeignKey,
+    UniqueConstraint,
+    Index,
+    func,
+    JSON,
 )
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -31,6 +37,7 @@ from app.database import Base, UUIDType
 
 
 # ── Original Strategy model (extended, backward compatible) ──────────────────
+
 
 class Strategy(Base):
     """
@@ -58,14 +65,19 @@ class Strategy(Base):
     pine_webhook additional params (all nullable for other types):
         pine_code, timeframe, current_version, is_test_mode
     """
+
     __tablename__ = "strategies"
 
-    id: Mapped[uuid.UUID] = mapped_column(UUIDType, primary_key=True, default=uuid.uuid4)
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUIDType, primary_key=True, default=uuid.uuid4
+    )
     user_id: Mapped[uuid.UUID] = mapped_column(
         UUIDType, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
     )
     exchange_account_id: Mapped[uuid.UUID] = mapped_column(
-        UUIDType, ForeignKey("user_exchange_accounts.id", ondelete="CASCADE"), nullable=False
+        UUIDType,
+        ForeignKey("user_exchange_accounts.id", ondelete="CASCADE"),
+        nullable=False,
     )
 
     # ── Identity ──────────────────────────────────────────────────────
@@ -81,7 +93,9 @@ class Strategy(Base):
     symbol: Mapped[str] = mapped_column(String(30), nullable=False, index=True)
     order_side: Mapped[str | None] = mapped_column(String(10), nullable=True)
     # "BUY" | "SELL" — nullable for pine_webhook (side comes from signal)
-    order_type: Mapped[str] = mapped_column(String(20), nullable=False, default="MARKET")
+    order_type: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="MARKET"
+    )
     # "MARKET" | "LIMIT"
     quantity: Mapped[Decimal | None] = mapped_column(Numeric(20, 8), nullable=True)
     # nullable for pine_webhook (quantity comes from signal)
@@ -96,7 +110,9 @@ class Strategy(Base):
     # ── Execution limits ──────────────────────────────────────────────
     max_executions: Mapped[int | None] = mapped_column(Integer, nullable=True)
     execution_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    last_executed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_executed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
     # ── pine_webhook fields (Phase M) ─────────────────────────────────
     pine_code: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -113,7 +129,10 @@ class Strategy(Base):
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now()
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+        onupdate=func.now(),
     )
 
 
@@ -123,11 +142,17 @@ class StrategyExecution(Base):
     Preserved for backward compatibility.
     Phase M pine_webhook signals use StrategySignal + ExecutionRecord instead.
     """
+
     __tablename__ = "strategy_executions"
 
-    id: Mapped[uuid.UUID] = mapped_column(UUIDType, primary_key=True, default=uuid.uuid4)
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUIDType, primary_key=True, default=uuid.uuid4
+    )
     strategy_id: Mapped[uuid.UUID] = mapped_column(
-        UUIDType, ForeignKey("strategies.id", ondelete="CASCADE"), nullable=False, index=True
+        UUIDType,
+        ForeignKey("strategies.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
     user_id: Mapped[uuid.UUID] = mapped_column(
         UUIDType, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
@@ -147,6 +172,7 @@ class StrategyExecution(Base):
 
 # ── Phase M: New tables ──────────────────────────────────────────────────────
 
+
 class StrategyWebhookSecret(Base):
     """
     Per-strategy webhook secret with rotation support.
@@ -159,11 +185,17 @@ class StrategyWebhookSecret(Base):
     Plain secret is returned ONCE on creation/rotation and never stored.
     Only the bcrypt hash is persisted.
     """
+
     __tablename__ = "strategy_webhook_secrets"
 
-    id: Mapped[uuid.UUID] = mapped_column(UUIDType, primary_key=True, default=uuid.uuid4)
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUIDType, primary_key=True, default=uuid.uuid4
+    )
     strategy_id: Mapped[uuid.UUID] = mapped_column(
-        UUIDType, ForeignKey("strategies.id", ondelete="CASCADE"), nullable=False, index=True
+        UUIDType,
+        ForeignKey("strategies.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
 
     secret_hash: Mapped[str] = mapped_column(String(128), nullable=False)
@@ -178,8 +210,12 @@ class StrategyWebhookSecret(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
-    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    grace_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    revoked_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    grace_expires_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     # If status=grace_period: accepted until this timestamp
 
 
@@ -191,11 +227,17 @@ class StrategyPineVersion(Base):
     Restoring a previous version creates a NEW version with the old code.
     Strategy.current_version points to the active version_number.
     """
+
     __tablename__ = "strategy_pine_versions"
 
-    id: Mapped[uuid.UUID] = mapped_column(UUIDType, primary_key=True, default=uuid.uuid4)
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUIDType, primary_key=True, default=uuid.uuid4
+    )
     strategy_id: Mapped[uuid.UUID] = mapped_column(
-        UUIDType, ForeignKey("strategies.id", ondelete="CASCADE"), nullable=False, index=True
+        UUIDType,
+        ForeignKey("strategies.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
 
     version_number: Mapped[int] = mapped_column(Integer, nullable=False)
@@ -208,7 +250,9 @@ class StrategyPineVersion(Base):
     )
 
     __table_args__ = (
-        UniqueConstraint("strategy_id", "version_number", name="uq_pine_version_per_strategy"),
+        UniqueConstraint(
+            "strategy_id", "version_number", name="uq_pine_version_per_strategy"
+        ),
     )
 
 
@@ -233,11 +277,17 @@ class StrategySignal(Base):
         QUEUED → STRATEGY_PAUSED (terminal, set by worker)
         QUEUED → TEST_ACCEPTED (terminal, set synchronously for test signals)
     """
+
     __tablename__ = "strategy_signals"
 
-    id: Mapped[uuid.UUID] = mapped_column(UUIDType, primary_key=True, default=uuid.uuid4)
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUIDType, primary_key=True, default=uuid.uuid4
+    )
     strategy_id: Mapped[uuid.UUID] = mapped_column(
-        UUIDType, ForeignKey("strategies.id", ondelete="CASCADE"), nullable=False, index=True
+        UUIDType,
+        ForeignKey("strategies.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
     user_id: Mapped[uuid.UUID] = mapped_column(
         UUIDType, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
@@ -251,11 +301,15 @@ class StrategySignal(Base):
     ticker: Mapped[str] = mapped_column(String(30), nullable=False)
     contracts: Mapped[Decimal | None] = mapped_column(Numeric(20, 8), nullable=True)
     price: Mapped[Decimal | None] = mapped_column(Numeric(20, 8), nullable=True)
-    tv_timestamp: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    tv_timestamp: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     # {{timenow}} from TradingView payload — used for replay detection
 
     # ── Deduplication ─────────────────────────────────────────────────
-    idempotency_key: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
+    idempotency_key: Mapped[str] = mapped_column(
+        String(64), nullable=False, unique=True
+    )
     # SHA256(strategy_id + action + ticker + str(contracts) + str(tv_timestamp_unix))
     # DB unique constraint is the final dedup safety net (Redis SETNX is the fast path)
 
@@ -275,7 +329,9 @@ class StrategySignal(Base):
     received_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
-    processed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    processed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
     __table_args__ = (
         Index("ix_strategy_signals_strategy_received", "strategy_id", "received_at"),
@@ -293,16 +349,25 @@ class ExecutionRecord(Base):
 
     This table separates what was RECEIVED (Signal) from what was DECIDED (Execution).
     """
+
     __tablename__ = "execution_records"
 
-    id: Mapped[uuid.UUID] = mapped_column(UUIDType, primary_key=True, default=uuid.uuid4)
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUIDType, primary_key=True, default=uuid.uuid4
+    )
     signal_id: Mapped[uuid.UUID] = mapped_column(
-        UUIDType, ForeignKey("strategy_signals.id", ondelete="CASCADE"),
-        nullable=False, unique=True, index=True
+        UUIDType,
+        ForeignKey("strategy_signals.id", ondelete="CASCADE"),
+        nullable=False,
+        unique=True,
+        index=True,
     )
     # UNIQUE ensures idempotency: second delivery of same signal_id is a no-op
     strategy_id: Mapped[uuid.UUID] = mapped_column(
-        UUIDType, ForeignKey("strategies.id", ondelete="CASCADE"), nullable=False, index=True
+        UUIDType,
+        ForeignKey("strategies.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
     user_id: Mapped[uuid.UUID] = mapped_column(
         UUIDType, ForeignKey("users.id", ondelete="CASCADE"), nullable=False
@@ -332,11 +397,17 @@ class StrategyAuditLog(Base):
     which anonymizes rather than hard-deletes for financial compliance).
     Retained for 5 years per data lifecycle policy.
     """
+
     __tablename__ = "strategy_audit_log"
 
-    id: Mapped[uuid.UUID] = mapped_column(UUIDType, primary_key=True, default=uuid.uuid4)
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUIDType, primary_key=True, default=uuid.uuid4
+    )
     strategy_id: Mapped[uuid.UUID] = mapped_column(
-        UUIDType, ForeignKey("strategies.id", ondelete="CASCADE"), nullable=False, index=True
+        UUIDType,
+        ForeignKey("strategies.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
     user_id: Mapped[uuid.UUID] = mapped_column(
         UUIDType, ForeignKey("users.id", ondelete="SET NULL"), nullable=True
@@ -362,14 +433,22 @@ class StrategyTarget(Base):
     Currently: one strategy always has one target (the exchange_account_id from Strategy).
     This table enables future multi-account fan-out without schema changes.
     """
+
     __tablename__ = "strategy_targets"
 
-    id: Mapped[uuid.UUID] = mapped_column(UUIDType, primary_key=True, default=uuid.uuid4)
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUIDType, primary_key=True, default=uuid.uuid4
+    )
     strategy_id: Mapped[uuid.UUID] = mapped_column(
-        UUIDType, ForeignKey("strategies.id", ondelete="CASCADE"), nullable=False, index=True
+        UUIDType,
+        ForeignKey("strategies.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
     exchange_account_id: Mapped[uuid.UUID] = mapped_column(
-        UUIDType, ForeignKey("user_exchange_accounts.id", ondelete="CASCADE"), nullable=False
+        UUIDType,
+        ForeignKey("user_exchange_accounts.id", ondelete="CASCADE"),
+        nullable=False,
     )
     enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
 
@@ -378,7 +457,9 @@ class StrategyTarget(Base):
     )
 
     __table_args__ = (
-        UniqueConstraint("strategy_id", "exchange_account_id", name="uq_target_per_strategy"),
+        UniqueConstraint(
+            "strategy_id", "exchange_account_id", name="uq_target_per_strategy"
+        ),
     )
 
 
@@ -395,9 +476,12 @@ class DomainEventOutbox(Base):
         delivered — successfully dispatched and processed
         failed    — dispatch failed after max retries → moved to dead letter
     """
+
     __tablename__ = "domain_event_outbox"
 
-    id: Mapped[uuid.UUID] = mapped_column(UUIDType, primary_key=True, default=uuid.uuid4)
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUIDType, primary_key=True, default=uuid.uuid4
+    )
     event_type: Mapped[str] = mapped_column(String(60), nullable=False)
     # e.g. "OrderSubmitted", "ExecutionCompleted", "StrategyPublished", "SecretRotated"
 
@@ -411,8 +495,8 @@ class DomainEventOutbox(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
-    delivered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-
-    __table_args__ = (
-        Index("ix_outbox_status_created", "status", "created_at"),
+    delivered_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
     )
+
+    __table_args__ = (Index("ix_outbox_status_created", "status", "created_at"),)

@@ -5,7 +5,16 @@ import uuid
 from datetime import datetime
 from decimal import Decimal
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, Numeric, String, Text, func
+from sqlalchemy import (
+    Boolean,
+    DateTime,
+    ForeignKey,
+    Integer,
+    Numeric,
+    String,
+    Text,
+    func,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base, UUIDType
@@ -25,6 +34,7 @@ class RiskRule(Base):
         reject  — silently reject the order with a risk error
         alert   — allow the order but fire a RiskEvent to the frontend
     """
+
     __tablename__ = "risk_rules"
 
     id: Mapped[uuid.UUID] = mapped_column(
@@ -64,8 +74,10 @@ class RiskRule(Base):
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False,
-        server_default=func.now(), onupdate=func.now()
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+        onupdate=func.now(),
     )
 
     violations: Mapped[list["RiskViolation"]] = relationship(
@@ -78,6 +90,7 @@ class RiskViolation(Base):
     Immutable audit log of every time a risk rule triggered.
     Append-only — never updated.
     """
+
     __tablename__ = "risk_violations"
 
     id: Mapped[uuid.UUID] = mapped_column(
