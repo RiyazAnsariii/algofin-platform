@@ -5,6 +5,7 @@
 # POST /auth/refresh  (reads httpOnly cookie, issues new access token)
 # POST /auth/logout
 
+import uuid as _uuid
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Cookie, HTTPException, Request, Response, status
@@ -299,16 +300,26 @@ async def verify_reset_code(
 ) -> SuccessResponse[VerifyResetCodeResponse]:
     """Verify the 6-digit code sent to user's email."""
     email = body.email.lower().strip()
-    result = await db.execute(select(User).where(User.email == email))
+    code = body.code.strip()
+
+    payload = decode_password_reset_token(body.token, expected_type="password_reset")
+    if not payload or payload.get("email") != email or payload.get("code") != code:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Incorrect 6-digit verification code. Please check your Gmail.",
+        )
+
+    user_id = payload["sub"]
+    result = await db.execute(select(User).where(User.id == _uuid.UUID(user_id)))
     user = result.scalar_one_or_none()
 
     if not user or not user.is_active:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid email or verification code.",
+            detail="User account not found or inactive.",
         )
 
-    # Issue verified reset token
+    # Issue verified reset token required for final password update
     verified_token = create_password_reset_token(
         str(user.id), user.email, verified=True
     )

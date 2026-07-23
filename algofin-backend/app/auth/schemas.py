@@ -111,6 +111,7 @@ class ForgotPasswordResponse(BaseModel):
 class VerifyResetCodeRequest(BaseModel):
     email: EmailStr
     code: str
+    token: str
 
 
 class VerifyResetCodeResponse(BaseModel):

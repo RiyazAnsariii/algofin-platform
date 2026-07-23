@@ -99,6 +99,7 @@ export default function ForgotPasswordPage() {
       }>("/auth/verify-reset-code", {
         email: email.trim(),
         code: trimmedCode,
+        token: resetToken,
       });
 
       if (res.data.data.reset_token) {
@@ -107,12 +108,11 @@ export default function ForgotPasswordPage() {
       setStep("password");
     } catch (err: any) {
       const detail = err?.response?.data?.detail;
-      // Fallback: if backend code check succeeds with saved token
-      if (resetToken) {
-        setStep("password");
-      } else {
-        setError(typeof detail === "string" ? detail : "Invalid code. Please try again.");
-      }
+      setError(
+        typeof detail === "string"
+          ? detail
+          : "Incorrect 6-digit verification code. Please check your email."
+      );
     } finally {
       setLoading(false);
     }
