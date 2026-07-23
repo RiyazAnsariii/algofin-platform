@@ -14,11 +14,19 @@ from sqlalchemy.exc import IntegrityError
 from app.auth.schemas import (
     AuthDataResponse,
     ChangePasswordRequest,
+    ForgotPasswordRequest,
+    ForgotPasswordResponse,
     LoginRequest,
     RefreshResponse,
+    ResetPasswordRequest,
     SignupRequest,
     UpdateProfileRequest,
     UserResponse,
+)
+from app.common.security import (
+    create_password_reset_token,
+    decode_password_reset_token,
+    hash_password,
 )
 from app.auth.service import (
     authenticate_user,
@@ -244,6 +252,71 @@ async def change_password(
     await db.commit()
 
     return SuccessResponse(data={"message": "Password changed. Please log in again."})
+
+
+@router.post("/forgot-password", response_model=SuccessResponse[ForgotPasswordResponse])
+@limiter.limit("3/minute")
+async def forgot_password(
+    body: ForgotPasswordRequest,
+    request: Request,
+    db: DbSession,
+) -> SuccessResponse[ForgotPasswordResponse]:
+    """Request a password reset token."""
+    email = body.email.lower().strip()
+    result = await db.execute(select(User).where(User.email == email))
+    user = result.scalar_one_or_none()
+
+    reset_token = None
+    if user and user.is_active and user.hashed_password is not None:
+        reset_token = create_password_reset_token(str(user.id), user.email)
+
+    return SuccessResponse(
+        data=ForgotPasswordResponse(
+            message="If an account exists with that email, a reset token has been issued.",
+            reset_token=reset_token,
+        )
+    )
+
+
+@router.post("/reset-password", response_model=SuccessResponse[dict])
+@limiter.limit("5/minute")
+async def reset_password(
+    body: ResetPasswordRequest,
+    request: Request,
+    db: DbSession,
+) -> SuccessResponse[dict]:
+    """Reset password using a valid reset token."""
+    payload = decode_password_reset_token(body.token)
+    if not payload or "sub" not in payload:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired reset token.",
+        )
+
+    user_id = payload["sub"]
+    import uuid as _uuid
+    try:
+        uid = _uuid.UUID(user_id)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid reset token sub",
+        )
+
+    result = await db.execute(select(User).where(User.id == uid))
+    user = result.scalar_one_or_none()
+
+    if not user or not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="User account not found or inactive.",
+        )
+
+    user.hashed_password = hash_password(body.new_password)
+    await revoke_all_tokens(db, user_id=str(user.id))
+    await db.commit()
+
+    return SuccessResponse(data={"message": "Password reset successfully. You can now log in with your new password."})
 
 
 @router.delete("/me", response_model=SuccessResponse[dict])

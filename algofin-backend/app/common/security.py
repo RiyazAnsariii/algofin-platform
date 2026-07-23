@@ -76,6 +76,31 @@ def decode_access_token(token: str) -> dict[str, Any] | None:
         return None
 
 
+def create_password_reset_token(user_id: str, email: str) -> str:
+    """Create a short-lived (15 min) password reset JWT token."""
+    expire = datetime.now(timezone.utc) + timedelta(minutes=15)
+    payload = {
+        "sub": user_id,
+        "email": email,
+        "exp": expire,
+        "type": "password_reset",
+    }
+    return jwt.encode(payload, settings.secret_key, algorithm=settings.jwt_algorithm)
+
+
+def decode_password_reset_token(token: str) -> dict[str, Any] | None:
+    """Decode and verify a password reset token."""
+    try:
+        payload = jwt.decode(
+            token, settings.secret_key, algorithms=[settings.jwt_algorithm]
+        )
+        if payload.get("type") != "password_reset":
+            return None
+        return payload
+    except JWTError:
+        return None
+
+
 # ── Fernet encryption for exchange API credentials ────────────────
 def _get_fernet() -> Fernet:
     """Get configured Fernet cipher from settings."""

@@ -95,3 +95,32 @@ class ChangePasswordRequest(BaseModel):
         if not any(c in "!@#$%^&*()_+-=[]{}|;':\",./<>?`~" for c in v):
             raise ValueError("New password must contain at least one special character")
         return v
+
+
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+
+class ForgotPasswordResponse(BaseModel):
+    message: str
+    reset_token: str | None = None
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str
+
+    @field_validator("new_password")
+    @classmethod
+    def password_strength(cls, v: str) -> str:
+        if len(v) < 8:
+            raise ValueError("New password must be at least 8 characters")
+        if not any(c.isupper() for c in v):
+            raise ValueError("New password must contain at least one uppercase letter")
+        if not any(c.islower() for c in v):
+            raise ValueError("New password must contain at least one lowercase letter")
+        if not any(c.isdigit() for c in v):
+            raise ValueError("New password must contain at least one digit")
+        if not any(c in "!@#$%^&*()_+-=[]{}|;':\",./<>?`~" for c in v):
+            raise ValueError("New password must contain at least one special character")
+        return v

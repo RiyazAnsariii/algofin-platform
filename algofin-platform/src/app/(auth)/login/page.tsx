@@ -193,16 +193,26 @@ export default function LoginPage() {
           error={errors.email}
           autoComplete="email"
         />
-        <FormField
-          id="password"
-          label="Password"
-          type="password"
-          value={password}
-          onChange={(v) => { setPassword(v); setErrors((p) => ({ ...p, password: undefined })); }}
-          placeholder="••••••••"
-          error={errors.password}
-          autoComplete="current-password"
-        />
+        <div className="space-y-1">
+          <FormField
+            id="password"
+            label="Password"
+            type="password"
+            value={password}
+            onChange={(v) => { setPassword(v); setErrors((p) => ({ ...p, password: undefined })); }}
+            placeholder="••••••••"
+            error={errors.password}
+            autoComplete="current-password"
+          />
+          <div className="flex justify-end pt-0.5">
+            <Link
+              href="/forgot-password"
+              className="text-xs text-primary hover:text-primary/80 font-medium transition-colors"
+            >
+              Forgot password?
+            </Link>
+          </div>
+        </div>
 
         <button
           id="login-submit"
