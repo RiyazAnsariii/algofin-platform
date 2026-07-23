@@ -172,11 +172,6 @@ function Sidebar({
       {/* Nav — scrollable area between logo and user footer */}
       <nav className="flex-1 px-2 py-3 space-y-0.5 overflow-y-auto">
         {NAV_ITEMS.map((item) => {
-          // A child nav item "claims" this path if:
-          //   1. it's a different item
-          //   2. it matches the current path (exactly OR as prefix)
-          //   3. its href starts with this item's href (i.e. it is a sub-route)
-          // Example: on /strategy/webhook → TV Webhooks claims it → Strategy Engine is inactive
           const childClaimsPath = NAV_ITEMS.some(
             (other) =>
               other.href !== item.href &&
@@ -281,15 +276,21 @@ function MobileTopBar({ onLogout }: { onLogout: () => void }) {
 
 // ── App layout ────────────────────────────────────────────────────
 export default function AppLayout({ children }: { children: React.ReactNode }) {
-  const router   = useRouter();
-  const { isAuthenticated, user, setAccessToken, setUser, clearAuth, logout } = useAuthStore();
-  const [checking, setChecking] = useState(true);
+  const router = useRouter();
+  const { user, setAccessToken, setUser, clearAuth, logout } = useAuthStore();
+
+  // Initialize checking state synchronously if already authenticated in Zustand/localStorage
+  const [checking, setChecking] = useState(() => {
+    if (typeof window !== "undefined") {
+      const hydrated = useAuthStore.persist.hasHydrated();
+      const { isAuthenticated } = useAuthStore.getState();
+      if (hydrated && isAuthenticated) return false;
+    }
+    return true;
+  });
 
   useEffect(() => {
     const guard = async () => {
-      // Wait for Zustand to finish rehydrating from localStorage.
-      // Without this, isAuthenticated is always false on first render
-      // (even if the user IS logged in), causing a spurious /login redirect.
       if (!useAuthStore.persist.hasHydrated()) {
         await new Promise<void>((resolve) => {
           const check = () => {
@@ -324,25 +325,37 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     router.replace("/login");
   }, [logout, router]);
 
-  if (checking) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="flex flex-col items-center gap-3">
-          <div className="w-8 h-8 border-2 border-primary/20 border-t-primary rounded-full animate-spin" />
-          <p className="text-sm text-muted-foreground">Loading your dashboard…</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="flex min-h-screen bg-background">
-      {/* Fixed sidebar — never scrolls */}
+      {/* Fixed sidebar — renders instantly with no unmounting or flickering */}
       <Sidebar user={user} onLogout={handleLogout} />
+
       {/* Main area: offset by sidebar width, scrolls independently */}
       <div className="flex-1 flex flex-col min-w-0 lg:ml-60">
         <MobileTopBar onLogout={handleLogout} />
-        <main className="flex-1 overflow-y-auto p-6">{children}</main>
+        <main className="flex-1 overflow-y-auto p-6">
+          {checking ? (
+            <div className="space-y-6 max-w-5xl animate-fade-in">
+              <div className="skeleton h-8 w-48 rounded-lg" />
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                {[1, 2, 3, 4].map((i) => (
+                  <div key={i} className="surface-card p-5 space-y-3">
+                    <div className="skeleton h-3 w-24" />
+                    <div className="skeleton h-7 w-28" />
+                    <div className="skeleton h-3 w-16" />
+                  </div>
+                ))}
+              </div>
+              <div className="surface-card p-6 space-y-3">
+                <div className="skeleton h-4 w-32" />
+                <div className="skeleton h-10 w-full" />
+                <div className="skeleton h-10 w-full" />
+              </div>
+            </div>
+          ) : (
+            children
+          )}
+        </main>
       </div>
     </div>
   );
