@@ -546,10 +546,10 @@ export default function AssistantPage() {
           </div>
         </div>
 
-        {/* ── Right Sidebar Column (~30% width): Summary Widgets ──────────── */}
-        <div className="lg:col-span-4 h-full overflow-y-auto pr-1 space-y-4">
+        {/* ── Right Sidebar Column (~30% width): Compact Summary Widgets ───── */}
+        <div className="lg:col-span-4 h-full flex flex-col justify-between overflow-hidden space-y-2.5">
           {/* Widget 1: Portfolio Summary */}
-          <div className="surface-card p-5 rounded-2xl border border-white/8 space-y-3">
+          <div className="surface-card p-3 rounded-2xl border border-white/8 space-y-1.5 shrink-0">
             <div className="flex items-center justify-between">
               <h3 className="text-xs font-bold text-foreground">Portfolio Summary</h3>
               <button
@@ -560,131 +560,118 @@ export default function AssistantPage() {
                 🔄
               </button>
             </div>
-            <div>
-              <p className="text-[11px] text-muted-foreground uppercase font-semibold">Total Balance</p>
-              <p className="text-2xl font-extrabold text-foreground tracking-tight">12,458.75 USDT</p>
-            </div>
-            <div>
-              <p className="text-[11px] text-muted-foreground uppercase font-semibold">24H Change</p>
-              <p className="text-xs font-bold text-emerald-400">+245.68 USDT ( +2.01% )</p>
+            <div className="flex items-baseline justify-between gap-2">
+              <div>
+                <p className="text-[10px] text-muted-foreground uppercase font-semibold">Total Balance</p>
+                <p className="text-lg font-extrabold text-foreground tracking-tight">12,458.75 USDT</p>
+              </div>
+              <div className="text-right">
+                <p className="text-[10px] text-muted-foreground uppercase font-semibold">24H Change</p>
+                <p className="text-[11px] font-bold text-emerald-400">+245.68 USDT (+2.01%)</p>
+              </div>
             </div>
           </div>
 
           {/* Widget 2: Quick Access Links */}
-          <div className="surface-card p-5 rounded-2xl border border-white/8 space-y-3">
+          <div className="surface-card p-3 rounded-2xl border border-white/8 space-y-1.5 shrink-0">
             <h3 className="text-xs font-bold text-foreground">Quick Access</h3>
-            <div className="space-y-1.5">
+            <div className="space-y-1">
               <Link
                 href="/dashboard"
-                className="p-2.5 rounded-xl surface-card border border-white/5 hover:border-cyan-500/30 flex items-center justify-between transition-all group"
+                className="px-2.5 py-1.5 rounded-xl surface-card border border-white/5 hover:border-cyan-500/30 flex items-center justify-between transition-all group"
               >
-                <div className="flex items-center gap-3">
-                  <div className="w-7 h-7 rounded-lg bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 flex items-center justify-center shrink-0">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <div className="flex items-center gap-2">
+                  <div className="w-5 h-5 rounded-md bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 flex items-center justify-center shrink-0">
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <rect x="3" y="3" width="7" height="7" />
                       <rect x="14" y="3" width="7" height="7" />
                       <rect x="14" y="14" width="7" height="7" />
                       <rect x="3" y="14" width="7" height="7" />
                     </svg>
                   </div>
-                  <div>
-                    <h4 className="text-xs font-semibold text-foreground group-hover:text-cyan-400 transition-colors">
-                      Portfolio Overview
-                    </h4>
-                    <p className="text-[10px] text-muted-foreground/70">Total balance and performance</p>
-                  </div>
+                  <span className="text-[11px] font-semibold text-foreground group-hover:text-cyan-400 transition-colors">
+                    Portfolio Overview
+                  </span>
                 </div>
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-muted-foreground group-hover:text-cyan-400">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-muted-foreground group-hover:text-cyan-400">
                   <polyline points="9 18 15 12 9 6" />
                 </svg>
               </Link>
 
               <Link
                 href="/journal"
-                className="p-2.5 rounded-xl surface-card border border-white/5 hover:border-cyan-500/30 flex items-center justify-between transition-all group"
+                className="px-2.5 py-1.5 rounded-xl surface-card border border-white/5 hover:border-cyan-500/30 flex items-center justify-between transition-all group"
               >
-                <div className="flex items-center gap-3">
-                  <div className="w-7 h-7 rounded-lg bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 flex items-center justify-center shrink-0">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <div className="flex items-center gap-2">
+                  <div className="w-5 h-5 rounded-md bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 flex items-center justify-center shrink-0">
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" />
                     </svg>
                   </div>
-                  <div>
-                    <h4 className="text-xs font-semibold text-foreground group-hover:text-cyan-400 transition-colors">
-                      Profit & Loss (PnL)
-                    </h4>
-                    <p className="text-[10px] text-muted-foreground/70">Realized and unrealized PnL</p>
-                  </div>
+                  <span className="text-[11px] font-semibold text-foreground group-hover:text-cyan-400 transition-colors">
+                    Profit & Loss (PnL)
+                  </span>
                 </div>
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-muted-foreground group-hover:text-cyan-400">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-muted-foreground group-hover:text-cyan-400">
                   <polyline points="9 18 15 12 9 6" />
                 </svg>
               </Link>
 
               <Link
                 href="/orders"
-                className="p-2.5 rounded-xl surface-card border border-white/5 hover:border-cyan-500/30 flex items-center justify-between transition-all group"
+                className="px-2.5 py-1.5 rounded-xl surface-card border border-white/5 hover:border-cyan-500/30 flex items-center justify-between transition-all group"
               >
-                <div className="flex items-center gap-3">
-                  <div className="w-7 h-7 rounded-lg bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 flex items-center justify-center shrink-0">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <div className="flex items-center gap-2">
+                  <div className="w-5 h-5 rounded-md bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 flex items-center justify-center shrink-0">
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <rect x="2" y="7" width="20" height="14" rx="2" ry="2" />
                     </svg>
                   </div>
-                  <div>
-                    <h4 className="text-xs font-semibold text-foreground group-hover:text-cyan-400 transition-colors">
-                      Open Positions
-                    </h4>
-                    <p className="text-[10px] text-muted-foreground/70">View all open positions</p>
-                  </div>
+                  <span className="text-[11px] font-semibold text-foreground group-hover:text-cyan-400 transition-colors">
+                    Open Positions
+                  </span>
                 </div>
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-muted-foreground group-hover:text-cyan-400">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-muted-foreground group-hover:text-cyan-400">
                   <polyline points="9 18 15 12 9 6" />
                 </svg>
               </Link>
 
               <Link
                 href="/orders"
-                className="p-2.5 rounded-xl surface-card border border-white/5 hover:border-cyan-500/30 flex items-center justify-between transition-all group"
+                className="px-2.5 py-1.5 rounded-xl surface-card border border-white/5 hover:border-cyan-500/30 flex items-center justify-between transition-all group"
               >
-                <div className="flex items-center gap-3">
-                  <div className="w-7 h-7 rounded-lg bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 flex items-center justify-center shrink-0">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <div className="flex items-center gap-2">
+                  <div className="w-5 h-5 rounded-md bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 flex items-center justify-center shrink-0">
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <line x1="8" y1="6" x2="21" y2="6" />
                       <line x1="8" y1="12" x2="21" y2="12" />
                       <line x1="8" y1="18" x2="21" y2="18" />
                     </svg>
                   </div>
-                  <div>
-                    <h4 className="text-xs font-semibold text-foreground group-hover:text-cyan-400 transition-colors">
-                      Recent Trades
-                    </h4>
-                    <p className="text-[10px] text-muted-foreground/70">Your latest trades</p>
-                  </div>
+                  <span className="text-[11px] font-semibold text-foreground group-hover:text-cyan-400 transition-colors">
+                    Recent Trades
+                  </span>
                 </div>
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-muted-foreground group-hover:text-cyan-400">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-muted-foreground group-hover:text-cyan-400">
                   <polyline points="9 18 15 12 9 6" />
                 </svg>
               </Link>
 
               <Link
                 href="/events"
-                className="p-2.5 rounded-xl surface-card border border-white/5 hover:border-cyan-500/30 flex items-center justify-between transition-all group"
+                className="px-2.5 py-1.5 rounded-xl surface-card border border-white/5 hover:border-cyan-500/30 flex items-center justify-between transition-all group"
               >
-                <div className="flex items-center gap-3">
-                  <div className="w-7 h-7 rounded-lg bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 flex items-center justify-center shrink-0">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <div className="flex items-center gap-2">
+                  <div className="w-5 h-5 rounded-md bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 flex items-center justify-center shrink-0">
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
                     </svg>
                   </div>
-                  <div>
-                    <h4 className="text-xs font-semibold text-foreground group-hover:text-cyan-400 transition-colors">
-                      Economic Calendar
-                    </h4>
-                    <p className="text-[10px] text-muted-foreground/70">Upcoming high-impact events</p>
-                  </div>
+                  <span className="text-[11px] font-semibold text-foreground group-hover:text-cyan-400 transition-colors">
+                    Economic Calendar
+                  </span>
                 </div>
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-muted-foreground group-hover:text-cyan-400">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-muted-foreground group-hover:text-cyan-400">
                   <polyline points="9 18 15 12 9 6" />
                 </svg>
               </Link>
@@ -692,9 +679,9 @@ export default function AssistantPage() {
           </div>
 
           {/* Widget 3: Assistant Capabilities */}
-          <div className="surface-card p-5 rounded-2xl border border-white/8 space-y-3">
+          <div className="surface-card p-3 rounded-2xl border border-white/8 space-y-1.5 shrink-0">
             <h3 className="text-xs font-bold text-foreground">Assistant Capabilities</h3>
-            <div className="space-y-2 text-xs">
+            <div className="space-y-1 text-[11px]">
               {[
                 "Portfolio & PnL Analysis",
                 "Trade & Position Insights",
@@ -703,7 +690,7 @@ export default function AssistantPage() {
                 "Market & Strategy Insights",
               ].map((cap) => (
                 <div key={cap} className="flex items-center gap-2 text-muted-foreground">
-                  <div className="w-4 h-4 rounded-full bg-emerald-500/15 text-emerald-400 flex items-center justify-center text-[10px] shrink-0 font-bold">
+                  <div className="w-3.5 h-3.5 rounded-full bg-emerald-500/15 text-emerald-400 flex items-center justify-center text-[9px] shrink-0 font-bold">
                     ✓
                   </div>
                   <span>{cap}</span>
@@ -713,24 +700,26 @@ export default function AssistantPage() {
           </div>
 
           {/* Widget 4: Tip of the Day Carousel */}
-          <div className="surface-card p-5 rounded-2xl border border-white/8 space-y-3">
-            <div className="flex items-center gap-2 text-amber-400 text-xs font-bold">
-              <span>💡</span> Tip of the day
+          <div className="surface-card p-3 rounded-2xl border border-white/8 space-y-1.5 shrink-0">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5 text-amber-400 text-xs font-bold">
+                <span>💡</span> Tip of the day
+              </div>
+              <div className="flex items-center gap-1">
+                {tips.map((_, i) => (
+                  <button
+                    key={i}
+                    onClick={() => setTipIndex(i)}
+                    className={`h-1.5 rounded-full transition-all ${
+                      tipIndex === i ? "w-4 bg-cyan-400 shadow-glow-cyan" : "w-1.5 bg-white/20"
+                    }`}
+                  />
+                ))}
+              </div>
             </div>
-            <p className="text-xs text-muted-foreground/80 leading-relaxed min-h-[36px]">
+            <p className="text-[11px] text-muted-foreground/80 leading-snug">
               {tips[tipIndex]}
             </p>
-            <div className="flex items-center justify-center gap-1.5 pt-1">
-              {tips.map((_, i) => (
-                <button
-                  key={i}
-                  onClick={() => setTipIndex(i)}
-                  className={`h-1.5 rounded-full transition-all ${
-                    tipIndex === i ? "w-5 bg-cyan-400 shadow-glow-cyan" : "w-1.5 bg-white/20"
-                  }`}
-                />
-              ))}
-            </div>
           </div>
         </div>
       </div>
