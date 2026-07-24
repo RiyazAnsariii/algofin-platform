@@ -5,7 +5,8 @@
 #   binance_usdtm  — Binance USDT-M Futures (live)
 #   bybit_linear   — Bybit Linear Perpetuals (live)
 #   okx_swap       — OKX Perpetual Swaps (live)
-#   coinbase_advanced — Coinbase Advanced Trade (coming soon — spot only)
+#   coinbase_advanced — Coinbase Advanced Trade (live — spot)
+#   delta_futures  — Delta Exchange Futures & Options (live)
 #
 # Exchange-agnostic: the CCXT client is selected by exchange_id.
 # Each sync function delegates to the right client via ccxt_adapter.

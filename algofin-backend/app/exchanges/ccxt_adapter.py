@@ -39,7 +39,7 @@ EXCHANGE_OPTIONS: dict[str, dict] = {
         "settle": "USDT",
     },
     "coinbase_advanced": {
-        "ccxt_class": "coinbase",
+        "ccxt_class": "coinbaseadvanced",
         "options": {},
         "market_type": "spot",
         "settle": None,

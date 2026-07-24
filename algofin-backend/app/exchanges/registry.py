@@ -70,12 +70,12 @@ EXCHANGE_REGISTRY: dict[str, ExchangeDefinition] = {
         id="coinbase_advanced",
         name="Coinbase",
         display_name="Coinbase Advanced Trade",
-        status="coming_soon",
+        status="live",
         markets=["Spot"],
         logo_letter="C",
         description=(
-            "Coinbase Advanced Trade (formerly Coinbase Pro). "
-            "Spot trading. API integration coming soon."
+            "Coinbase Advanced Trade (formerly Coinbase Pro). Spot trading. "
+            "Connect with read-only API keys for balance and trade sync."
         ),
         api_docs_url="https://docs.cdp.coinbase.com/advanced-trade/docs/rest-api-auth",
     ),
