@@ -87,6 +87,128 @@ const ruleTypeBadge: Record<RuleType, string> = {
   MAX_ORDER_SIZE:     "bg-blue-500/10 text-blue-400 border-blue-500/20",
 };
 
+// ── Custom Rule Type Dropdown (matching reference mockup UI) ─────────────────
+const RULE_OPTIONS: { type: RuleType; label: string; unit: string; description: string; color: string; icon: React.ReactNode }[] = [
+  {
+    type: "MAX_DAILY_LOSS",
+    label: "Max Daily Loss",
+    unit: "USDT",
+    description: "Block orders if today's realized PnL goes below -N USDT",
+    color: "bg-rose-500/10 border-rose-500/20 text-rose-400",
+    icon: (
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <polyline points="23 18 13.5 8.5 8.5 13.5 1 6" />
+        <polyline points="17 18 23 18 23 12" />
+      </svg>
+    ),
+  },
+  {
+    type: "MAX_POSITION_SIZE",
+    label: "Max Position Size",
+    unit: "USDT",
+    description: "Limit individual position size in USDT",
+    color: "bg-amber-500/10 border-amber-500/20 text-amber-400",
+    icon: (
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <line x1="18" y1="20" x2="18" y2="10" />
+        <line x1="12" y1="20" x2="12" y2="4" />
+        <line x1="6" y1="20" x2="6" y2="14" />
+      </svg>
+    ),
+  },
+  {
+    type: "MAX_OPEN_POSITIONS",
+    label: "Max Leverage",
+    unit: "x",
+    description: "Prevent orders above set leverage",
+    color: "bg-purple-500/10 border-purple-500/20 text-purple-400",
+    icon: (
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+      </svg>
+    ),
+  },
+  {
+    type: "MAX_ORDER_SIZE",
+    label: "Max Drawdown",
+    unit: "%",
+    description: "Protect from large account drawdown",
+    color: "bg-blue-500/10 border-blue-500/20 text-blue-400",
+    icon: (
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <polyline points="23 18 13.5 8.5 8.5 13.5 1 6" />
+      </svg>
+    ),
+  },
+];
+
+function RuleTypeCustomDropdown({
+  value,
+  onChange,
+}: {
+  value: RuleType;
+  onChange: (val: RuleType) => void;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+
+  const selectedOpt = RULE_OPTIONS.find((o) => o.type === value) ?? RULE_OPTIONS[0];
+
+  return (
+    <div className="relative w-full">
+      {/* Selected Box Trigger */}
+      <button
+        type="button"
+        onClick={() => setIsOpen((v) => !v)}
+        className="w-full px-3.5 py-2.5 rounded-xl bg-white/5 border border-white/10 text-xs font-semibold text-foreground hover:border-white/20 transition-all flex items-center justify-between gap-3 group"
+      >
+        <span className="font-semibold text-xs text-foreground">{selectedOpt.label}</span>
+        <svg
+          width="12"
+          height="12"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.5"
+          className={`text-muted-foreground transition-transform duration-200 ${isOpen ? "rotate-180 text-cyan-400" : ""}`}
+        >
+          <polyline points="6 9 12 15 18 9" />
+        </svg>
+      </button>
+
+      {/* Expanded Custom Dropdown Popover */}
+      {isOpen && (
+        <div className="absolute top-full left-0 right-0 mt-1.5 z-50 p-1.5 rounded-2xl bg-[#0b121c] border border-white/12 shadow-2xl space-y-1 backdrop-blur-xl animate-fade-in">
+          {RULE_OPTIONS.map((opt) => {
+            const isSelected = opt.type === value;
+            return (
+              <button
+                key={opt.type}
+                type="button"
+                onClick={() => {
+                  onChange(opt.type);
+                  setIsOpen(false);
+                }}
+                className={`w-full p-2 rounded-xl flex items-center gap-3 transition-all text-left group ${
+                  isSelected
+                    ? "bg-cyan-500/10 border border-cyan-500/30 text-cyan-400"
+                    : "hover:bg-white/5 border border-transparent text-foreground"
+                }`}
+              >
+                <div className={`w-6 h-6 rounded-md ${opt.color} border flex items-center justify-center shrink-0`}>
+                  {opt.icon}
+                </div>
+                <span className={`text-xs font-semibold ${isSelected ? "text-cyan-400" : "text-foreground group-hover:text-cyan-300"}`}>
+                  {opt.label}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Create Rule form ──────────────────────────────────────────────────────────
 function CreateRuleForm({ onSuccess }: { onSuccess: () => void }) {
   const [name,      setName]      = useState("");
@@ -149,21 +271,7 @@ function CreateRuleForm({ onSuccess }: { onSuccess: () => void }) {
           {/* Rule Type */}
           <div>
             <label className={labelCls}>Rule Type</label>
-            <div className="relative">
-              <select
-                id="risk-rule-type"
-                value={ruleType}
-                onChange={(e) => setRuleType(e.target.value as RuleType)}
-                className={`${inputCls} appearance-none pr-8 cursor-pointer`}
-              >
-                {(Object.keys(RULE_META) as RuleType[]).map((t) => (
-                  <option key={t} value={t}>{RULE_META[t].label}</option>
-                ))}
-              </select>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="absolute right-3 top-3 text-muted-foreground pointer-events-none">
-                <polyline points="6 9 12 15 18 9" />
-              </svg>
-            </div>
+            <RuleTypeCustomDropdown value={ruleType} onChange={setRuleType} />
             <p className="mt-1.5 text-[11px] text-muted-foreground/70 leading-relaxed">
               {meta.description}
             </p>
