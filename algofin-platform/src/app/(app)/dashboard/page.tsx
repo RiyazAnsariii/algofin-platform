@@ -208,12 +208,12 @@ function StaleBanner({ freshness }: { freshness: PortfolioSummary["data_freshnes
   );
 }
 
-// ── No exchange section (balanced full-screen fit) ─────────────
+// ── No exchange section (balanced full-screen fit down to sign out line) ─────────────
 function NoExchangeSection() {
   return (
-    <div className="space-y-4 animate-fade-in">
+    <div className="flex-1 flex flex-col justify-between space-y-4 animate-fade-in pt-1">
       {/* Hero Card */}
-      <div className="relative surface-card py-8 px-6 text-center overflow-hidden border border-white/8 rounded-2xl bg-gradient-to-b from-cyan-500/[0.02] via-transparent to-transparent">
+      <div className="relative surface-card flex-1 min-h-[170px] py-6 px-6 text-center flex flex-col justify-center items-center overflow-hidden border border-white/8 rounded-2xl bg-gradient-to-b from-cyan-500/[0.02] via-transparent to-transparent">
         {/* Concentric rings pattern background */}
         <div className="absolute inset-0 pointer-events-none opacity-25 flex items-center justify-center">
           <div className="w-[300px] h-[300px] rounded-full border border-cyan-500/20 flex items-center justify-center">
@@ -429,7 +429,7 @@ export default function DashboardPage() {
   const estFee = pnlMtd > 0 ? pnlMtd * 0.2 : 0;
 
   return (
-    <div className="space-y-4 max-w-6xl">
+    <div className="min-h-[calc(100vh-3rem)] flex flex-col justify-between space-y-4 max-w-6xl">
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
         <div>
@@ -456,7 +456,7 @@ export default function DashboardPage() {
 
       {/* Loading state */}
       {loading && showSkeleton && (
-        <div className="space-y-4">
+        <div className="flex-1 flex flex-col justify-between space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             {[1,2,3,4].map(i => (
               <div key={i} className="surface-card p-4 space-y-2">
@@ -466,7 +466,7 @@ export default function DashboardPage() {
               </div>
             ))}
           </div>
-          <div className="surface-card overflow-hidden p-8 text-center space-y-4">
+          <div className="surface-card overflow-hidden flex-1 p-8 text-center flex flex-col justify-center items-center space-y-4">
             <div className="skeleton h-12 w-12 rounded-full mx-auto" />
             <div className="skeleton h-5 w-48 mx-auto" />
             <div className="skeleton h-4 w-64 mx-auto" />
@@ -476,9 +476,9 @@ export default function DashboardPage() {
 
       {/* Loaded state */}
       {!loading && (
-        <>
+        <div className="flex-1 flex flex-col justify-between space-y-4">
           {/* Stat cards — with icons matching reference UI */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 animate-fade-in">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 animate-fade-in shrink-0">
             <StatCard
               icon={
                 <div className="w-6 h-6 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400 shrink-0">
@@ -585,7 +585,7 @@ export default function DashboardPage() {
               </div>
             </>
           )}
-        </>
+        </div>
       )}
     </div>
   );
