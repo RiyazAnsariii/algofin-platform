@@ -2,7 +2,7 @@
 // src/app/(app)/events/page.tsx
 // AlgoFin — Economic Calendar (ForexFactory Dark Theme UI)
 
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useCallback, useMemo, Fragment } from "react";
 import api from "@/lib/api";
 import { cachedGet } from "@/lib/apiCache";
 import type { EconomicEvent, ImpactLevel } from "@/types/events";
@@ -502,162 +502,156 @@ export default function EventsPage() {
                 </tr>
               ) : (
                 Array.from(groupedEvents.entries()).map(([dateStr, dayEvents]) => (
-                  <tr key={dateStr} className="contents">
-                    <td colSpan={11} className="p-0">
-                      <table className="w-full text-left border-collapse text-xs font-sans">
-                        <tbody>
-                          {/* Day Separator Subheader Row (Matching ForexFactory date group) */}
-                          <tr className="bg-[#121620]/90 text-cyan-400 font-bold border-y border-white/8 text-[11px]">
-                            <td colSpan={11} className="py-1.5 px-4">
-                              <div className="flex items-center justify-between">
-                                <span>{formatDateHeader(dateStr)}</span>
-                                <span className="text-[10px] text-muted-foreground/70 font-normal">
-                                  {dayEvents.length} events
-                                </span>
-                              </div>
-                            </td>
-                          </tr>
+                  <Fragment key={dateStr}>
+                    {/* Day Separator Subheader Row (Matching ForexFactory date group) */}
+                    <tr className="bg-[#121620]/90 text-cyan-400 font-bold border-y border-white/8 text-[11px]">
+                      <td colSpan={11} className="py-1.5 px-4">
+                        <div className="flex items-center justify-between">
+                          <span>{formatDateHeader(dateStr)}</span>
+                          <span className="text-[10px] text-muted-foreground/70 font-normal">
+                            {dayEvents.length} events
+                          </span>
+                        </div>
+                      </td>
+                    </tr>
 
-                          {/* Event Rows for this Day */}
-                          {dayEvents.map((evt) => {
-                            const impactCfg = IMPACT_CONFIG[evt.impact];
-                            const isAlertOn = alertMap[evt.id];
-                            const isActualBetter =
-                              evt.actual && evt.forecast && parseFloat(evt.actual) > parseFloat(evt.forecast);
-                            const isActualWorse =
-                              evt.actual && evt.forecast && parseFloat(evt.actual) < parseFloat(evt.forecast);
+                    {/* Event Rows for this Day */}
+                    {dayEvents.map((evt) => {
+                      const impactCfg = IMPACT_CONFIG[evt.impact];
+                      const isAlertOn = alertMap[evt.id];
+                      const isActualBetter =
+                        evt.actual && evt.forecast && parseFloat(evt.actual) > parseFloat(evt.forecast);
+                      const isActualWorse =
+                        evt.actual && evt.forecast && parseFloat(evt.actual) < parseFloat(evt.forecast);
 
-                            return (
-                              <tr
-                                key={evt.id}
-                                className="hover:bg-white/[0.03] transition-colors group border-b border-white/[0.04]"
+                      return (
+                        <tr
+                          key={evt.id}
+                          className="hover:bg-white/[0.03] transition-colors group border-b border-white/[0.04]"
+                        >
+                          {/* Date */}
+                          <td className="py-2.5 px-4 text-muted-foreground/80 font-medium text-[11px] whitespace-nowrap w-28">
+                            {new Date(evt.event_time).toLocaleDateString("en-US", {
+                              weekday: "short",
+                              month: "short",
+                              day: "numeric",
+                            })}
+                          </td>
+
+                          {/* Time */}
+                          <td className="py-2.5 px-3 font-mono text-muted-foreground font-semibold whitespace-nowrap text-[11px] w-20">
+                            {formatTimeOnly(evt.event_time)}
+                          </td>
+
+                          {/* Currency */}
+                          <td className="py-2.5 px-3 text-center whitespace-nowrap w-16">
+                            <span className="inline-flex items-center gap-1 font-bold text-foreground bg-white/5 border border-white/10 px-2 py-0.5 rounded-md font-mono text-[10px]">
+                              <span>{CURRENCY_FLAGS[evt.currency] || "🌐"}</span>
+                              <span>{evt.currency}</span>
+                            </span>
+                          </td>
+
+                          {/* Impact */}
+                          <td className="py-2.5 px-3 text-center whitespace-nowrap w-20">
+                            <span
+                              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md font-bold text-[10px] border ${impactCfg.bg} ${impactCfg.text} ${impactCfg.border}`}
+                            >
+                              <span className={`w-1.5 h-1.5 rounded-full ${impactCfg.folderBg}`} />
+                              <span>{impactCfg.label}</span>
+                            </span>
+                          </td>
+
+                          {/* Event Title */}
+                          <td className="py-2.5 px-4 font-semibold text-foreground group-hover:text-cyan-300 transition-colors">
+                            {evt.title}
+                          </td>
+
+                          {/* Alerts Toggle */}
+                          <td className="py-2.5 px-2 text-center w-12">
+                            <button
+                              type="button"
+                              onClick={() => toggleAlert(evt.id, evt.title)}
+                              className={`p-1 rounded-lg transition-all ${
+                                isAlertOn
+                                  ? "text-amber-400 bg-amber-500/20 border border-amber-500/30"
+                                  : "text-muted-foreground/50 hover:text-foreground hover:bg-white/10"
+                              }`}
+                              title={isAlertOn ? "Alert active (15m before)" : "Set alert"}
+                            >
+                              🔔
+                            </button>
+                          </td>
+
+                          {/* Detail Modal Trigger */}
+                          <td className="py-2.5 px-2 text-center w-12">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setActiveModalEvent(evt);
+                                setModalTab("detail");
+                              }}
+                              className="p-1 rounded-lg text-muted-foreground/60 hover:text-cyan-400 hover:bg-cyan-500/10 transition-colors"
+                              title="View Event Details"
+                            >
+                              📁
+                            </button>
+                          </td>
+
+                          {/* Actual */}
+                          <td className="py-2.5 px-3 text-right font-mono font-bold text-[11px] whitespace-nowrap w-24">
+                            {evt.actual !== null ? (
+                              <span
+                                className={
+                                  isActualBetter
+                                    ? "text-emerald-400"
+                                    : isActualWorse
+                                    ? "text-rose-400"
+                                    : "text-foreground"
+                                }
                               >
-                                {/* Date */}
-                                <td className="py-2.5 px-4 text-muted-foreground/80 font-medium text-[11px] whitespace-nowrap w-28">
-                                  {new Date(evt.event_time).toLocaleDateString("en-US", {
-                                    weekday: "short",
-                                    month: "short",
-                                    day: "numeric",
-                                  })}
-                                </td>
+                                {evt.actual}
+                              </span>
+                            ) : (
+                              <span className="text-muted-foreground/30 font-normal">--</span>
+                            )}
+                          </td>
 
-                                {/* Time */}
-                                <td className="py-2.5 px-3 font-mono text-muted-foreground font-semibold whitespace-nowrap text-[11px] w-20">
-                                  {formatTimeOnly(evt.event_time)}
-                                </td>
+                          {/* Forecast */}
+                          <td className="py-2.5 px-3 text-right font-mono text-muted-foreground/90 font-medium text-[11px] whitespace-nowrap w-24">
+                            {evt.forecast ?? "--"}
+                          </td>
 
-                                {/* Currency */}
-                                <td className="py-2.5 px-3 text-center whitespace-nowrap w-16">
-                                  <span className="inline-flex items-center gap-1 font-bold text-foreground bg-white/5 border border-white/10 px-2 py-0.5 rounded-md font-mono text-[10px]">
-                                    <span>{CURRENCY_FLAGS[evt.currency] || "🌐"}</span>
-                                    <span>{evt.currency}</span>
-                                  </span>
-                                </td>
+                          {/* Previous */}
+                          <td className="py-2.5 px-3 text-right font-mono text-muted-foreground/70 text-[11px] whitespace-nowrap w-24">
+                            {evt.previous ? (
+                              <span>
+                                {evt.previous}
+                                {isActualBetter && <span className="text-emerald-400 ml-1">▲</span>}
+                                {isActualWorse && <span className="text-rose-400 ml-1">▼</span>}
+                              </span>
+                            ) : (
+                              "--"
+                            )}
+                          </td>
 
-                                {/* Impact */}
-                                <td className="py-2.5 px-3 text-center whitespace-nowrap w-20">
-                                  <span
-                                    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md font-bold text-[10px] border ${impactCfg.bg} ${impactCfg.text} ${impactCfg.border}`}
-                                  >
-                                    <span className={`w-1.5 h-1.5 rounded-full ${impactCfg.folderBg}`} />
-                                    <span>{impactCfg.label}</span>
-                                  </span>
-                                </td>
-
-                                {/* Event Title */}
-                                <td className="py-2.5 px-4 font-semibold text-foreground group-hover:text-cyan-300 transition-colors">
-                                  {evt.title}
-                                </td>
-
-                                {/* Alerts Toggle */}
-                                <td className="py-2.5 px-2 text-center w-12">
-                                  <button
-                                    type="button"
-                                    onClick={() => toggleAlert(evt.id, evt.title)}
-                                    className={`p-1 rounded-lg transition-all ${
-                                      isAlertOn
-                                        ? "text-amber-400 bg-amber-500/20 border border-amber-500/30"
-                                        : "text-muted-foreground/50 hover:text-foreground hover:bg-white/10"
-                                    }`}
-                                    title={isAlertOn ? "Alert active (15m before)" : "Set alert"}
-                                  >
-                                    🔔
-                                  </button>
-                                </td>
-
-                                {/* Detail Modal Trigger */}
-                                <td className="py-2.5 px-2 text-center w-12">
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      setActiveModalEvent(evt);
-                                      setModalTab("detail");
-                                    }}
-                                    className="p-1 rounded-lg text-muted-foreground/60 hover:text-cyan-400 hover:bg-cyan-500/10 transition-colors"
-                                    title="View Event Details"
-                                  >
-                                    📁
-                                  </button>
-                                </td>
-
-                                {/* Actual */}
-                                <td className="py-2.5 px-3 text-right font-mono font-bold text-[11px] whitespace-nowrap w-24">
-                                  {evt.actual !== null ? (
-                                    <span
-                                      className={
-                                        isActualBetter
-                                          ? "text-emerald-400"
-                                          : isActualWorse
-                                          ? "text-rose-400"
-                                          : "text-foreground"
-                                      }
-                                    >
-                                      {evt.actual}
-                                    </span>
-                                  ) : (
-                                    <span className="text-muted-foreground/30 font-normal">--</span>
-                                  )}
-                                </td>
-
-                                {/* Forecast */}
-                                <td className="py-2.5 px-3 text-right font-mono text-muted-foreground/90 font-medium text-[11px] whitespace-nowrap w-24">
-                                  {evt.forecast ?? "--"}
-                                </td>
-
-                                {/* Previous */}
-                                <td className="py-2.5 px-3 text-right font-mono text-muted-foreground/70 text-[11px] whitespace-nowrap w-24">
-                                  {evt.previous ? (
-                                    <span>
-                                      {evt.previous}
-                                      {isActualBetter && <span className="text-emerald-400 ml-1">▲</span>}
-                                      {isActualWorse && <span className="text-rose-400 ml-1">▼</span>}
-                                    </span>
-                                  ) : (
-                                    "--"
-                                  )}
-                                </td>
-
-                                {/* Graph Modal Trigger */}
-                                <td className="py-2.5 px-3 text-center w-14">
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      setActiveModalEvent(evt);
-                                      setModalTab("graph");
-                                    }}
-                                    className="p-1 rounded-lg text-cyan-400/70 hover:text-cyan-400 hover:bg-cyan-500/10 transition-colors"
-                                    title="View Graph"
-                                  >
-                                    📊
-                                  </button>
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    </td>
-                  </tr>
+                          {/* Graph Modal Trigger */}
+                          <td className="py-2.5 px-3 text-center w-14">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setActiveModalEvent(evt);
+                                setModalTab("graph");
+                              }}
+                              className="p-1 rounded-lg text-cyan-400/70 hover:text-cyan-400 hover:bg-cyan-500/10 transition-colors"
+                              title="View Graph"
+                            >
+                              📊
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </Fragment>
                 ))
               )}
             </tbody>
