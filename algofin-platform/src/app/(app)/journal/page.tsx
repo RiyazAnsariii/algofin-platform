@@ -300,27 +300,6 @@ function CustomDatePickerPopover({
     if (currentEnd) setEndDate(currentEnd);
   }, [currentStart, currentEnd]);
 
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
-        onClose();
-      }
-    }
-    function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") {
-        onClose();
-      }
-    }
-    if (isOpen) {
-      document.addEventListener("mousedown", handleClickOutside);
-      document.addEventListener("keydown", handleKeyDown);
-    }
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-      document.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [isOpen, onClose]);
-
   if (!isOpen) return null;
 
   const MONTH_NAMES = [
@@ -783,17 +762,29 @@ export default function JournalPage() {
                 </svg>
               </button>
 
-              <CustomDatePickerPopover
-                isOpen={pickerOpen}
-                onClose={() => setPickerOpen(false)}
-                onApply={(start, end) => {
-                  setCustomStart(start);
-                  setCustomEnd(end);
-                  setPickerOpen(false);
-                }}
-                currentStart={customStart}
-                currentEnd={customEnd}
-              />
+              {pickerOpen && (
+                <>
+                  {/* Invisible backdrop overlay to capture clicks outside */}
+                  <div
+                    className="fixed inset-0 z-[990]"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setPickerOpen(false);
+                    }}
+                  />
+                  <CustomDatePickerPopover
+                    isOpen={pickerOpen}
+                    onClose={() => setPickerOpen(false)}
+                    onApply={(start, end) => {
+                      setCustomStart(start);
+                      setCustomEnd(end);
+                      setPickerOpen(false);
+                    }}
+                    currentStart={customStart}
+                    currentEnd={customEnd}
+                  />
+                </>
+              )}
             </div>
           </div>
 
