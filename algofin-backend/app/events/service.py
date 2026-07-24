@@ -3,7 +3,7 @@
 
 import uuid
 from datetime import datetime, timedelta, timezone
-from sqlalchemy import select, delete
+from sqlalchemy import select, delete, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.events import EconomicEvent
@@ -219,46 +219,49 @@ async def seed_events_if_empty(db: AsyncSession) -> None:
     now = datetime.now(timezone.utc)
     base_date = now.date()
 
-    # Clear old seeded events if title equals President Trump Speaks is missing
+    # Check if we already seeded today's Trump event
     chk = await db.execute(
-        select(EconomicEvent).where(EconomicEvent.title == "President Trump Speaks")
+        select(EconomicEvent).where(
+            EconomicEvent.title == "President Trump Speaks",
+            func.date(EconomicEvent.event_time) == base_date,
+        )
     )
-    has_trump = chk.scalar_one_or_none()
+    if chk.scalar_one_or_none():
+        return  # Already seeded for today
 
-    if not has_trump:
-        # Wipe old mock entries to re-seed exact ForexFactory schedule
-        await db.execute(delete(EconomicEvent))
-        await db.commit()
+    # Wipe old entries to re-seed exact ForexFactory schedule for current date
+    await db.execute(delete(EconomicEvent))
+    await db.commit()
 
-        new_events = []
-        for idx, item in enumerate(EXACT_FOREX_FACTORY_EVENTS):
-            target_date = base_date + timedelta(days=item["day_offset"])
-            event_dt = datetime(
-                target_date.year,
-                target_date.month,
-                target_date.day,
-                item["hour"],
-                item["minute"],
-                tzinfo=timezone.utc,
-            )
+    new_events = []
+    for idx, item in enumerate(EXACT_FOREX_FACTORY_EVENTS):
+        target_date = base_date + timedelta(days=item["day_offset"])
+        event_dt = datetime(
+            target_date.year,
+            target_date.month,
+            target_date.day,
+            item["hour"],
+            item["minute"],
+            tzinfo=timezone.utc,
+        )
 
-            ext_id = f"ff-{target_date.isoformat()}-{idx}-{item['currency']}"
+        ext_id = f"ff-{target_date.isoformat()}-{idx}-{item['currency']}"
 
-            evt = EconomicEvent(
-                id=uuid.uuid4(),
-                external_id=ext_id,
-                title=item["title"],
-                currency=item["currency"],
-                country=item["country"],
-                impact=item["impact"],
-                event_time=event_dt,
-                forecast=item["forecast"],
-                previous=item["previous"],
-                actual=item["actual"],
-                source=item["source"],
-                fetched_at=now,
-            )
-            new_events.append(evt)
+        evt = EconomicEvent(
+            id=uuid.uuid4(),
+            external_id=ext_id,
+            title=item["title"],
+            currency=item["currency"],
+            country=item["country"],
+            impact=item["impact"],
+            event_time=event_dt,
+            forecast=item["forecast"],
+            previous=item["previous"],
+            actual=item["actual"],
+            source=item["source"],
+            fetched_at=now,
+        )
+        new_events.append(evt)
 
-        db.add_all(new_events)
-        await db.commit()
+    db.add_all(new_events)
+    await db.commit()

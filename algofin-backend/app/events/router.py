@@ -35,10 +35,13 @@ async def list_events(
     await seed_events_if_empty(db)
 
     now = datetime.now(timezone.utc)
+    start_of_window = (now - timedelta(days=2)).replace(
+        hour=0, minute=0, second=0, microsecond=0
+    )
     end = now + timedelta(days=days_ahead)
 
     filters = [
-        EconomicEvent.event_time >= now,
+        EconomicEvent.event_time >= start_of_window,
         EconomicEvent.event_time <= end,
     ]
     if impact:

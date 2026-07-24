@@ -278,7 +278,8 @@ export default function EventsPage() {
     try {
       const params = new URLSearchParams({ days_ahead: String(daysAhead) });
       if (selectedImpact) params.set("impact", selectedImpact);
-      const data = await cachedGet<EconomicEvent[]>(`/events?${params}`, 60_000);
+      const res = await api.get<{ data: EconomicEvent[] }>(`/events?${params}`);
+      const data = res.data?.data;
 
       if (data && data.length > 0) {
         setEvents(data);
