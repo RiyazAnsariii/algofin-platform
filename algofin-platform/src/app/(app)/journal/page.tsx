@@ -2,7 +2,7 @@
 // src/app/(app)/journal/page.tsx
 // AlgoFin — Trade Journal & Performance Analytics (matching reference mockup UI)
 
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback } from "react";
 import api from "@/lib/api";
 import { cachedGet, invalidateCachePrefix } from "@/lib/apiCache";
 
@@ -251,6 +251,8 @@ function EntryForm({
       </form>
     </div>
   );
+}
+
 function formatDateRangeLabel(period: number, start?: string, end?: string): string {
   if (start && end) {
     try {
@@ -263,12 +265,12 @@ function formatDateRangeLabel(period: number, start?: string, end?: string): str
       return `${start} - ${end}`;
     }
   }
-  if (period === 7) return "17 Jul 2026 - 24 Jul 2026";
-  if (period === 30) return "24 Jun 2026 - 24 Jul 2026";
-  if (period === 90) return "25 Apr 2026 - 24 Jul 2026";
-  if (period === 365) return "24 Jul 2025 - 24 Jul 2026";
-  if (period === 9999) return "All Time";
-  return `Last ${period} Days`;
+  const now = new Date();
+  const endStr = now.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+  if (period === 9999) return `All Time - ${endStr}`;
+  const startDt = new Date(now.getTime() - period * 86400_000);
+  const startStr = startDt.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+  return `${startStr} - ${endStr}`;
 }
 
 // ── Custom Date Range Popover Component (Matching reference screenshots) ───────
@@ -289,7 +291,6 @@ function CustomDatePickerPopover({
   const [startDate, setStartDate]       = useState(currentStart || "2026-07-01");
   const [endDate, setEndDate]           = useState(currentEnd || "2026-07-24");
   const [activeTarget, setActiveTarget] = useState<"start" | "end">("start");
-  const containerRef = useRef<HTMLDivElement>(null);
 
   const initialDate = new Date();
   const [viewYear, setViewYear]   = useState(initialDate.getFullYear());
@@ -366,7 +367,6 @@ function CustomDatePickerPopover({
 
   return (
     <div
-      ref={containerRef}
       onClick={(e) => e.stopPropagation()}
       className="absolute right-0 top-11 z-[999] w-72 bg-[#12161f] border border-white/15 rounded-2xl shadow-2xl p-4 text-xs font-sans text-foreground animate-in fade-in zoom-in-95 duration-150"
     >
@@ -649,6 +649,10 @@ export default function JournalPage() {
 
   const a = analytics;
   const realizedPnLNum = Number(a?.realized_pnl ?? 0);
+  const winCount = a?.win_count ?? 0;
+  const lossCount = a?.loss_count ?? 0;
+  const winRatePct = a ? (a.win_rate * 100).toFixed(2) : "0.00";
+  const lossRatePct = a ? ((1 - a.win_rate) * 100).toFixed(2) : "0.00";
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-10">
