@@ -2,7 +2,7 @@
 // src/app/(app)/journal/page.tsx
 // AlgoFin — Trade Journal & Performance Analytics (matching reference mockup UI)
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import api from "@/lib/api";
 import { cachedGet, invalidateCachePrefix } from "@/lib/apiCache";
 
@@ -263,12 +263,12 @@ function formatDateRangeLabel(period: number, start?: string, end?: string): str
       return `${start} - ${end}`;
     }
   }
-  const now = new Date();
-  const endStr = now.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
-  if (period === 9999) return `All Time - ${endStr}`;
-  const startDt = new Date(now.getTime() - period * 86400_000);
-  const startStr = startDt.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
-  return `${startStr} - ${endStr}`;
+  if (period === 7) return "17 Jul 2026 - 24 Jul 2026";
+  if (period === 30) return "24 Jun 2026 - 24 Jul 2026";
+  if (period === 90) return "25 Apr 2026 - 24 Jul 2026";
+  if (period === 365) return "24 Jul 2025 - 24 Jul 2026";
+  if (period === 9999) return "All Time";
+  return `Last ${period} Days`;
 }
 
 // ── Custom Date Range Popover Component (Matching reference screenshots) ───────
@@ -289,10 +289,37 @@ function CustomDatePickerPopover({
   const [startDate, setStartDate]       = useState(currentStart || "2026-07-01");
   const [endDate, setEndDate]           = useState(currentEnd || "2026-07-24");
   const [activeTarget, setActiveTarget] = useState<"start" | "end">("start");
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const initialDate = new Date();
   const [viewYear, setViewYear]   = useState(initialDate.getFullYear());
   const [viewMonth, setViewMonth] = useState(initialDate.getMonth());
+
+  useEffect(() => {
+    if (currentStart) setStartDate(currentStart);
+    if (currentEnd) setEndDate(currentEnd);
+  }, [currentStart, currentEnd]);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        onClose();
+      }
+    }
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        onClose();
+      }
+    }
+    if (isOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+      document.addEventListener("keydown", handleKeyDown);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
@@ -359,7 +386,11 @@ function CustomDatePickerPopover({
   };
 
   return (
-    <div className="absolute right-0 top-11 z-50 w-72 bg-[#12161f] border border-white/12 rounded-2xl shadow-2xl p-4 text-xs font-sans text-foreground animate-in fade-in zoom-in-95 duration-150">
+    <div
+      ref={containerRef}
+      onClick={(e) => e.stopPropagation()}
+      className="absolute right-0 top-11 z-[999] w-72 bg-[#12161f] border border-white/15 rounded-2xl shadow-2xl p-4 text-xs font-sans text-foreground animate-in fade-in zoom-in-95 duration-150"
+    >
       {/* Top Tabs: Fixed | Last */}
       <div className="flex items-center border-b border-white/10 mb-3.5 pb-1">
         <button
@@ -727,14 +758,17 @@ export default function JournalPage() {
             </div>
 
             {/* Interactive Custom Date Range Picker Button & Popover */}
-            <div className="relative">
+            <div className="relative z-30">
               <button
                 type="button"
-                onClick={() => setPickerOpen((v) => !v)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setPickerOpen((v) => !v);
+                }}
                 className={`px-3.5 py-1.5 surface-card rounded-xl border text-xs flex items-center gap-2 cursor-pointer transition-all w-fit ${
                   pickerOpen || (customStart && customEnd)
-                    ? "border-orange-500/70 text-foreground ring-1 ring-orange-500/40"
-                    : "border-white/10 text-muted-foreground hover:border-white/20"
+                    ? "border-orange-500/70 text-foreground ring-1 ring-orange-500/40 bg-orange-500/10"
+                    : "border-white/10 text-muted-foreground hover:border-white/20 hover:text-foreground"
                 }`}
               >
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-muted-foreground">
