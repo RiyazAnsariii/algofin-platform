@@ -1,7 +1,6 @@
 "use client";
 // src/app/(app)/dashboard/page.tsx
 // AlgoFin v2 — Dashboard: portfolio summary + positions + live prices
-// Live prices are DISPLAY-ONLY (Est. Live PnL). All authoritative PnL = backend.
 
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
@@ -101,12 +100,14 @@ function FreshnessBadge({ item, label }: { item: FreshnessItem; label: string })
 
 // ── Stat card ─────────────────────────────────────────────────────
 function StatCard({
+  icon,
   label,
   value,
   sub,
   valueClass = "text-foreground",
   loading,
 }: {
+  icon:       React.ReactNode;
   label:      string;
   value:      React.ReactNode;
   sub?:       string;
@@ -115,7 +116,10 @@ function StatCard({
 }) {
   return (
     <div className="surface-card p-5 space-y-3">
-      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{label}</p>
+      <div className="flex items-center gap-2.5">
+        {icon}
+        <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">{label}</p>
+      </div>
       {loading ? (
         <div className="space-y-2">
           <div className="skeleton h-7 w-28" />
@@ -141,7 +145,6 @@ function PositionRow({
   livePnl: number | null;
   liveMarkPrice: number | null;
 }) {
-  // Prefer live PnL for display; fall back to last-synced
   const displayPnl  = livePnl ?? pos.unrealized_pnl;
   const displayMark = liveMarkPrice ?? pos.mark_price;
   const isLive      = livePnl !== null;
@@ -168,11 +171,9 @@ function PositionRow({
         <span className="text-xs text-muted-foreground hidden md:inline">
           Entry ${fmt(pos.entry_price)}
         </span>
-        {/* Live mark price */}
         <span className="text-xs text-muted-foreground hidden lg:inline">
           Mark ${fmt(displayMark)}
         </span>
-        {/* Est. Live PnL — display only */}
         <div className="text-right">
           <span className={`font-semibold ${pnlColor}`}>
             {fmtPnl(displayPnl)}
@@ -207,29 +208,161 @@ function StaleBanner({ freshness }: { freshness: PortfolioSummary["data_freshnes
   );
 }
 
-// ── No exchange banner ────────────────────────────────────────────
-function NoExchangeBanner() {
+// ── No exchange section (matching reference UI) ─────────────
+function NoExchangeSection() {
   return (
-    <div className="surface-card p-8 text-center space-y-4">
-      <div className="w-12 h-12 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center mx-auto">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-primary">
-          <rect x="2" y="3" width="20" height="14" rx="2" />
-          <path d="M8 21h8M12 17v4" />
-        </svg>
+    <div className="space-y-6 animate-fade-in">
+      {/* Hero Card */}
+      <div className="relative surface-card p-10 text-center overflow-hidden border border-white/8 rounded-2xl bg-gradient-to-b from-cyan-500/[0.02] via-transparent to-transparent">
+        {/* Concentric rings pattern background */}
+        <div className="absolute inset-0 pointer-events-none opacity-25 flex items-center justify-center">
+          <div className="w-[360px] h-[360px] rounded-full border border-cyan-500/20 flex items-center justify-center">
+            <div className="w-[260px] h-[260px] rounded-full border border-cyan-500/15 flex items-center justify-center">
+              <div className="w-[160px] h-[160px] rounded-full border border-cyan-500/10" />
+            </div>
+          </div>
+        </div>
+
+        <div className="relative z-10 space-y-4 max-w-md mx-auto">
+          <div className="w-14 h-14 rounded-full bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center mx-auto text-cyan-400 shadow-glow-cyan-sm">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <rect x="2" y="3" width="20" height="14" rx="2" />
+              <path d="M8 21h8M12 17v4" />
+            </svg>
+          </div>
+
+          <div>
+            <h2 className="text-xl font-bold text-foreground tracking-tight">Connect your account</h2>
+            <p className="text-sm text-muted-foreground mt-1.5 leading-relaxed">
+              Connect your exchange account to unlock your dashboard and start tracking.
+            </p>
+          </div>
+
+          <div className="pt-2">
+            <Link
+              href="/exchanges"
+              className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-cyan-400 hover:bg-cyan-300 text-black
+                text-sm font-semibold transition-all shadow-glow-cyan transform hover:-translate-y-0.5"
+            >
+              Connect account →
+            </Link>
+          </div>
+        </div>
       </div>
-      <div>
-        <p className="font-semibold text-foreground">No exchange account connected</p>
-        <p className="text-sm text-muted-foreground mt-1">
-          Connect your Binance Futures account to start tracking your portfolio.
-        </p>
+
+      {/* What you'll unlock */}
+      <div className="space-y-4 pt-2">
+        <h3 className="text-base font-semibold text-foreground">What you'll unlock</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+          {/* Portfolio Tracking */}
+          <div className="surface-card p-4 rounded-xl border border-white/6 flex flex-col justify-between space-y-3 hover:border-white/12 transition-all">
+            <div className="w-9 h-9 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
+                <line x1="18" y1="20" x2="18" y2="10" />
+                <line x1="12" y1="20" x2="12" y2="4" />
+                <line x1="6" y1="20" x2="6" y2="14" />
+              </svg>
+            </div>
+            <div>
+              <p className="font-semibold text-xs text-foreground">Portfolio Tracking</p>
+              <p className="text-[11px] text-muted-foreground mt-1 leading-snug">
+                Real-time balance, equity and PnL overview
+              </p>
+            </div>
+          </div>
+
+          {/* Positions & Orders */}
+          <div className="surface-card p-4 rounded-xl border border-white/6 flex flex-col justify-between space-y-3 hover:border-white/12 transition-all">
+            <div className="w-9 h-9 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
+                <line x1="8" y1="6" x2="21" y2="6" />
+                <line x1="8" y1="12" x2="21" y2="12" />
+                <line x1="8" y1="18" x2="21" y2="18" />
+                <line x1="3" y1="6" x2="3.01" y2="6" />
+                <line x1="3" y1="12" x2="3.01" y2="12" />
+                <line x1="3" y1="18" x2="3.01" y2="18" />
+              </svg>
+            </div>
+            <div>
+              <p className="font-semibold text-xs text-foreground">Positions & Orders</p>
+              <p className="text-[11px] text-muted-foreground mt-1 leading-snug">
+                Live positions, open orders and order history
+              </p>
+            </div>
+          </div>
+
+          {/* Risk Management */}
+          <div className="surface-card p-4 rounded-xl border border-white/6 flex flex-col justify-between space-y-3 hover:border-white/12 transition-all">
+            <div className="w-9 h-9 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
+                <path d="M12 2L3 7v6c0 4.97 3.84 9.63 9 11 5.16-1.37 9-6.03 9-11V7L12 2z" />
+              </svg>
+            </div>
+            <div>
+              <p className="font-semibold text-xs text-foreground">Risk Management</p>
+              <p className="text-[11px] text-muted-foreground mt-1 leading-snug">
+                Monitor leverage, margin, and risk in real-time
+              </p>
+            </div>
+          </div>
+
+          {/* Performance Analytics */}
+          <div className="surface-card p-4 rounded-xl border border-white/6 flex flex-col justify-between space-y-3 hover:border-white/12 transition-all">
+            <div className="w-9 h-9 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
+                <path d="M21.21 15.89A10 10 0 118 2.83" />
+                <path d="M22 12A10 10 0 0012 2v10z" />
+              </svg>
+            </div>
+            <div>
+              <p className="font-semibold text-xs text-foreground">Performance Analytics</p>
+              <p className="text-[11px] text-muted-foreground mt-1 leading-snug">
+                Detailed performance and trading insights
+              </p>
+            </div>
+          </div>
+
+          {/* Trade Journal */}
+          <div className="surface-card p-4 rounded-xl border border-white/6 flex flex-col justify-between space-y-3 hover:border-white/12 transition-all">
+            <div className="w-9 h-9 rounded-xl bg-teal-500/10 border border-teal-500/20 flex items-center justify-center text-teal-400">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
+                <path d="M4 19.5A2.5 2.5 0 016.5 17H20" />
+                <path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z" />
+              </svg>
+            </div>
+            <div>
+              <p className="font-semibold text-xs text-foreground">Trade Journal</p>
+              <p className="text-[11px] text-muted-foreground mt-1 leading-snug">
+                Auto-sync trades and review your history
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
-      <Link
-        href="/exchanges"
-        className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary text-primary-foreground
-          text-sm font-semibold hover:bg-primary/90 transition-all glow-cyan-sm"
-      >
-        Connect account →
-      </Link>
+
+      {/* Security Banner */}
+      <div className="surface-card p-5 rounded-2xl border border-cyan-500/20 bg-cyan-500/[0.03] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-3.5">
+          <div className="w-10 h-10 rounded-xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400 shrink-0">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
+              <path d="M12 2L3 7v6c0 4.97 3.84 9.63 9 11 5.16-1.37 9-6.03 9-11V7L12 2z" />
+              <path d="M9 12l2 2 4-4" />
+            </svg>
+          </div>
+          <div>
+            <h4 className="font-semibold text-sm text-cyan-400">Your security is our priority</h4>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              We never place trades or withdraw funds. Read-only access ensures your funds are always safe.
+            </p>
+          </div>
+        </div>
+        <Link
+          href="/risk"
+          className="shrink-0 px-4 py-2 rounded-xl border border-cyan-500/30 text-xs text-cyan-400 font-medium hover:bg-cyan-500/10 transition-all"
+        >
+          Learn more
+        </Link>
+      </div>
     </div>
   );
 }
@@ -247,7 +380,6 @@ export default function DashboardPage() {
   const positionSymbols = positions.map((p) => p.symbol);
   const { prices, status: wsStatus, subscribe, calcEstLivePnl } = useLivePrices(positionSymbols);
 
-  // Subscribe to any new symbols that appear after initial load
   useEffect(() => {
     if (positionSymbols.length > 0) {
       subscribe(positionSymbols);
@@ -288,7 +420,6 @@ export default function DashboardPage() {
 
   useEffect(() => {
     fetchData();
-    // Auto-refresh every 30 seconds (Celery sync cadence)
     const interval = setInterval(fetchData, 30_000);
     return () => clearInterval(interval);
   }, [fetchData]);
@@ -298,27 +429,23 @@ export default function DashboardPage() {
   const estFee = pnlMtd > 0 ? pnlMtd * 0.2 : 0;
 
   return (
-    <div className="space-y-6 max-w-5xl">
+    <div className="space-y-6 max-w-6xl">
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Dashboard</h1>
-          <div className="flex items-center gap-3 mt-1">
-            <p className="text-sm text-muted-foreground">
-              Binance USDT-M Futures overview
-            </p>
-            {lastUpdated && (
-              <span className="text-xs text-muted-foreground/60">
-                · Updated {relativeTime(lastUpdated.toISOString())}
-              </span>
-            )}
-            {/* v2: Live WebSocket status badge */}
+          <div className="flex items-center gap-3 mt-1 text-sm text-muted-foreground">
+            <span>Binance USDT-M Futures overview</span>
+            <span className="flex items-center gap-1.5 text-xs text-emerald-400 font-medium">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              Updated just now
+            </span>
             {!noExchange && <LiveBadge status={wsStatus} />}
           </div>
         </div>
         <button
           onClick={() => { setLoading(true); fetchData(); }}
-          className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors px-3 py-1.5 rounded-lg hover:bg-white/5"
+          className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors px-3 py-1.5 rounded-lg hover:bg-white/5 border border-white/6"
         >
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15" />
@@ -327,7 +454,7 @@ export default function DashboardPage() {
         </button>
       </div>
 
-      {/* Loading state — show skeletons until we know whether exchange is connected */}
+      {/* Loading state */}
       {loading && showSkeleton && (
         <div className="space-y-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -339,13 +466,10 @@ export default function DashboardPage() {
               </div>
             ))}
           </div>
-          <div className="surface-card overflow-hidden">
-            <div className="px-4 py-3 border-b border-white/6">
-              <div className="skeleton h-4 w-32" />
-            </div>
-            <div className="p-4 space-y-2">
-              {[1,2,3].map(i => <div key={i} className="skeleton h-10 w-full" />)}
-            </div>
+          <div className="surface-card overflow-hidden p-8 text-center space-y-4">
+            <div className="skeleton h-12 w-12 rounded-full mx-auto" />
+            <div className="skeleton h-5 w-48 mx-auto" />
+            <div className="skeleton h-4 w-64 mx-auto" />
           </div>
         </div>
       )}
@@ -353,15 +477,32 @@ export default function DashboardPage() {
       {/* Loaded state */}
       {!loading && (
         <>
-          {/* Stat cards — always visible so dashboard is never empty */}
+          {/* Stat cards — with icons matching reference UI */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 animate-fade-in">
             <StatCard
+              icon={
+                <div className="w-6 h-6 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400 shrink-0">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M20 12V8H6a2 2 0 0 1-2-2c0-1.1.9-2 2-2h12v4" />
+                    <path d="M4 6v12c0 1.1.9 2 2 2h14v-4" />
+                    <path d="M18 12a2 2 0 0 0-2 2c0 1.1.9 2 2 2h4v-4h-4z" />
+                  </svg>
+                </div>
+              }
               label="Portfolio Value"
               value={`$${fmt(summary?.total_value_usdt ?? 0)}`}
               sub="USDT-M Futures"
               loading={false}
             />
             <StatCard
+              icon={
+                <div className="w-6 h-6 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 shrink-0">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" />
+                    <polyline points="17 6 23 6 23 12" />
+                  </svg>
+                </div>
+              }
               label="Realized PnL (MTD)"
               value={fmtPnl(pnlMtd)}
               sub="Month to date"
@@ -369,6 +510,15 @@ export default function DashboardPage() {
               loading={false}
             />
             <StatCard
+              icon={
+                <div className="w-6 h-6 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 shrink-0">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <line x1="19" y1="5" x2="5" y2="19" />
+                    <circle cx="6.5" cy="6.5" r="2.5" />
+                    <circle cx="17.5" cy="17.5" r="2.5" />
+                  </svg>
+                </div>
+              }
               label="Est. Monthly Fee"
               value={`$${fmt(estFee)}`}
               sub="20% of profit · display only"
@@ -376,6 +526,14 @@ export default function DashboardPage() {
               loading={false}
             />
             <StatCard
+              icon={
+                <div className="w-6 h-6 rounded-lg bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 shrink-0">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <rect x="2" y="7" width="20" height="14" rx="2" ry="2" />
+                    <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
+                  </svg>
+                </div>
+              }
               label="Open Positions"
               value={summary?.open_positions ?? 0}
               sub={`${summary?.connected_accounts ?? 0} account(s) connected`}
@@ -383,9 +541,9 @@ export default function DashboardPage() {
             />
           </div>
 
-          {/* If no exchange connected, show connect banner below stat cards */}
+          {/* If no exchange connected, show full section matching reference design */}
           {noExchange ? (
-            <NoExchangeBanner />
+            <NoExchangeSection />
           ) : (
             <>
               {/* Stale banner */}
