@@ -18,35 +18,35 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "AlgoFin — Your Binance Futures Dashboard, Upgraded",
+    default: "AlgoFin — Professional Multi-Exchange Trading & Analytics",
     template: "%s | AlgoFin",
   },
   description:
-    "Connect your Binance Futures account, track your portfolio in real time, stay ahead of high-impact macro events, and ask your AI assistant anything about your own positions — all in one dashboard.",
+    "Connect your exchange accounts, track your portfolio in real time, stay ahead of high-impact macro events, and manage risk — all in one unified professional trading workspace.",
   keywords: [
-    "Binance Futures",
-    "trading dashboard",
-    "portfolio tracker",
-    "economic calendar",
-    "AI trading assistant",
-    "crypto trading",
-    "realized PnL",
+    "Multi-Exchange Trading",
+    "Trading Dashboard",
+    "Portfolio Tracker",
+    "Economic Calendar",
+    "AI Trading Assistant",
+    "Crypto Trading",
+    "Risk Management",
   ],
   authors: [{ name: "AlgoFin" }],
   creator: "AlgoFin",
   openGraph: {
     type: "website",
     locale: "en_US",
-    title: "AlgoFin — Your Binance Futures Dashboard, Upgraded",
+    title: "AlgoFin — Professional Multi-Exchange Trading & Analytics",
     description:
-      "One place for your trades, events, and portfolio. Real-time Binance Futures data + economic calendar + AI assistant.",
+      "One unified place for your trades, events, and portfolio. Real-time exchange data + economic calendar + AI assistant.",
     siteName: "AlgoFin",
   },
   twitter: {
     card: "summary_large_image",
-    title: "AlgoFin — Your Binance Futures Dashboard, Upgraded",
+    title: "AlgoFin — Professional Multi-Exchange Trading & Analytics",
     description:
-      "One place for your trades, events, and portfolio. Real-time Binance Futures data + economic calendar + AI assistant.",
+      "One unified place for your trades, events, and portfolio. Real-time exchange data + economic calendar + AI assistant.",
   },
 };
 

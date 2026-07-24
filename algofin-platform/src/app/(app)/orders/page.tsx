@@ -113,7 +113,7 @@ export default function OrdersPage() {
         <div>
           <h1 className="text-2xl font-bold text-foreground">Orders</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Place and manage Binance USDT-M Futures orders
+            Place and manage orders across connected crypto exchanges
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -160,7 +160,7 @@ export default function OrdersPage() {
               <div>
                 <h2 className="text-xl font-bold text-foreground tracking-tight">No exchange account connected</h2>
                 <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed">
-                  Connect your Binance USDT-M Futures account to place orders, view open orders, order history, and manage your trades.
+                  Connect your exchange account to place orders, view open orders, order history, and manage your trades across supported platforms.
                 </p>
               </div>
 

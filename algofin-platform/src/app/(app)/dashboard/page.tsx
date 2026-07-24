@@ -435,7 +435,7 @@ export default function DashboardPage() {
         <div>
           <h1 className="text-2xl font-bold text-foreground">Dashboard</h1>
           <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
-            <span>Binance USDT-M Futures overview</span>
+            <span>Multi-Exchange Portfolio Overview</span>
             <span className="flex items-center gap-1.5 text-xs text-emerald-400 font-medium">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
               Updated just now

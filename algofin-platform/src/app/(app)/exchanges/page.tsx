@@ -38,7 +38,7 @@ interface ExchangeDef {
 // ── Billing consent text (locked — plan.md Section 9) ────────────
 const CONSENT_TEXT =
   "AlgoFin calculates and displays an estimated performance fee of 20% of my " +
-  "monthly realized profit from this Binance Futures account for beta evaluation " +
+  "monthly realized profit from this exchange account for beta evaluation " +
   "purposes. This is not a charge. All manual trades on this account are included " +
   "regardless of whether AlgoFin placed them.";
 

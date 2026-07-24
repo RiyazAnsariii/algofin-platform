@@ -520,9 +520,9 @@ export default function SettingsPage() {
         <div className="space-y-2 text-sm">
           {[
             ["Version",       "v1.0.0 (beta)"],
-            ["Exchange",      "Binance USDT-M Futures only"],
+            ["Exchanges",     "Multi-Exchange (Binance, Coinbase, Delta & more)"],
             ["AI model",      "Gemini 2.0 Flash"],
-            ["Data source",   "Binance API via CCXT"],
+            ["Data source",   "Unified Exchange APIs via CCXT"],
             ["Fee structure", "20% of realized profit (display only)"],
           ].map(([k, v]) => (
             <div key={k} className="flex justify-between text-sm">

@@ -754,7 +754,7 @@ export default function WebhookStrategyPage() {
             <h1 className="text-2xl font-bold text-foreground">Webhook Strategies</h1>
           </div>
           <p className="text-sm text-muted-foreground mt-1 ml-10">
-            Receive signals from TradingView Pine Script alerts and auto-execute orders on Binance.
+            Receive signals from TradingView Pine Script alerts and auto-execute orders on your connected exchange.
           </p>
         </div>
         <button
@@ -793,7 +793,7 @@ export default function WebhookStrategyPage() {
               { step: "1", title: "Create", desc: "Add a new strategy with your symbol and exchange account." },
               { step: "2", title: "Publish", desc: "Activate it to get your unique webhook URL and secret." },
               { step: "3", title: "Configure TradingView", desc: "Add the URL to your Pine Script alert with the secret in the message body." },
-              { step: "4", title: "Auto-Execute", desc: "Every alert fires a signal → risk check → Binance order, all within ~200ms." },
+              { step: "4", title: "Auto-Execute", desc: "Every alert fires a signal → risk check → exchange order, all within ~200ms." },
             ].map(s => (
               <div key={s.step} className="bg-background border border-white/6 rounded-xl p-4">
                 <div className="w-7 h-7 rounded-full bg-primary/20 text-primary text-sm font-bold flex items-center justify-center mb-3">
