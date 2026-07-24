@@ -350,16 +350,10 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* No exchange — only show AFTER loading completes */}
-      {!loading && noExchange && <NoExchangeBanner />}
-
-      {/* Everything below only renders once we know an exchange IS connected */}
-      {!loading && !noExchange && (
+      {/* Loaded state */}
+      {!loading && (
         <>
-          {/* Stale banner */}
-          {summary && <StaleBanner freshness={summary.data_freshness} />}
-
-          {/* Stat cards */}
+          {/* Stat cards — always visible so dashboard is never empty */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 animate-fade-in">
             <StatCard
               label="Portfolio Value"
@@ -389,40 +383,50 @@ export default function DashboardPage() {
             />
           </div>
 
-          {/* Data freshness row */}
-          {summary && (
-            <div className="flex flex-wrap gap-2">
-              <FreshnessBadge item={summary.data_freshness.balances}  label="Balances" />
-              <FreshnessBadge item={summary.data_freshness.positions} label="Positions" />
-              <FreshnessBadge item={summary.data_freshness.trades}    label="Trades" />
-            </div>
-          )}
+          {/* If no exchange connected, show connect banner below stat cards */}
+          {noExchange ? (
+            <NoExchangeBanner />
+          ) : (
+            <>
+              {/* Stale banner */}
+              {summary && <StaleBanner freshness={summary.data_freshness} />}
 
-          {/* Open positions */}
-          <div className="surface-card overflow-hidden">
-            <div className="px-4 py-3 border-b border-white/6 flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-foreground">Open Positions</h2>
-              {positions.length > 0 && (
-                <span className="text-xs text-muted-foreground">{positions.length} positions</span>
+              {/* Data freshness row */}
+              {summary && (
+                <div className="flex flex-wrap gap-2">
+                  <FreshnessBadge item={summary.data_freshness.balances}  label="Balances" />
+                  <FreshnessBadge item={summary.data_freshness.positions} label="Positions" />
+                  <FreshnessBadge item={summary.data_freshness.trades}    label="Trades" />
+                </div>
               )}
-            </div>
-            {positions.length > 0 ? (
-              <div className="divide-y divide-white/4 animate-fade-in">
-                {positions.map((p) => (
-                  <PositionRow
-                    key={p.id}
-                    pos={p}
-                    liveMarkPrice={prices[p.symbol]?.markPrice ?? null}
-                    livePnl={calcEstLivePnl(p.symbol, p.entry_price, p.size, p.side)}
-                  />
-                ))}
+
+              {/* Open positions */}
+              <div className="surface-card overflow-hidden">
+                <div className="px-4 py-3 border-b border-white/6 flex items-center justify-between">
+                  <h2 className="text-sm font-semibold text-foreground">Open Positions</h2>
+                  {positions.length > 0 && (
+                    <span className="text-xs text-muted-foreground">{positions.length} positions</span>
+                  )}
+                </div>
+                {positions.length > 0 ? (
+                  <div className="divide-y divide-white/4 animate-fade-in">
+                    {positions.map((p) => (
+                      <PositionRow
+                        key={p.id}
+                        pos={p}
+                        liveMarkPrice={prices[p.symbol]?.markPrice ?? null}
+                        livePnl={calcEstLivePnl(p.symbol, p.entry_price, p.size, p.side)}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="px-4 py-8 text-center text-sm text-muted-foreground">
+                    No open positions
+                  </div>
+                )}
               </div>
-            ) : (
-              <div className="px-4 py-8 text-center text-sm text-muted-foreground">
-                No open positions
-              </div>
-            )}
-          </div>
+            </>
+          )}
         </>
       )}
     </div>
