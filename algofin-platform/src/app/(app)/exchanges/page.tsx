@@ -56,20 +56,19 @@ export function BinanceLogo({ className = "w-10 h-10" }: { className?: string })
 
 export function BybitLogo({ className = "w-10 h-10" }: { className?: string }) {
   return (
-    <div className={`${className} rounded-xl bg-[#17181E] border border-amber-500/20 flex items-center justify-center shrink-0 p-1.5 shadow-md`}>
-      <svg width="100%" height="100%" viewBox="0 0 24 24" fill="none">
-        <path d="M4 4h7v4H4V4zm0 6h11v4H4v-4zm0 6h16v4H4v-4z" fill="#F7A600"/>
-      </svg>
+    <div className={`${className} rounded-xl bg-[#0e0f14] border border-amber-500/20 flex items-center justify-center shrink-0 p-1 shadow-md select-none`}>
+      <span className="font-extrabold text-[11px] tracking-tight text-white font-sans flex items-center">
+        BY<span className="inline-block w-[3.5px] h-3.5 bg-[#F7A600] rounded-[1px] mx-[1px]" />T
+      </span>
     </div>
   );
 }
 
 export function CoinbaseLogo({ className = "w-10 h-10" }: { className?: string }) {
   return (
-    <div className={`${className} rounded-xl bg-[#0052FF]/15 border border-[#0052FF]/30 flex items-center justify-center shrink-0 p-1.5 shadow-md`}>
+    <div className={`${className} rounded-xl bg-[#0052FF] border border-[#0052FF]/50 flex items-center justify-center shrink-0 p-1.5 shadow-md`}>
       <svg width="100%" height="100%" viewBox="0 0 24 24" fill="none">
-        <circle cx="12" cy="12" r="10" fill="#0052FF"/>
-        <path d="M12 7C9.238 7 7 9.238 7 12s2.238 5 5 5 5-2.238 5-5-2.238-5-5-5zm-1.5 3.5h3v3h-3v-3z" fill="white"/>
+        <path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm0 15a5 5 0 1 1 3.536-8.536H12v3h3.536A5.002 5.002 0 0 1 12 17z" fill="white"/>
       </svg>
     </div>
   );
@@ -77,9 +76,18 @@ export function CoinbaseLogo({ className = "w-10 h-10" }: { className?: string }
 
 export function DeltaLogo({ className = "w-10 h-10" }: { className?: string }) {
   return (
-    <div className={`${className} rounded-xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center shrink-0 p-1.5 shadow-md`}>
+    <div className={`${className} rounded-xl bg-[#0c0d12] border border-white/10 flex items-center justify-center shrink-0 p-1.5 shadow-md`}>
       <svg width="100%" height="100%" viewBox="0 0 24 24" fill="none">
-        <path d="M12 3L2 21H22L12 3ZM12 8L18 18H6L12 8Z" fill="#10B981"/>
+        {/* Top Orange Triangle */}
+        <polygon points="12,3 20,9 12,12" fill="#FF6B00"/>
+        {/* Left Yellow Triangle */}
+        <polygon points="4,12 12,3 12,12" fill="#FF9900"/>
+        {/* Bottom Light Green Triangle */}
+        <polygon points="4,12 12,12 12,21" fill="#00E676"/>
+        {/* Bottom Dark Green Triangle */}
+        <polygon points="12,12 20,15 12,21" fill="#00C853"/>
+        {/* Center Dark Cutout Triangle */}
+        <polygon points="9,12 12,9 12,15" fill="#0c0d12"/>
       </svg>
     </div>
   );
