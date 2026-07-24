@@ -79,6 +79,19 @@ EXCHANGE_REGISTRY: dict[str, ExchangeDefinition] = {
         ),
         api_docs_url="https://docs.cdp.coinbase.com/advanced-trade/docs/rest-api-auth",
     ),
+    "delta_futures": ExchangeDefinition(
+        id="delta_futures",
+        name="Delta Exchange",
+        display_name="Delta Exchange Futures & Options",
+        status="live",
+        markets=["USDT Perpetuals", "Futures", "Options"],
+        logo_letter="D",
+        description=(
+            "Delta Exchange (India & Global). USDT-settled futures, perpetuals, and options. "
+            "Connect with read-only API keys for balance, positions and trade sync."
+        ),
+        api_docs_url="https://docs.delta.exchange/#authentication",
+    ),
 }
 
 # Convenience helpers

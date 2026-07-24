@@ -12,6 +12,7 @@
 # System prompt: injected with user's portfolio context on every call.
 
 import logging
+from functools import lru_cache
 from typing import AsyncGenerator
 
 import google.generativeai as genai
@@ -23,6 +24,12 @@ from app.config import settings
 from app.models.assistant import ChatMessage, ChatThread
 
 logger = logging.getLogger(__name__)
+
+# ── Configure Gemini SDK once at import time ──────────────────────
+# genai.configure() sets a global API key in the SDK; calling it on
+# every request is redundant and causes unnecessary side-effects.
+if settings.gemini_api_key:
+    genai.configure(api_key=settings.gemini_api_key)
 
 # ── Gemini system prompt ──────────────────────────────────────────
 SYSTEM_PROMPT = """You are the AlgoFin trading assistant — an expert in Binance USDT-M Futures trading.
@@ -116,7 +123,7 @@ async def clear_thread(db: AsyncSession, *, thread_id: str) -> None:
 # ── Gemini client builder ─────────────────────────────────────────
 
 
-def _make_tools_proto():
+def _make_tools_proto() -> genai.protos.Tool:
     """Build the Gemini tools proto (shared across model builds)."""
     return genai.protos.Tool(
         function_declarations=[
@@ -145,15 +152,30 @@ def _make_tools_proto():
     )
 
 
-def _build_gemini_model(model_name: str | None = None) -> genai.GenerativeModel:
-    """Configure and return a Gemini GenerativeModel with tools."""
-    genai.configure(api_key=settings.gemini_api_key)
-    name = model_name or settings.gemini_model
+# ── Module-level cached constants ─────────────────────────────────
+# Built once per process; never change without a restart.
+_TOOLS_PROTO: genai.protos.Tool = _make_tools_proto()
+_MODEL_CANDIDATES: list[str] = (
+    [settings.gemini_model]
+    + [
+        m.strip()
+        for m in settings.gemini_fallback_models.split(",")
+        if m.strip()
+    ]
+)
 
+
+@lru_cache(maxsize=8)
+def _get_cached_model(model_name: str) -> genai.GenerativeModel:
+    """
+    Return a cached GenerativeModel for the given model name.
+    LRU-cached: each unique model_name is constructed at most once per process.
+    This avoids recreating the heavyweight GenerativeModel object on every request.
+    """
     return genai.GenerativeModel(
-        model_name=name,
+        model_name=model_name,
         system_instruction=SYSTEM_PROMPT,
-        tools=[_make_tools_proto()],
+        tools=[_TOOLS_PROTO],
         generation_config=genai.GenerationConfig(
             temperature=0.4,
             top_p=0.95,
@@ -162,12 +184,15 @@ def _build_gemini_model(model_name: str | None = None) -> genai.GenerativeModel:
     )
 
 
+def _build_gemini_model(model_name: str | None = None) -> genai.GenerativeModel:
+    """Return a (cached) Gemini GenerativeModel with tools."""
+    name = model_name or settings.gemini_model
+    return _get_cached_model(name)
+
+
 def _get_model_candidates() -> list[str]:
-    """Return primary + fallback models to try in order."""
-    fallbacks = [
-        m.strip() for m in settings.gemini_fallback_models.split(",") if m.strip()
-    ]
-    return [settings.gemini_model] + fallbacks
+    """Return the cached primary + fallback model list."""
+    return _MODEL_CANDIDATES
 
 
 # ── History → Gemini format ───────────────────────────────────────
@@ -292,20 +317,30 @@ async def chat_stream(
                             full_response += part.text
                 break
 
-            # Execute each tool call
+            # Execute each tool call — deduplicate within this round
+            # so identical calls (same name + same args) don't hit the DB twice.
             tool_responses = []
+            _turn_tool_cache: dict[str, dict] = {}
             for fn_call in fn_calls:
                 tool_name = fn_call.name
                 tool_args = dict(fn_call.args) if fn_call.args else {}
 
-                yield {"type": "tool_call", "tool": tool_name, "args": tool_args}
+                # Build a stable cache key from name + sorted args
+                cache_key = f"{tool_name}:{sorted(tool_args.items())}"
 
-                try:
-                    result = await dispatch_tool(tool_name, tool_args, db, user_id)
-                except Exception as exc:
-                    result = {"error": str(exc)}
+                if cache_key in _turn_tool_cache:
+                    result = _turn_tool_cache[cache_key]
+                    logger.debug(f"[Assistant] Tool cache hit: {tool_name}")
+                else:
+                    yield {"type": "tool_call", "tool": tool_name, "args": tool_args}
 
-                yield {"type": "tool_result", "tool": tool_name, "result": result}
+                    try:
+                        result = await dispatch_tool(tool_name, tool_args, db, user_id)
+                    except Exception as exc:
+                        result = {"error": str(exc)}
+
+                    _turn_tool_cache[cache_key] = result
+                    yield {"type": "tool_result", "tool": tool_name, "result": result}
 
                 tool_responses.append(
                     genai.protos.Part(

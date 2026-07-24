@@ -9,6 +9,7 @@
 #   bybit_linear    → ccxt.bybit         (Linear Perpetuals)
 #   okx_swap        → ccxt.okx           (Perpetual Swaps, needs passphrase)
 #   coinbase_advanced → ccxt.coinbase    (Spot — futures N/A)
+#   delta_futures   → ccxt.delta         (Futures & Options)
 
 import logging
 import ccxt.async_support as ccxt
@@ -42,6 +43,12 @@ EXCHANGE_OPTIONS: dict[str, dict] = {
         "options": {},
         "market_type": "spot",
         "settle": None,
+    },
+    "delta_futures": {
+        "ccxt_class": "delta",
+        "options": {"defaultType": "swap"},
+        "market_type": "swap",
+        "settle": "USDT",
     },
 }
 

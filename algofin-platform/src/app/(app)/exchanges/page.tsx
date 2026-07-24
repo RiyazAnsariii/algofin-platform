@@ -103,6 +103,7 @@ function AccountCard({
     bybit_linear:      "Bybit Linear Perpetuals",
     okx_swap:          "OKX Perpetual Swaps",
     coinbase_advanced: "Coinbase Advanced Trade",
+    delta_futures:     "Delta Exchange Futures & Options",
   };
 
   return (
@@ -594,6 +595,7 @@ export default function ExchangesPage() {
                 { id: "bybit_linear",     name: "Bybit",    display_name: "Bybit Linear Perpetuals",  status: "coming_soon", markets: ["USDT Perpetuals"], requires_passphrase: false, logo_letter: "Y", description: "Bybit Linear Perpetuals. Full integration coming soon.", api_docs_url: "" },
                 { id: "okx_swap",         name: "OKX",      display_name: "OKX Perpetual Swaps",      status: "coming_soon", markets: ["USDT Perpetuals"], requires_passphrase: true,  logo_letter: "O", description: "OKX Perpetual Swaps (USDT-settled). Integration coming soon.", api_docs_url: "" },
                 { id: "coinbase_advanced", name: "Coinbase", display_name: "Coinbase Advanced Trade",  status: "coming_soon", markets: ["Spot"],            requires_passphrase: false, logo_letter: "C", description: "Coinbase Advanced Trade (spot). API integration coming soon.", api_docs_url: "" },
+                { id: "delta_futures",    name: "Delta Exchange", display_name: "Delta Exchange Futures & Options", status: "live", markets: ["USDT Perpetuals", "Futures", "Options"], requires_passphrase: false, logo_letter: "D", description: "Delta Exchange (India & Global). Connect read-only API keys for balance, positions and trade sync.", api_docs_url: "https://docs.delta.exchange/#authentication" },
               ] as ExchangeDef[]).map(ex => (
                 <ExchangeCard
                   key={ex.id}

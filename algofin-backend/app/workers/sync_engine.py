@@ -265,6 +265,23 @@ async def sync_balances(
                     )
                     rows += 1
 
+        elif account.exchange_id == "delta_futures":
+            # Delta Exchange: CCXT USDT dict or raw.get("USDT")
+            usdt = raw.get("USDT", {})
+            total_bal = _dec(usdt.get("total", 0))
+            free_bal = _dec(usdt.get("free", 0))
+            fields = dict(
+                wallet_balance=total_bal,
+                unrealized_pnl=Decimal("0"),
+                margin_balance=total_bal,
+                available_balance=free_bal,
+                synced_at=now,
+            )
+            await _upsert_balance(
+                db, exchange_account_id=account.id, asset="USDT", **fields
+            )
+            rows = 1
+
         else:
             # Coinbase / other: upsert all non-zero USDT-adjacent assets
             for asset, bal_data in raw.get("total", {}).items():
@@ -617,6 +634,11 @@ def _get_realized_pnl(exchange_id: str, trade: dict, info: dict) -> Decimal:
     elif exchange_id == "okx_swap":
         # OKX: info.pnl (realized PnL per trade fill)
         return _dec(info.get("pnl", "0"))
+
+    elif exchange_id == "delta_futures":
+        # Delta Exchange: info.realized_pnl or info.pnl
+        val = info.get("realized_pnl") or info.get("pnl") or "0"
+        return _dec(val)
 
     else:
         # Spot / unknown: no realized PnL concept
