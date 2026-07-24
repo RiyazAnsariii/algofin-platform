@@ -4,7 +4,6 @@
 # Handles balances, positions, and trades for ALL supported exchanges:
 #   binance_usdtm  — Binance USDT-M Futures (live)
 #   bybit_linear   — Bybit Linear Perpetuals (live)
-#   okx_swap       — OKX Perpetual Swaps (live)
 #   coinbase_advanced — Coinbase Advanced Trade (live — spot)
 #   delta_futures  — Delta Exchange Futures & Options (live)
 #
@@ -239,26 +238,6 @@ async def sync_balances(
                         unrealized_pnl=_dec(coin.get("unrealisedPnl", 0)),
                         margin_balance=_dec(coin.get("equity", 0)),
                         available_balance=_dec(coin.get("availableToWithdraw", 0)),
-                        synced_at=now,
-                    )
-                    await _upsert_balance(
-                        db, exchange_account_id=account.id, asset="USDT", **fields
-                    )
-                    rows += 1
-
-        elif account.exchange_id == "okx_swap":
-            # OKX: balance in info.data[].details[] USDT
-            data = info.get("data", [])
-            for item in data:
-                for detail in item.get("details", []):
-                    if detail.get("ccy") != "USDT":
-                        continue
-                    eq = _dec(detail.get("eq", 0))
-                    fields = dict(
-                        wallet_balance=eq,
-                        unrealized_pnl=_dec(detail.get("upl", 0)),
-                        margin_balance=eq,
-                        available_balance=_dec(detail.get("availEq", 0)),
                         synced_at=now,
                     )
                     await _upsert_balance(
@@ -631,10 +610,6 @@ def _get_realized_pnl(exchange_id: str, trade: dict, info: dict) -> Decimal:
         # Bybit: info.closedPnl or info.execPnl
         val = info.get("closedPnl") or info.get("execPnl") or "0"
         return _dec(val)
-
-    elif exchange_id == "okx_swap":
-        # OKX: info.pnl (realized PnL per trade fill)
-        return _dec(info.get("pnl", "0"))
 
     elif exchange_id == "delta_futures":
         # Delta Exchange: info.realized_pnl or info.pnl

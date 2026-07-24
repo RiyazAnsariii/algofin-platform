@@ -7,8 +7,7 @@
 # Supported exchanges:
 #   binance_usdtm   → ccxt.binanceusdm   (USDT-M Futures)
 #   bybit_linear    → ccxt.bybit         (Linear Perpetuals)
-#   okx_swap        → ccxt.okx           (Perpetual Swaps, needs passphrase)
-#   coinbase_advanced → ccxt.coinbase    (Spot — futures N/A)
+#   coinbase_advanced → ccxt.coinbaseadvanced (Spot)
 #   delta_futures   → ccxt.delta         (Futures & Options)
 
 import logging
@@ -29,12 +28,6 @@ EXCHANGE_OPTIONS: dict[str, dict] = {
     "bybit_linear": {
         "ccxt_class": "bybit",
         "options": {"defaultType": "linear"},
-        "market_type": "swap",
-        "settle": "USDT",
-    },
-    "okx_swap": {
-        "ccxt_class": "okx",
-        "options": {"defaultType": "swap"},
         "market_type": "swap",
         "settle": "USDT",
     },

@@ -52,20 +52,6 @@ EXCHANGE_REGISTRY: dict[str, ExchangeDefinition] = {
         ),
         api_docs_url="https://www.bybit.com/en/help-center/article/How-to-create-API-Keys",
     ),
-    "okx_swap": ExchangeDefinition(
-        id="okx_swap",
-        name="OKX",
-        display_name="OKX Perpetual Swaps",
-        status="live",
-        markets=["USDT Perpetuals"],
-        requires_passphrase=True,
-        logo_letter="O",
-        description=(
-            "OKX Perpetual Swaps (USDT-settled). "
-            "Requires API Key + Secret + Passphrase. Full balance, positions and trade sync."
-        ),
-        api_docs_url="https://www.okx.com/help/how-do-i-create-an-api-key",
-    ),
     "coinbase_advanced": ExchangeDefinition(
         id="coinbase_advanced",
         name="Coinbase",
