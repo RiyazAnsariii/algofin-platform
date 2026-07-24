@@ -220,12 +220,19 @@ function Sidebar({
 
       {/* User + Logout */}
       <div className="px-2 py-3 border-t border-white/6">
-        {user && (
-          <div className="px-3 py-2 mb-1">
-            <p className="text-xs font-medium text-foreground truncate">{user.full_name}</p>
-            <p className="text-[11px] text-muted-foreground truncate">{user.email}</p>
-          </div>
-        )}
+        <div className="px-3 py-2 mb-1 min-h-[40px]">
+          {user ? (
+            <>
+              <p className="text-xs font-medium text-foreground truncate">{user.full_name}</p>
+              <p className="text-[11px] text-muted-foreground truncate">{user.email}</p>
+            </>
+          ) : (
+            <>
+              <div className="h-3 w-24 rounded bg-white/5 mb-1.5" />
+              <div className="h-2.5 w-32 rounded bg-white/5" />
+            </>
+          )}
+        </div>
         <button
           onClick={onLogout}
           className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-white/5 transition-all"
