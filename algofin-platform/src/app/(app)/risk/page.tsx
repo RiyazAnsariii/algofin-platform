@@ -94,6 +94,137 @@ const ruleTypeBadge: Record<RuleType, string> = {
   CONSECUTIVE_LOSS:   "bg-emerald-500/10 text-emerald-400",
 };
 
+// ── Custom Rule Type Dropdown Component ───────────────────────────────────────
+const RULE_TYPE_OPTIONS: { type: RuleType; label: string; icon: React.ReactNode; colorCls: string }[] = [
+  {
+    type: "MAX_DAILY_LOSS",
+    label: "Max Daily Loss",
+    colorCls: "bg-rose-500/20 border-rose-500/30 text-rose-400",
+    icon: (
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <polyline points="23 18 13.5 8.5 8.5 13.5 1 6" />
+        <polyline points="17 18 23 18 23 12" />
+      </svg>
+    ),
+  },
+  {
+    type: "MAX_POSITION_SIZE",
+    label: "Max Position Size",
+    colorCls: "bg-amber-500/20 border-amber-500/30 text-amber-400",
+    icon: (
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <line x1="18" y1="20" x2="18" y2="10" />
+        <line x1="12" y1="20" x2="12" y2="4" />
+        <line x1="6" y1="20" x2="6" y2="14" />
+      </svg>
+    ),
+  },
+  {
+    type: "MAX_LEVERAGE",
+    label: "Max Leverage",
+    colorCls: "bg-purple-500/20 border-purple-500/30 text-purple-400",
+    icon: (
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <path d="M12 2a10 10 0 0 1 10 10c0 5.523-4.477 10-10 10S2 17.523 2 12A10 10 0 0 1 12 2z" />
+        <path d="M12 12l4-4" />
+      </svg>
+    ),
+  },
+  {
+    type: "MAX_DRAWDOWN",
+    label: "Max Drawdown",
+    colorCls: "bg-blue-500/20 border-blue-500/30 text-blue-400",
+    icon: (
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+      </svg>
+    ),
+  },
+  {
+    type: "CONSECUTIVE_LOSS",
+    label: "Consecutive Loss",
+    colorCls: "bg-emerald-500/20 border-emerald-500/30 text-emerald-400",
+    icon: (
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67" />
+      </svg>
+    ),
+  },
+];
+
+function CustomRuleTypeSelect({
+  value,
+  onChange,
+}: {
+  value: RuleType;
+  onChange: (val: RuleType) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const selected = RULE_TYPE_OPTIONS.find((o) => o.type === value) ?? RULE_TYPE_OPTIONS[0];
+
+  return (
+    <div className="relative">
+      {/* Trigger Box */}
+      <button
+        type="button"
+        id="risk-rule-type-trigger"
+        onClick={() => setOpen((prev) => !prev)}
+        className="w-full px-4 py-3 rounded-xl bg-[#080e12] border border-cyan-500/40 text-sm font-medium text-foreground flex items-center justify-between hover:border-cyan-400 transition-colors shadow-sm"
+      >
+        <span>{selected.label}</span>
+        <svg
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          className={`text-foreground/80 transition-transform duration-200 ${open ? "rotate-180" : ""}`}
+        >
+          <polyline points="6 9 12 15 18 9" />
+        </svg>
+      </button>
+
+      {/* Dropdown Menu Popup */}
+      {open && (
+        <>
+          {/* Backdrop click listener */}
+          <div className="fixed inset-0 z-30" onClick={() => setOpen(false)} />
+
+          <div className="absolute left-0 right-0 top-full mt-1.5 z-40 bg-[#0c141a] border border-white/10 rounded-2xl p-1.5 shadow-2xl space-y-1 animate-fade-in">
+            {RULE_TYPE_OPTIONS.map((opt) => {
+              const isSelected = opt.type === value;
+              return (
+                <div
+                  key={opt.type}
+                  onClick={() => {
+                    onChange(opt.type);
+                    setOpen(false);
+                  }}
+                  className={`flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer transition-all ${
+                    isSelected
+                      ? "bg-cyan-500/10 border border-cyan-500/30 text-cyan-400"
+                      : "hover:bg-white/5 text-foreground border border-transparent"
+                  }`}
+                >
+                  <div
+                    className={`w-9 h-9 rounded-xl border flex items-center justify-center shrink-0 ${opt.colorCls}`}
+                  >
+                    {opt.icon}
+                  </div>
+                  <span className={`text-xs font-semibold ${isSelected ? "text-cyan-400" : "text-foreground"}`}>
+                    {opt.label}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 // ── Create Rule Form Component ────────────────────────────────────────────────
 function CreateRuleForm({ onSuccess }: { onSuccess: () => void }) {
   const [name, setName]           = useState("");
@@ -159,16 +290,7 @@ function CreateRuleForm({ onSuccess }: { onSuccess: () => void }) {
         {/* Rule Type */}
         <div>
           <label className={labelCls}>Rule Type</label>
-          <select
-            id="risk-rule-type"
-            value={ruleType}
-            onChange={(e) => setRuleType(e.target.value as RuleType)}
-            className={inputCls}
-          >
-            {(Object.keys(RULE_META) as RuleType[]).map((t) => (
-              <option key={t} value={t}>{RULE_META[t].label}</option>
-            ))}
-          </select>
+          <CustomRuleTypeSelect value={ruleType} onChange={setRuleType} />
           <p className="mt-1.5 text-[11px] text-muted-foreground/80 leading-relaxed">
             {meta.description}
           </p>
@@ -193,30 +315,32 @@ function CreateRuleForm({ onSuccess }: { onSuccess: () => void }) {
         {/* Action */}
         <div>
           <label className={labelCls}>Action</label>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-2 gap-2.5">
             <button
               type="button"
               id="risk-action-reject"
               onClick={() => setAction("reject")}
-              className={`py-2 rounded-xl text-xs font-semibold border transition-all flex items-center justify-center gap-1.5 ${
+              className={`py-2.5 rounded-xl text-xs font-semibold border transition-all flex items-center justify-center gap-2 ${
                 action === "reject"
-                  ? "bg-rose-500/20 border-rose-500/40 text-rose-400"
+                  ? "bg-rose-950/40 border-rose-600/40 text-rose-400 shadow-inner"
                   : "bg-white/5 border-white/10 text-muted-foreground hover:bg-white/10"
               }`}
             >
-              <span>🚫</span> Block Order
+              <span className="w-4 h-4 rounded-full bg-rose-500/20 flex items-center justify-center text-[10px]">🚫</span>
+              Block Order
             </button>
             <button
               type="button"
               id="risk-action-alert"
               onClick={() => setAction("alert")}
-              className={`py-2 rounded-xl text-xs font-semibold border transition-all flex items-center justify-center gap-1.5 ${
+              className={`py-2.5 rounded-xl text-xs font-semibold border transition-all flex items-center justify-center gap-2 ${
                 action === "alert"
-                  ? "bg-amber-500/20 border-amber-500/40 text-amber-400"
-                  : "bg-white/5 border-white/10 text-muted-foreground hover:bg-white/10"
+                  ? "bg-amber-950/40 border-amber-500/40 text-amber-400 shadow-inner"
+                  : "bg-white/5 border-white/10 text-amber-400/70 hover:border-amber-500/30"
               }`}
             >
-              <span>⚠️</span> Alert Only
+              <span className="text-sm">🔔</span>
+              Alert Only
             </button>
           </div>
         </div>
