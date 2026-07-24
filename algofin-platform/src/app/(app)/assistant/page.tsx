@@ -274,7 +274,7 @@ export default function AssistantPage() {
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-5.5rem)] max-w-7xl mx-auto overflow-hidden gap-3 pb-1">
+    <div className="flex flex-col h-[calc(100vh-3.25rem)] max-w-7xl mx-auto overflow-hidden gap-3">
       {/* ── Header Row ─────────────────────────────────────────────────── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 shrink-0">
         <div>
@@ -547,7 +547,7 @@ export default function AssistantPage() {
         </div>
 
         {/* ── Right Sidebar Column (~30% width): Compact Summary Widgets ───── */}
-        <div className="lg:col-span-4 h-full flex flex-col justify-between overflow-hidden space-y-2.5">
+        <div className="lg:col-span-4 h-full flex flex-col justify-between overflow-hidden gap-2">
           {/* Widget 1: Portfolio Summary */}
           <div className="surface-card p-3 rounded-2xl border border-white/8 space-y-1.5 shrink-0">
             <div className="flex items-center justify-between">
@@ -573,9 +573,9 @@ export default function AssistantPage() {
           </div>
 
           {/* Widget 2: Quick Access Links */}
-          <div className="surface-card p-3 rounded-2xl border border-white/8 space-y-1.5 shrink-0">
-            <h3 className="text-xs font-bold text-foreground">Quick Access</h3>
-            <div className="space-y-1">
+          <div className="surface-card p-3 rounded-2xl border border-white/8 space-y-1 flex-1 flex flex-col justify-between min-h-0">
+            <h3 className="text-xs font-bold text-foreground shrink-0">Quick Access</h3>
+            <div className="space-y-1 flex-1 flex flex-col justify-between py-0.5">
               <Link
                 href="/dashboard"
                 className="px-2.5 py-1.5 rounded-xl surface-card border border-white/5 hover:border-cyan-500/30 flex items-center justify-between transition-all group"
