@@ -6,7 +6,16 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import api from "@/lib/api";
 import Link from "next/link";
 
+import { cachedGet } from "@/lib/apiCache";
+
 // ── Types ─────────────────────────────────────────────────────────────────────
+interface PortfolioSummaryData {
+  total_value_usdt:   number;
+  open_positions:     number;
+  realized_pnl_mtd:   number;
+  connected_accounts: number;
+}
+
 interface Message {
   id:        string;
   role:      "user" | "assistant" | "tool";
@@ -113,6 +122,25 @@ export default function AssistantPage() {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  const [portfolioSummary, setPortfolioSummary]         = useState<PortfolioSummaryData | null>(null);
+  const [refreshingPortfolio, setRefreshingPortfolio] = useState(false);
+
+  const loadPortfolioSummary = useCallback(async () => {
+    setRefreshingPortfolio(true);
+    try {
+      const data = await cachedGet<PortfolioSummaryData>("/dashboard/summary", 30_000);
+      setPortfolioSummary(data);
+    } catch {
+      setPortfolioSummary({ total_value_usdt: 0, open_positions: 0, realized_pnl_mtd: 0, connected_accounts: 0 });
+    } finally {
+      setRefreshingPortfolio(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadPortfolioSummary();
+  }, [loadPortfolioSummary]);
 
   // Load thread history on mount
   useEffect(() => {
@@ -536,28 +564,51 @@ export default function AssistantPage() {
         {/* ── Right Sidebar Column (~30% width): Compact Summary Widgets ───── */}
         <div className="lg:col-span-4 h-full flex flex-col justify-between overflow-hidden gap-2">
           {/* Widget 1: Portfolio Summary */}
-          <div className="surface-card p-3 rounded-2xl border border-white/8 space-y-1.5 shrink-0">
-            <div className="flex items-center justify-between">
-              <h3 className="text-xs font-bold text-foreground">Portfolio Summary</h3>
-              <button
-                type="button"
-                className="text-muted-foreground hover:text-foreground transition-colors text-xs"
-                title="Refresh portfolio"
-              >
-                🔄
-              </button>
-            </div>
-            <div className="flex items-baseline justify-between gap-2">
-              <div>
-                <p className="text-[10px] text-muted-foreground uppercase font-semibold">Total Balance</p>
-                <p className="text-lg font-extrabold text-foreground tracking-tight">12,458.75 USDT</p>
+          {(() => {
+            const totalBalance = portfolioSummary?.total_value_usdt ?? 0;
+            const connectedAccounts = portfolioSummary?.connected_accounts ?? 0;
+            const mtdPnl = portfolioSummary?.realized_pnl_mtd ?? 0;
+            return (
+              <div className="surface-card p-3 rounded-2xl border border-white/8 space-y-1.5 shrink-0">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <h3 className="text-xs font-bold text-foreground">Portfolio Summary</h3>
+                    {connectedAccounts > 0 ? (
+                      <span className="text-[10px] text-emerald-400 font-semibold px-1.5 py-0.2 rounded bg-emerald-500/10 border border-emerald-500/20">
+                        Live ({connectedAccounts})
+                      </span>
+                    ) : (
+                      <span className="text-[10px] text-muted-foreground font-medium px-1.5 py-0.2 rounded bg-white/5 border border-white/10">
+                        Not Connected
+                      </span>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => loadPortfolioSummary()}
+                    className={`text-muted-foreground hover:text-foreground transition-all text-xs ${refreshingPortfolio ? "animate-spin" : ""}`}
+                    title="Refresh portfolio"
+                  >
+                    🔄
+                  </button>
+                </div>
+                <div className="flex items-baseline justify-between gap-2">
+                  <div>
+                    <p className="text-[10px] text-muted-foreground uppercase font-semibold">Total Balance</p>
+                    <p className="text-lg font-extrabold text-foreground tracking-tight">
+                      {totalBalance.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USDT
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-[10px] text-muted-foreground uppercase font-semibold">MTD PnL</p>
+                    <p className={`text-[11px] font-bold ${mtdPnl >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
+                      {mtdPnl >= 0 ? "+" : ""}{mtdPnl.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USDT
+                    </p>
+                  </div>
+                </div>
               </div>
-              <div className="text-right">
-                <p className="text-[10px] text-muted-foreground uppercase font-semibold">24H Change</p>
-                <p className="text-[11px] font-bold text-emerald-400">+245.68 USDT (+2.01%)</p>
-              </div>
-            </div>
-          </div>
+            );
+          })()}
 
           {/* Widget 2: Quick Access Links */}
           <div className="surface-card p-3 rounded-2xl border border-white/8 space-y-1 flex-1 flex flex-col justify-between min-h-0">
