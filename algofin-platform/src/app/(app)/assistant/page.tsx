@@ -361,134 +361,31 @@ export default function AssistantPage() {
               <span className="text-[11px] text-muted-foreground/50 font-medium">Today</span>
             </div>
 
-            {/* Default Mock Demo Messages if no history */}
+            {/* Quick Suggestion Chips when no history */}
             {messages.length === 0 && !loadingHistory && (
-              <>
-                {/* User Demo 1 */}
-                <div className="flex flex-col items-end space-y-1">
-                  <span className="text-[10px] text-muted-foreground/60 mr-11">02:35 PM</span>
-                  <div className="flex items-center gap-3">
-                    <div className="px-4 py-2.5 rounded-2xl rounded-tr-md bg-[#0e2a36] border border-cyan-500/30 text-xs text-foreground font-medium">
-                      Show me my open positions
-                    </div>
-                    <UserAvatar />
-                  </div>
+              <div className="flex flex-col items-center justify-center py-10 text-center space-y-3 opacity-80">
+                <p className="text-xs text-muted-foreground">Start a conversation by typing below or picking a quick topic:</p>
+                <div className="flex flex-wrap justify-center gap-2 max-w-md">
+                  <button
+                    onClick={() => sendMessage("Show me my open positions")}
+                    className="px-3 py-1.5 rounded-xl surface-card border border-white/10 hover:border-cyan-500/30 text-xs text-muted-foreground hover:text-foreground transition-all"
+                  >
+                    💼 Show me my open positions
+                  </button>
+                  <button
+                    onClick={() => sendMessage("What's my realized PnL this month?")}
+                    className="px-3 py-1.5 rounded-xl surface-card border border-white/10 hover:border-cyan-500/30 text-xs text-muted-foreground hover:text-foreground transition-all"
+                  >
+                    📊 What's my realized PnL this month?
+                  </button>
+                  <button
+                    onClick={() => sendMessage("Any high-impact events today?")}
+                    className="px-3 py-1.5 rounded-xl surface-card border border-white/10 hover:border-cyan-500/30 text-xs text-muted-foreground hover:text-foreground transition-all"
+                  >
+                    📅 Any high-impact events today?
+                  </button>
                 </div>
-
-                {/* Assistant Demo 1 Rich Positions Table */}
-                <div className="flex gap-3">
-                  <RobotAvatar />
-                  <div className="space-y-2.5 max-w-2xl flex-1">
-                    <span className="text-[10px] text-muted-foreground/60">02:35 PM</span>
-                    <p className="text-xs text-foreground font-medium">
-                      You have 2 open positions across your connected exchanges.
-                    </p>
-
-                    {/* Rich Positions Table Card */}
-                    <div className="surface-card rounded-xl border border-white/10 overflow-hidden text-xs">
-                      <table className="w-full text-left border-collapse">
-                        <thead>
-                          <tr className="border-b border-white/8 bg-white/[0.02] text-[10px] text-muted-foreground/70 uppercase tracking-wider font-semibold">
-                            <th className="py-2.5 px-3">Symbol</th>
-                            <th className="py-2.5 px-3">Side</th>
-                            <th className="py-2.5 px-3">Size</th>
-                            <th className="py-2.5 px-3">Entry Price</th>
-                            <th className="py-2.5 px-3">Mark Price</th>
-                            <th className="py-2.5 px-3">Unrealized PnL</th>
-                            <th className="py-2.5 px-3">PnL %</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-white/5 font-mono text-[11px]">
-                          <tr className="hover:bg-white/[0.02]">
-                            <td className="py-2.5 px-3 font-semibold text-foreground">BTCUSDT</td>
-                            <td className="py-2.5 px-3"><span className="px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] font-sans font-semibold">Long</span></td>
-                            <td className="py-2.5 px-3 text-muted-foreground">0.045 BTC</td>
-                            <td className="py-2.5 px-3 text-muted-foreground">67,890.50</td>
-                            <td className="py-2.5 px-3 text-foreground">68,245.10</td>
-                            <td className="py-2.5 px-3 text-emerald-400 font-semibold">+15.95 USDT</td>
-                            <td className="py-2.5 px-3 text-emerald-400 font-semibold">+2.12%</td>
-                          </tr>
-                          <tr className="hover:bg-white/[0.02]">
-                            <td className="py-2.5 px-3 font-semibold text-foreground">ETHUSDT</td>
-                            <td className="py-2.5 px-3"><span className="px-1.5 py-0.5 rounded bg-rose-500/10 text-rose-400 border border-rose-500/20 text-[10px] font-sans font-semibold">Short</span></td>
-                            <td className="py-2.5 px-3 text-muted-foreground">1.250 ETH</td>
-                            <td className="py-2.5 px-3 text-muted-foreground">3,245.80</td>
-                            <td className="py-2.5 px-3 text-foreground">3,198.60</td>
-                            <td className="py-2.5 px-3 text-emerald-400 font-semibold">+58.75 USDT</td>
-                            <td className="py-2.5 px-3 text-emerald-400 font-semibold">+1.45%</td>
-                          </tr>
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                </div>
-
-                {/* User Demo 2 */}
-                <div className="flex flex-col items-end space-y-1">
-                  <span className="text-[10px] text-muted-foreground/60 mr-11">02:36 PM</span>
-                  <div className="flex items-center gap-3">
-                    <div className="px-4 py-2.5 rounded-2xl rounded-tr-md bg-[#0e2a36] border border-cyan-500/30 text-xs text-foreground font-medium">
-                      What's my realized PnL this month?
-                    </div>
-                    <UserAvatar />
-                  </div>
-                </div>
-
-                {/* Assistant Demo 2 Rich Metric Breakdown Card */}
-                <div className="flex gap-3">
-                  <RobotAvatar />
-                  <div className="space-y-3 max-w-xl flex-1">
-                    <span className="text-[10px] text-muted-foreground/60">02:36 PM</span>
-                    <p className="text-xs text-foreground font-medium">
-                      Your realized PnL for July 2026 is <span className="text-emerald-400 font-bold">+142.68 USDT</span>.
-                    </p>
-
-                    {/* Rich PnL Metric Card */}
-                    <div className="surface-card p-4 rounded-xl border border-white/10 grid grid-cols-4 gap-3 text-center">
-                      <div>
-                        <p className="text-[10px] text-muted-foreground uppercase font-semibold">Total Wins</p>
-                        <p className="text-base font-bold text-emerald-400">8</p>
-                      </div>
-                      <div className="border-l border-white/8 pl-2">
-                        <p className="text-[10px] text-muted-foreground uppercase font-semibold">Total Losses</p>
-                        <p className="text-base font-bold text-rose-400">5</p>
-                      </div>
-                      <div className="border-l border-white/8 pl-2">
-                        <p className="text-[10px] text-muted-foreground uppercase font-semibold">Win Rate</p>
-                        <p className="text-base font-bold text-cyan-400">61.54%</p>
-                      </div>
-                      <div className="border-l border-white/8 pl-2">
-                        <p className="text-[10px] text-muted-foreground uppercase font-semibold">Profit Factor</p>
-                        <p className="text-base font-bold text-purple-400">2.18</p>
-                      </div>
-                    </div>
-
-                    <p className="text-[11px] text-muted-foreground">Want me to show the daily breakdown?</p>
-
-                    {/* Follow-up Prompt Pills */}
-                    <div className="flex flex-wrap gap-2 pt-1">
-                      <button
-                        onClick={() => sendMessage("Yes, show daily breakdown")}
-                        className="px-3 py-1.5 rounded-xl surface-card border border-white/10 hover:border-cyan-500/30 text-xs text-muted-foreground hover:text-foreground transition-all"
-                      >
-                        Yes, show daily
-                      </button>
-                      <button
-                        onClick={() => sendMessage("Show chart")}
-                        className="px-3 py-1.5 rounded-xl surface-card border border-white/10 hover:border-cyan-500/30 text-xs text-muted-foreground hover:text-foreground transition-all"
-                      >
-                        Show chart
-                      </button>
-                      <button
-                        onClick={() => sendMessage("Compare with last month")}
-                        className="px-3 py-1.5 rounded-xl surface-card border border-white/10 hover:border-cyan-500/30 text-xs text-muted-foreground hover:text-foreground transition-all"
-                      >
-                        Compare with last month
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </>
+              </div>
             )}
 
             {/* Active Real User/Assistant Messages with Edit & Delete Options */}
