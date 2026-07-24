@@ -13,13 +13,6 @@ const nextConfig: NextConfig = {
   // Enable compression
   compress: true,
 
-  // Explicit workspace root for Turbopack
-  experimental: {
-    turbopack: {
-      root: __dirname,
-    },
-  },
-
   // Production headers for static assets & caching
   async headers() {
     return [
