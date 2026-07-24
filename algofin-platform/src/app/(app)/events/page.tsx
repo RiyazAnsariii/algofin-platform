@@ -272,17 +272,34 @@ export default function EventsPage() {
   const [activeModalEvent, setActiveModalEvent] = useState<EconomicEvent | null>(null);
   const [modalTab, setModalTab] = useState<"detail" | "graph">("detail");
 
+  const [summaryData, setSummaryData] = useState<{ high: number; medium: number; low: number; total: number }>({
+    high: 0,
+    medium: 0,
+    low: 0,
+    total: 0,
+  });
+  const [dataAgeMinutes, setDataAgeMinutes] = useState<number>(0);
+
   const fetchEvents = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const params = new URLSearchParams({ days_ahead: String(daysAhead) });
+      const params = new URLSearchParams({ days: String(daysAhead) });
       if (selectedImpact) params.set("impact", selectedImpact);
-      const res = await api.get<{ data: EconomicEvent[] }>(`/events?${params}`);
-      const data = res.data?.data;
+      if (selectedCurrency && selectedCurrency !== "ALL") params.set("currency", selectedCurrency);
+      if (searchQuery.trim()) params.set("search", searchQuery.trim());
 
-      if (data && data.length > 0) {
-        setEvents(data);
+      const res = await api.get<{
+        events: EconomicEvent[];
+        summary: { high: number; medium: number; low: number; total: number };
+        metadata: { provider: string; cached: boolean; data_age_minutes: number; total_results: number };
+      }>(`/api/v1/economic-calendar?${params}`);
+
+      const data = res.data;
+      if (data && data.events) {
+        setEvents(data.events);
+        if (data.summary) setSummaryData(data.summary);
+        if (data.metadata) setDataAgeMinutes(data.metadata.data_age_minutes || 0);
       } else {
         setEvents(generateFallbackEvents());
       }
@@ -293,7 +310,7 @@ export default function EventsPage() {
     } finally {
       setLoading(false);
     }
-  }, [daysAhead, selectedImpact]);
+  }, [daysAhead, selectedImpact, selectedCurrency, searchQuery]);
 
   useEffect(() => {
     fetchEvents();
@@ -301,22 +318,8 @@ export default function EventsPage() {
 
   // Combined Filtering Logic
   const filteredEvents = useMemo(() => {
-    return events.filter((e) => {
-      // Impact filter
-      if (selectedImpact && e.impact !== selectedImpact) return false;
-      // Currency filter
-      if (selectedCurrency !== "ALL" && e.currency !== selectedCurrency) return false;
-      // Search filter
-      if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase();
-        const matchTitle = e.title.toLowerCase().includes(q);
-        const matchCurr = e.currency.toLowerCase().includes(q);
-        const matchCountry = e.country.toLowerCase().includes(q);
-        if (!matchTitle && !matchCurr && !matchCountry) return false;
-      }
-      return true;
-    });
-  }, [events, selectedImpact, selectedCurrency, searchQuery]);
+    return events;
+  }, [events]);
 
   // Grouping by Date
   const groupedEvents = useMemo(() => {
@@ -329,10 +332,11 @@ export default function EventsPage() {
     return map;
   }, [filteredEvents]);
 
-  // Stats calculation
-  const highCount = events.filter((e) => e.impact === "high").length;
-  const medCount = events.filter((e) => e.impact === "medium").length;
-  const lowCount = events.filter((e) => e.impact === "low").length;
+  // Stats calculation from server response or fallback
+  const highCount = summaryData.high || events.filter((e) => e.impact?.toLowerCase() === "high").length;
+  const medCount = summaryData.medium || events.filter((e) => e.impact?.toLowerCase() === "medium").length;
+  const lowCount = summaryData.low || events.filter((e) => e.impact?.toLowerCase() === "low").length;
+  const totalCount = summaryData.total || events.length;
 
   // Up Next Event
   const nextEvent = useMemo(() => {
@@ -363,11 +367,15 @@ export default function EventsPage() {
           <h1 className="text-xl font-bold tracking-tight">Economic Calendar</h1>
           <p className="text-xs text-muted-foreground mt-0.5">
             Track high-impact macroeconomic events, interest rate decisions, and market catalysts.
-            {lastUpdated && (
+            {dataAgeMinutes > 0 ? (
+              <span className="text-emerald-400/80 font-medium ml-2">
+                · Sync fresh ({dataAgeMinutes}m ago)
+              </span>
+            ) : lastUpdated ? (
               <span className="text-muted-foreground/60 ml-2">
                 · Updated {relativeTime(lastUpdated.toISOString())}
               </span>
-            )}
+            ) : null}
           </p>
         </div>
 
@@ -569,10 +577,10 @@ export default function EventsPage() {
                         </div>
                       </td>
                     </tr>
-
                     {/* Event Rows for this Day */}
                     {dayEvents.map((evt) => {
-                      const impactCfg = IMPACT_CONFIG[evt.impact];
+                      const impactKey = (evt.impact || "low").toLowerCase() as ImpactLevel;
+                      const impactCfg = IMPACT_CONFIG[impactKey] || IMPACT_CONFIG.low;
                       const isAlertOn = alertMap[evt.id];
                       const isActualBetter =
                         evt.actual && evt.forecast && parseFloat(evt.actual) > parseFloat(evt.forecast);
@@ -618,7 +626,19 @@ export default function EventsPage() {
 
                           {/* Event Title */}
                           <td className="py-2.5 px-4 font-semibold text-foreground group-hover:text-cyan-300 transition-colors">
-                            {evt.title}
+                            <div className="flex items-center gap-2">
+                              <span>{evt.title}</span>
+                              {evt.status === "Ongoing" && (
+                                <span className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/40 animate-pulse">
+                                  Live
+                                </span>
+                              )}
+                              {evt.status === "Completed" && (
+                                <span className="px-1.5 py-0.5 rounded text-[9px] font-medium uppercase tracking-wider bg-emerald-500/10 text-emerald-400/80 border border-emerald-500/20">
+                                  Done
+                                </span>
+                              )}
+                            </div>
                           </td>
 
                           {/* Alerts Toggle */}

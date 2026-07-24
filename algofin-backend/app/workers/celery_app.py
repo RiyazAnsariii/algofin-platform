@@ -13,6 +13,7 @@ celery_app = Celery(
     include=[
         "app.workers.sync_tasks",
         "app.workers.billing_tasks",
+        "app.workers.economic_calendar_tasks",
     ],
 )
 
@@ -28,6 +29,7 @@ celery_app.conf.update(
     task_routes={
         "app.workers.sync_tasks.*": {"queue": "sync"},
         "app.workers.billing_tasks.*": {"queue": "default"},
+        "app.workers.economic_calendar_tasks.*": {"queue": "default"},
     },
 )
 
@@ -53,6 +55,12 @@ celery_app.conf.beat_schedule = {
         "schedule": settings.sync_trades_interval_minutes * 60,
         "args": ["trades"],
         "options": {"queue": "sync"},
+    },
+    # Sync economic calendar events every 30 minutes
+    "sync-economic-calendar-30min": {
+        "task": "app.workers.economic_calendar_tasks.sync_economic_calendar",
+        "schedule": settings.sync_events_interval_minutes * 60,
+        "options": {"queue": "default"},
     },
     # Billing period refresh — daily at 00:05 UTC
     "refresh-billing-periods": {

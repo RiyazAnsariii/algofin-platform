@@ -41,18 +41,18 @@ async def list_events(
     end = now + timedelta(days=days_ahead)
 
     filters = [
-        EconomicEvent.event_time >= start_of_window,
-        EconomicEvent.event_time <= end,
+        EconomicEvent.event_time_utc >= start_of_window,
+        EconomicEvent.event_time_utc <= end,
     ]
     if impact:
-        filters.append(EconomicEvent.impact == impact)
+        filters.append(EconomicEvent.impact == impact.capitalize())
     if currency:
         filters.append(EconomicEvent.currency == currency.upper())
 
     result = await db.execute(
         select(EconomicEvent)
         .where(and_(*filters))
-        .order_by(EconomicEvent.event_time)
+        .order_by(EconomicEvent.event_time_utc)
         .limit(200)
     )
     events = result.scalars().all()
@@ -61,7 +61,7 @@ async def list_events(
     stale_threshold = timedelta(minutes=settings.stale_events_minutes)
 
     def _is_stale(event: EconomicEvent) -> bool:
-        fetched = event.fetched_at
+        fetched = getattr(event, "last_updated_at", getattr(event, "created_at", now))
         if fetched.tzinfo is None:
             fetched = fetched.replace(tzinfo=timezone.utc)
         return (now - fetched) > stale_threshold
@@ -74,12 +74,12 @@ async def list_events(
                 "currency": e.currency,
                 "country": e.country,
                 "impact": e.impact,
-                "event_time": e.event_time.isoformat(),
+                "event_time": e.event_time_utc.isoformat(),
                 "forecast": e.forecast,
                 "previous": e.previous,
                 "actual": e.actual,
                 "source": e.source,
-                "fetched_at": e.fetched_at.isoformat(),
+                "fetched_at": e.last_updated_at.isoformat() if hasattr(e, "last_updated_at") else now.isoformat(),
                 "is_stale": _is_stale(e),
             }
             for e in events

@@ -219,11 +219,13 @@ async def seed_events_if_empty(db: AsyncSession) -> None:
     now = datetime.now(timezone.utc)
     base_date = now.date()
 
+    import hashlib
+
     # Check if we already seeded today's Trump event
     chk = await db.execute(
         select(EconomicEvent).where(
             EconomicEvent.title == "President Trump Speaks",
-            func.date(EconomicEvent.event_time) == base_date,
+            func.date(EconomicEvent.event_time_utc) == base_date,
         )
     )
     if chk.scalar_one_or_none():
@@ -246,20 +248,25 @@ async def seed_events_if_empty(db: AsyncSession) -> None:
         )
 
         ext_id = f"ff-{target_date.isoformat()}-{idx}-{item['currency']}"
+        hash_val = hashlib.sha256(f"ForexFactory|{item['title']}|{item['currency']}|{item['country']}|{event_dt.isoformat()}".encode()).hexdigest()
 
         evt = EconomicEvent(
             id=uuid.uuid4(),
-            external_id=ext_id,
+            source=item["source"],
+            provider_event_id=ext_id,
+            event_hash=hash_val,
             title=item["title"],
             currency=item["currency"],
             country=item["country"],
-            impact=item["impact"],
-            event_time=event_dt,
+            impact=item["impact"].capitalize(),
+            event_time_utc=event_dt,
             forecast=item["forecast"],
             previous=item["previous"],
             actual=item["actual"],
-            source=item["source"],
-            fetched_at=now,
+            raw_payload=item,
+            revision_count=0,
+            last_updated_at=now,
+            created_at=now,
         )
         new_events.append(evt)
 

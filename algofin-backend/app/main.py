@@ -24,6 +24,7 @@ from app.billing.router import router as billing_router
 from app.common.rate_limit import limiter
 from app.config import settings
 from app.events.router import router as events_router
+from app.api.v1.economic_calendar import router as economic_calendar_router
 from app.exchanges.router import router as exchanges_router
 from app.marketdata.ws_router import router as marketdata_router
 from app.orders.router import router as orders_router  # v2 Phase B
@@ -107,6 +108,7 @@ app.include_router(exchanges_router, prefix=API_PREFIX)
 app.include_router(portfolio_router, prefix=API_PREFIX)
 app.include_router(billing_router, prefix=API_PREFIX)
 app.include_router(events_router, prefix=API_PREFIX)
+app.include_router(economic_calendar_router)  # /api/v1/economic-calendar
 app.include_router(assistant_router, prefix=API_PREFIX)
 app.include_router(admin_router, prefix=API_PREFIX)
 app.include_router(marketdata_router, prefix=API_PREFIX)  # v2 Phase A: real-time WS
@@ -230,6 +232,17 @@ async def startup() -> None:
         logger.info("[WebhookWorker] Webhook worker and reconciliation loop started.")
     except Exception as exc:
         logger.warning(f"[WebhookWorker] Could not start webhook worker: {exc}")
+
+    # Economic Calendar cold-start sync safeguard
+    try:
+        from app.database import get_redis_client, AsyncSessionLocal
+        from app.workers.economic_calendar_tasks import run_startup_sync_if_needed
+
+        async with AsyncSessionLocal() as session:
+            redis = await get_redis_client()
+            await run_startup_sync_if_needed(session, redis)
+    except Exception as exc:
+        logger.warning(f"[EconomicCalendar] Cold-start sync check error: {exc}")
 
     # Keep-alive self-pinger (prevents Render free tier from spinning down)
     # Pings /health every 14 min so Render never sleeps.

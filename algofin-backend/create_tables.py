@@ -7,4 +7,5 @@ async def create():
         await conn.run_sync(Base.metadata.create_all)
     print("Tables created OK")
 
-asyncio.run(create())
+if __name__ == "__main__":
+    asyncio.run(create())

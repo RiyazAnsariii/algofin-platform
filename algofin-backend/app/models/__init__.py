@@ -9,7 +9,7 @@ from app.models.exchange import (
     ExchangeSyncRun,
 )
 from app.models.trading import Balance, Position, Trade
-from app.models.events import EconomicEvent
+from app.models.economic_event import EconomicEvent
 from app.models.assistant import ChatThread, ChatMessage
 from app.models.billing import UserProfitPeriod, BillingPeriodRecord
 from app.models.order import Order  # v2 Phase B
