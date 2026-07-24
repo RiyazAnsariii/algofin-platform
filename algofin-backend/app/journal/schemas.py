@@ -3,11 +3,10 @@
 
 from datetime import date
 from typing import Literal
-
 from pydantic import BaseModel, Field, field_validator
 
 
-# ── Journal Entry ──────────────────────────────────────────────────────────
+# ── Journal Entry CRUD Schemas ───────────────────────────────────────────────
 
 MoodType = Literal["confident", "focused", "fearful", "greedy", "neutral"]
 
@@ -78,8 +77,7 @@ class JournalEntryResponse(BaseModel):
         )
 
 
-# ── Analytics ──────────────────────────────────────────────────────────────
-
+# ── Analytics Schemas ─────────────────────────────────────────────────────────
 
 class DailyPnL(BaseModel):
     date: str
@@ -97,35 +95,65 @@ class SymbolBreakdown(BaseModel):
     win_rate: float
 
 
-class AnalyticsSummary(BaseModel):
-    # Period
-    period_days: int
-    from_date: str
-    to_date: str
+class JournalSummary(BaseModel):
+    total_trades: int = 0
+    win_rate: float = 0.0
+    profit_factor: float = 0.0
+    net_pnl: float = 0.0
+    avg_win: float = 0.0
+    avg_loss: float = 0.0
+    best_day: float = 0.0
+    worst_day: float = 0.0
 
-    # Totals
-    total_trades: int
-    realized_pnl: str
-    total_commission: str
-    net_pnl: str  # realized_pnl − commission
 
-    # Performance
-    win_count: int
-    loss_count: int
-    win_rate: float  # 0.0 – 1.0
-    profit_factor: float  # gross_profit / abs(gross_loss); 0 if no losses
-    avg_win: str
-    avg_loss: str
-    avg_trade: str
+class CumulativePnLPoint(BaseModel):
+    date: str
+    daily_realized_pnl: float
+    running_total: float
 
-    # Risk metrics
-    max_single_win: str
-    max_single_loss: str
-    best_day_pnl: str
-    worst_day_pnl: str
 
-    # Daily PnL series (for chart)
-    daily_pnl: list[DailyPnL]
+class WinLossRatio(BaseModel):
+    wins: int = 0
+    losses: int = 0
+    win_percent: float = 0.0
+    loss_percent: float = 0.0
 
-    # Symbol breakdown (top 10 by trade count)
-    by_symbol: list[SymbolBreakdown]
+
+class TradePerformancePoint(BaseModel):
+    trade_number: int
+    realized_pnl: float
+
+
+class PnLDistributionBucket(BaseModel):
+    range: str
+    count: int = 0
+
+
+class JournalAnalyticsResponse(BaseModel):
+    summary: JournalSummary
+    cumulative_pnl: list[CumulativePnLPoint] = Field(default_factory=list)
+    win_loss_ratio: WinLossRatio
+    trade_performance: list[TradePerformancePoint] = Field(default_factory=list)
+    pnl_distribution: list[PnLDistributionBucket] = Field(default_factory=list)
+
+    # Top-level backwards compatibility fields for existing frontend (journal/page.tsx)
+    period_days: int = 30
+    from_date: str = ""
+    to_date: str = ""
+    total_trades: int = 0
+    realized_pnl: str = "0"
+    total_commission: str = "0"
+    net_pnl: str = "0"
+    win_count: int = 0
+    loss_count: int = 0
+    win_rate: float = 0.0
+    profit_factor: float = 0.0
+    avg_win: str = "0"
+    avg_loss: str = "0"
+    avg_trade: str = "0"
+    max_single_win: str = "0"
+    max_single_loss: str = "0"
+    best_day_pnl: str = "0"
+    worst_day_pnl: str = "0"
+    daily_pnl: list[DailyPnL] = Field(default_factory=list)
+    by_symbol: list[SymbolBreakdown] = Field(default_factory=list)

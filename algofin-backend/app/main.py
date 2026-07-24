@@ -113,6 +113,7 @@ app.include_router(risk_router, prefix=API_PREFIX)  # v2 Phase D: risk controls
 app.include_router(alerts_router, prefix=API_PREFIX)  # v2 Phase E: Telegram alerts
 app.include_router(strategy_router, prefix=API_PREFIX)  # v2 Phase F: strategy engine
 app.include_router(journal_router, prefix=API_PREFIX)  # v2 Phase G: journal & analytics
+app.include_router(journal_router, prefix="/api")  # Direct /api prefix compatibility
 app.include_router(
     webhooks_router, prefix=API_PREFIX
 )  # v2 Phase M: TradingView webhooks

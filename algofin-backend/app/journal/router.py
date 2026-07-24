@@ -1,37 +1,19 @@
 # app/journal/router.py
 # AlgoFin v2 — Phase G: Journal & Analytics REST API
-#
-# Journal CRUD:
-#   GET    /journal/entries            — list (newest first, filterable by date range)
-#   POST   /journal/entries            — create
-#   GET    /journal/entries/{id}       — get single
-#   PATCH  /journal/entries/{id}       — update
-#   DELETE /journal/entries/{id}       — delete
-#
-# Analytics:
-#   GET    /journal/analytics          — full summary (PnL stats + daily series + symbol breakdown)
-#                                        ?days=30  (7 | 30 | 90 | 365)
 
-from collections import defaultdict
-from datetime import date, datetime, timedelta, timezone
-from decimal import Decimal
-
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Response
 from sqlalchemy import select, desc
 
 from app.common.deps import CurrentUser, DbSession
 from app.common.schemas import SuccessResponse
 from app.journal.schemas import (
-    AnalyticsSummary,
-    DailyPnL,
+    JournalAnalyticsResponse,
     JournalEntryCreate,
     JournalEntryResponse,
     JournalEntryUpdate,
-    SymbolBreakdown,
 )
+from app.journal.service import get_journal_analytics, generate_journal_csv
 from app.models.journal import JournalEntry
-from app.models.trading import Trade
-from app.models.exchange import UserExchangeAccount
 
 router = APIRouter(prefix="/journal", tags=["journal"])
 
@@ -155,198 +137,57 @@ async def delete_entry(
     return SuccessResponse(data={"deleted": True})
 
 
-# ── Analytics ──────────────────────────────────────────────────────────────
+# ── Journal Analytics & Export ─────────────────────────────────────────────
 
 
-@router.get("/analytics", response_model=SuccessResponse[AnalyticsSummary])
+@router.get("/analytics", response_model=SuccessResponse[JournalAnalyticsResponse])
 async def get_analytics(
     current_user: CurrentUser,
     db: DbSession,
-    days: int = Query(default=30, ge=1, le=365),
+    period: str | None = Query(default="30D", description="7D | 30D | 90D | 1Y | ALL"),
+    start_date: str | None = Query(default=None, description="Custom start date (ISO string/date)"),
+    end_date: str | None = Query(default=None, description="Custom end date (ISO string/date)"),
+    days: int | None = Query(default=None, ge=1, le=9999),
 ) -> SuccessResponse:
     """
-    Compute performance analytics for the given rolling window.
-    Pulls from the trades table (Binance fills) for all user exchange accounts.
+    Compute performance analytics for the given period or custom date range.
+    Uses SQL aggregation queries over Binance Futures closed trades.
     """
-    tz = timezone.utc
-    to_dt = datetime.now(tz)
-    from_dt = to_dt - timedelta(days=days)
-    from_d = from_dt.date()
-    to_d = to_dt.date()
-
-    # Get all exchange account IDs for this user
-    acct_result = await db.execute(
-        select(UserExchangeAccount.id).where(
-            UserExchangeAccount.user_id == str(current_user.id),
-            UserExchangeAccount.is_active == True,  # noqa: E712
-        )
+    analytics = await get_journal_analytics(
+        db=db,
+        user_id=str(current_user.id),
+        period=period,
+        start_date=start_date,
+        end_date=end_date,
+        days=days,
     )
-    account_ids = [str(r) for r in acct_result.scalars().all()]
+    return SuccessResponse(data=analytics)
 
-    if not account_ids:
-        return SuccessResponse(data=_empty_summary(days, from_d, to_d))
 
-    # Fetch all trades in the window
-    trade_result = await db.execute(
-        select(Trade)
-        .where(
-            Trade.exchange_account_id.in_(account_ids),
-            Trade.trade_time >= from_dt,
-            Trade.trade_time <= to_dt,
-        )
-        .order_by(Trade.trade_time)
+@router.get("/export")
+async def export_journal(
+    current_user: CurrentUser,
+    db: DbSession,
+    period: str | None = Query(default="30D"),
+    start_date: str | None = Query(default=None),
+    end_date: str | None = Query(default=None),
+    days: int | None = Query(default=None),
+) -> Response:
+    """
+    Export closed trade history as CSV download.
+    """
+    csv_content = await generate_journal_csv(
+        db=db,
+        user_id=str(current_user.id),
+        period=period,
+        start_date=start_date,
+        end_date=end_date,
+        days=days,
     )
-    trades = trade_result.scalars().all()
-
-    if not trades:
-        return SuccessResponse(data=_empty_summary(days, from_d, to_d))
-
-    return SuccessResponse(data=_compute_analytics(trades, days, from_d, to_d))
-
-
-# ── Analytics computation ──────────────────────────────────────────────────
-
-
-def _empty_summary(days: int, from_d: date, to_d: date) -> AnalyticsSummary:
-    return AnalyticsSummary(
-        period_days=days,
-        from_date=from_d.isoformat(),
-        to_date=to_d.isoformat(),
-        total_trades=0,
-        realized_pnl="0",
-        total_commission="0",
-        net_pnl="0",
-        win_count=0,
-        loss_count=0,
-        win_rate=0.0,
-        profit_factor=0.0,
-        avg_win="0",
-        avg_loss="0",
-        avg_trade="0",
-        max_single_win="0",
-        max_single_loss="0",
-        best_day_pnl="0",
-        worst_day_pnl="0",
-        daily_pnl=[],
-        by_symbol=[],
-    )
-
-
-def _compute_analytics(trades, days: int, from_d: date, to_d: date) -> AnalyticsSummary:
-    ZERO = Decimal("0")
-
-    total_pnl = ZERO
-    total_comm = ZERO
-    gross_win = ZERO
-    gross_loss = ZERO
-    win_count = 0
-    loss_count = 0
-    max_win = ZERO
-    max_loss = ZERO  # stored as negative value
-
-    # Daily aggregates: date → {pnl, count}
-    daily: dict[str, dict] = defaultdict(lambda: {"pnl": ZERO, "count": 0})
-
-    # Symbol aggregates
-    by_sym: dict[str, dict] = defaultdict(
-        lambda: {"count": 0, "pnl": ZERO, "wins": 0, "losses": 0}
-    )
-
-    for t in trades:
-        pnl = Decimal(str(t.realized_pnl))
-        comm = Decimal(str(t.commission))
-        sym = t.symbol
-        d = t.trade_time.date().isoformat()
-
-        total_pnl += pnl
-        total_comm += comm
-
-        if pnl > ZERO:
-            win_count += 1
-            gross_win += pnl
-            if pnl > max_win:
-                max_win = pnl
-            by_sym[sym]["wins"] += 1
-        elif pnl < ZERO:
-            loss_count += 1
-            gross_loss += pnl  # negative
-            if pnl < max_loss:
-                max_loss = pnl
-            by_sym[sym]["losses"] += 1
-
-        daily[d]["pnl"] += pnl
-        daily[d]["count"] += 1
-        by_sym[sym]["count"] += 1
-        by_sym[sym]["pnl"] += pnl
-
-    total_trades = len(trades)
-    win_rate = win_count / total_trades if total_trades else 0.0
-    profit_factor = (
-        float(gross_win / abs(gross_loss))
-        if gross_loss != ZERO
-        else (float("inf") if gross_win > ZERO else 0.0)
-    )
-    profit_factor = min(profit_factor, 9999.0)  # cap for JSON safety
-
-    avg_win = gross_win / win_count if win_count else ZERO
-    avg_loss = gross_loss / loss_count if loss_count else ZERO
-    avg_trade = total_pnl / total_trades
-
-    # Daily PnL series with cumulative
-    sorted_days = sorted(daily.keys())
-    cumulative = ZERO
-    daily_series: list[DailyPnL] = []
-    best_day = ZERO
-    worst_day = ZERO
-    for d in sorted_days:
-        dp = daily[d]["pnl"]
-        cumulative += dp
-        if dp > best_day:
-            best_day = dp
-        if dp < worst_day:
-            worst_day = dp
-        daily_series.append(
-            DailyPnL(
-                date=d,
-                pnl=str(round(dp, 4)),
-                trade_count=daily[d]["count"],
-                cumulative_pnl=str(round(cumulative, 4)),
-            )
-        )
-
-    # Symbol breakdown (top 10)
-    sym_list = sorted(by_sym.items(), key=lambda x: x[1]["count"], reverse=True)[:10]
-    symbol_breakdown = [
-        SymbolBreakdown(
-            symbol=sym,
-            trade_count=v["count"],
-            realized_pnl=str(round(v["pnl"], 4)),
-            win_count=v["wins"],
-            loss_count=v["losses"],
-            win_rate=v["wins"] / v["count"] if v["count"] else 0.0,
-        )
-        for sym, v in sym_list
-    ]
-
-    return AnalyticsSummary(
-        period_days=days,
-        from_date=from_d.isoformat(),
-        to_date=to_d.isoformat(),
-        total_trades=total_trades,
-        realized_pnl=str(round(total_pnl, 4)),
-        total_commission=str(round(total_comm, 4)),
-        net_pnl=str(round(total_pnl - total_comm, 4)),
-        win_count=win_count,
-        loss_count=loss_count,
-        win_rate=round(win_rate, 4),
-        profit_factor=round(profit_factor, 4),
-        avg_win=str(round(avg_win, 4)),
-        avg_loss=str(round(avg_loss, 4)),
-        avg_trade=str(round(avg_trade, 4)),
-        max_single_win=str(round(max_win, 4)),
-        max_single_loss=str(round(max_loss, 4)),
-        best_day_pnl=str(round(best_day, 4)),
-        worst_day_pnl=str(round(worst_day, 4)),
-        daily_pnl=daily_series,
-        by_symbol=symbol_breakdown,
+    return Response(
+        content=csv_content,
+        media_type="text/csv",
+        headers={
+            "Content-Disposition": 'attachment; filename="trading_journal.csv"',
+        },
     )
