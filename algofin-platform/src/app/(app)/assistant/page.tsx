@@ -107,6 +107,8 @@ export default function AssistantPage() {
   const [apiKeyMissing, setApiKeyMissing] = useState(false);
   const [quotaError, setQuotaError]       = useState<string | null>(null);
   const [tipIndex, setTipIndex]           = useState(0);
+  const [hideBalance, setHideBalance]     = useState(false);
+  const [activeQuickAccess, setActiveQuickAccess] = useState("Portfolio Overview");
 
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef  = useRef<HTMLTextAreaElement>(null);
@@ -322,6 +324,71 @@ export default function AssistantPage() {
     sendMessage(textToSend);
   };
 
+  const quickAccessItems = [
+    {
+      title: "Portfolio Overview",
+      subtitle: "Total balance and performance summary",
+      href: "/dashboard",
+      icon: (
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M3 3v18h18" />
+          <rect x="7" y="10" width="3" height="8" rx="1" />
+          <rect x="12" y="6" width="3" height="12" rx="1" />
+          <rect x="17" y="13" width="3" height="5" rx="1" />
+        </svg>
+      ),
+    },
+    {
+      title: "Profit & Loss (PnL)",
+      subtitle: "Track your realized and unrealized PnL",
+      href: "/journal",
+      icon: (
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <polyline points="22 7 13.5 15.5 8.5 10.5 2 17" />
+          <polyline points="16 7 22 7 22 13" />
+        </svg>
+      ),
+    },
+    {
+      title: "Open Positions",
+      subtitle: "View all your open positions",
+      href: "/orders",
+      icon: (
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="3" y="3" width="18" height="18" rx="3" />
+        </svg>
+      ),
+    },
+    {
+      title: "Recent Trades",
+      subtitle: "Your latest closed trades",
+      href: "/orders",
+      icon: (
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <line x1="8" y1="6" x2="21" y2="6" />
+          <line x1="8" y1="12" x2="21" y2="12" />
+          <line x1="8" y1="18" x2="21" y2="18" />
+          <line x1="3" y1="6" x2="3.01" y2="6" />
+          <line x1="3" y1="12" x2="3.01" y2="12" />
+          <line x1="3" y1="18" x2="3.01" y2="18" />
+        </svg>
+      ),
+    },
+    {
+      title: "Economic Calendar",
+      subtitle: "Upcoming high-impact economic events",
+      href: "/events",
+      icon: (
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+          <line x1="16" y1="2" x2="16" y2="6" />
+          <line x1="8" y1="2" x2="8" y2="6" />
+          <line x1="3" y1="10" x2="21" y2="10" />
+        </svg>
+      ),
+    },
+  ];
+
   return (
     <div className="flex flex-col h-[calc(100vh-3.25rem)] max-w-7xl mx-auto overflow-hidden gap-3">
       {/* ── Header Row ─────────────────────────────────────────────────── */}
@@ -342,12 +409,13 @@ export default function AssistantPage() {
         <button
           type="button"
           onClick={handleReset}
-          className="surface-card px-3.5 py-1.5 rounded-xl border border-white/10 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1.5 shrink-0"
+          className="px-3.5 py-1.5 rounded-full border border-white/10 bg-black/40 text-xs font-medium text-gray-300 hover:text-white hover:bg-white/5 transition-all flex items-center gap-2 shrink-0"
         >
           <span>Clear conversation</span>
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <polyline points="3 6 5 6 21 6" />
-            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M3 6h18" />
+            <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
+            <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
           </svg>
         </button>
       </div>
@@ -367,8 +435,8 @@ export default function AssistantPage() {
 
       {/* ── 2-Column Split Grid Layout ──────────────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 flex-1 min-h-0 overflow-hidden">
-        {/* ── Left Column (~70% width): Chat & Inputs ────────────────────── */}
-        <div className="lg:col-span-8 flex flex-col h-full overflow-hidden gap-3">
+        {/* ── Left Column (~65% width): Chat & Inputs ────────────────────── */}
+        <div className="lg:col-span-7 xl:col-span-8 flex flex-col h-full overflow-hidden gap-3">
           {/* Top Hero Welcome Card */}
           <div className="surface-card p-4 rounded-2xl border border-white/8 flex items-center gap-4 relative overflow-hidden shrink-0">
             <RobotAvatar />
@@ -416,7 +484,7 @@ export default function AssistantPage() {
               </div>
             )}
 
-            {/* Active Real User/Assistant Messages with Edit & Delete Options */}
+            {/* Active Real User/Assistant Messages */}
             {messages.map((msg) => (
               <div key={msg.id} className="group">
                 {msg.role === "user" ? (
@@ -561,24 +629,31 @@ export default function AssistantPage() {
           </div>
         </div>
 
-        {/* ── Right Sidebar Column (~30% width): Compact Summary Widgets ───── */}
-        <div className="lg:col-span-4 h-full flex flex-col justify-between overflow-hidden gap-2">
+        {/* ── Right Sidebar Column (~35% width): Exact Mockup UI ──────────── */}
+        <div className="lg:col-span-5 xl:col-span-4 h-full flex flex-col overflow-y-auto pr-1 gap-4.5">
           {/* Widget 1: Portfolio Summary */}
           {(() => {
             const totalBalance = portfolioSummary?.total_value_usdt ?? 0;
             const connectedAccounts = portfolioSummary?.connected_accounts ?? 0;
             const mtdPnl = portfolioSummary?.realized_pnl_mtd ?? 0;
             return (
-              <div className="surface-card p-3 rounded-2xl border border-white/8 space-y-1.5 shrink-0">
+              <div className="surface-card p-4 rounded-2xl border border-white/10 space-y-4 shrink-0">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5">
-                    <h3 className="text-xs font-bold text-foreground">Portfolio Summary</h3>
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-lg bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 flex items-center justify-center shrink-0">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M21 12V7H5a2 2 0 0 1 0-4h14v4" />
+                        <path d="M3 5v14a2 2 0 0 0 2 2h16v-5" />
+                        <path d="M18 12a2 2 0 0 0 0 4h4v-4Z" />
+                      </svg>
+                    </div>
+                    <h3 className="text-sm font-bold text-foreground">Portfolio Summary</h3>
                     {connectedAccounts > 0 ? (
-                      <span className="text-[10px] text-emerald-400 font-semibold px-1.5 py-0.2 rounded bg-emerald-500/10 border border-emerald-500/20">
+                      <span className="text-[11px] text-emerald-400 font-semibold px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20">
                         Live ({connectedAccounts})
                       </span>
                     ) : (
-                      <span className="text-[10px] text-muted-foreground font-medium px-1.5 py-0.2 rounded bg-white/5 border border-white/10">
+                      <span className="text-[11px] text-muted-foreground font-medium px-2 py-0.5 rounded bg-white/5 border border-white/10">
                         Not Connected
                       </span>
                     )}
@@ -586,24 +661,69 @@ export default function AssistantPage() {
                   <button
                     type="button"
                     onClick={() => loadPortfolioSummary()}
-                    className={`text-muted-foreground hover:text-foreground transition-all text-xs ${refreshingPortfolio ? "animate-spin" : ""}`}
+                    className={`w-7 h-7 rounded-lg border border-white/10 text-muted-foreground hover:text-foreground transition-all flex items-center justify-center ${refreshingPortfolio ? "animate-spin" : ""}`}
                     title="Refresh portfolio"
                   >
-                    🔄
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8" />
+                      <path d="M21 3v5h-5" />
+                    </svg>
                   </button>
                 </div>
-                <div className="flex items-baseline justify-between gap-2">
-                  <div>
-                    <p className="text-[10px] text-muted-foreground uppercase font-semibold">Total Balance</p>
-                    <p className="text-lg font-extrabold text-foreground tracking-tight">
-                      {totalBalance.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USDT
+
+                <div className="flex items-center justify-between gap-4 pt-1">
+                  <div className="flex-1 space-y-1">
+                    <p className="text-[10px] text-muted-foreground uppercase font-semibold tracking-wider">
+                      TOTAL BALANCE
                     </p>
+                    <p className="text-xl font-bold text-foreground tracking-tight">
+                      {hideBalance
+                        ? "•••••• USDT"
+                        : `${totalBalance.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USDT`}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setHideBalance(!hideBalance)}
+                      className="text-xs text-muted-foreground hover:text-foreground font-medium flex items-center gap-1.5 transition-colors pt-0.5 select-none"
+                    >
+                      {hideBalance ? (
+                        <>
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
+                            <circle cx="12" cy="12" r="3" />
+                          </svg>
+                          <span>Show Balance</span>
+                        </>
+                      ) : (
+                        <>
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24" />
+                            <path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68" />
+                            <path d="M6.61 6.61A13.52 13.52 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61" />
+                            <line x1="2" y1="2" x2="22" y2="22" />
+                          </svg>
+                          <span>Hide Balance</span>
+                        </>
+                      )}
+                    </button>
                   </div>
-                  <div className="text-right">
-                    <p className="text-[10px] text-muted-foreground uppercase font-semibold">MTD PnL</p>
-                    <p className={`text-[11px] font-bold ${mtdPnl >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
+
+                  <div className="w-[1px] bg-white/10 my-1 self-stretch shrink-0" />
+
+                  <div className="flex-1 space-y-1">
+                    <p className="text-[10px] text-muted-foreground uppercase font-semibold tracking-wider">
+                      MTD PNL
+                    </p>
+                    <p className={`text-xl font-bold tracking-tight ${mtdPnl >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
                       {mtdPnl >= 0 ? "+" : ""}{mtdPnl.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USDT
                     </p>
+                    <div className="text-xs text-emerald-400 font-semibold flex items-center gap-1.5 pt-0.5">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="22 7 13.5 15.5 8.5 10.5 2 17" />
+                        <polyline points="16 7 22 7 22 13" />
+                      </svg>
+                      <span>0.00%</span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -611,151 +731,145 @@ export default function AssistantPage() {
           })()}
 
           {/* Widget 2: Quick Access Links */}
-          <div className="surface-card p-3 rounded-2xl border border-white/8 space-y-1 flex-1 flex flex-col justify-between min-h-0">
-            <h3 className="text-xs font-bold text-foreground shrink-0">Quick Access</h3>
-            <div className="space-y-1 flex-1 flex flex-col justify-between py-0.5">
-              <Link
-                href="/dashboard"
-                className="px-2.5 py-1.5 rounded-xl surface-card border border-white/5 hover:border-cyan-500/30 flex items-center justify-between transition-all group"
-              >
-                <div className="flex items-center gap-2">
-                  <div className="w-5 h-5 rounded-md bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 flex items-center justify-center shrink-0">
-                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <rect x="3" y="3" width="7" height="7" />
-                      <rect x="14" y="3" width="7" height="7" />
-                      <rect x="14" y="14" width="7" height="7" />
-                      <rect x="3" y="14" width="7" height="7" />
-                    </svg>
-                  </div>
-                  <span className="text-[11px] font-semibold text-foreground group-hover:text-cyan-400 transition-colors">
-                    Portfolio Overview
-                  </span>
-                </div>
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-muted-foreground group-hover:text-cyan-400">
-                  <polyline points="9 18 15 12 9 6" />
-                </svg>
-              </Link>
+          <div className="space-y-3 shrink-0">
+            <div className="flex items-center gap-2 px-1">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-muted-foreground">
+                <circle cx="9" cy="5" r="1.5" fill="currentColor" />
+                <circle cx="9" cy="12" r="1.5" fill="currentColor" />
+                <circle cx="9" cy="19" r="1.5" fill="currentColor" />
+                <circle cx="15" cy="5" r="1.5" fill="currentColor" />
+                <circle cx="15" cy="12" r="1.5" fill="currentColor" />
+                <circle cx="15" cy="19" r="1.5" fill="currentColor" />
+              </svg>
+              <h3 className="text-sm font-bold text-foreground">Quick Access</h3>
+            </div>
 
-              <Link
-                href="/journal"
-                className="px-2.5 py-1.5 rounded-xl surface-card border border-white/5 hover:border-cyan-500/30 flex items-center justify-between transition-all group"
-              >
-                <div className="flex items-center gap-2">
-                  <div className="w-5 h-5 rounded-md bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 flex items-center justify-center shrink-0">
-                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" />
+            <div className="space-y-2">
+              {quickAccessItems.map((item) => {
+                const isActive = activeQuickAccess === item.title;
+                return (
+                  <Link
+                    key={item.title}
+                    href={item.href}
+                    onClick={() => setActiveQuickAccess(item.title)}
+                    className={`p-3 rounded-2xl border transition-all flex items-center justify-between group ${
+                      isActive
+                        ? "border-cyan-500/50 bg-cyan-950/20 shadow-[0_0_12px_rgba(6,182,212,0.15)]"
+                        : "surface-card border-white/8 hover:border-cyan-500/30"
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 border transition-colors ${
+                        isActive
+                          ? "bg-cyan-500/20 border-cyan-500/40 text-cyan-400"
+                          : "bg-cyan-500/10 border-cyan-500/20 text-cyan-400 group-hover:bg-cyan-500/20"
+                      }`}>
+                        {item.icon}
+                      </div>
+                      <div className="space-y-0.5">
+                        <span className={`text-xs sm:text-sm font-bold block transition-colors ${
+                          isActive ? "text-cyan-400" : "text-foreground group-hover:text-cyan-400"
+                        }`}>
+                          {item.title}
+                        </span>
+                        <span className="text-[11px] text-muted-foreground block leading-tight">
+                          {item.subtitle}
+                        </span>
+                      </div>
+                    </div>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-muted-foreground group-hover:text-cyan-400 transition-colors shrink-0 ml-2">
+                      <polyline points="9 18 15 12 9 6" />
                     </svg>
-                  </div>
-                  <span className="text-[11px] font-semibold text-foreground group-hover:text-cyan-400 transition-colors">
-                    Profit & Loss (PnL)
-                  </span>
-                </div>
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-muted-foreground group-hover:text-cyan-400">
-                  <polyline points="9 18 15 12 9 6" />
-                </svg>
-              </Link>
-
-              <Link
-                href="/orders"
-                className="px-2.5 py-1.5 rounded-xl surface-card border border-white/5 hover:border-cyan-500/30 flex items-center justify-between transition-all group"
-              >
-                <div className="flex items-center gap-2">
-                  <div className="w-5 h-5 rounded-md bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 flex items-center justify-center shrink-0">
-                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <rect x="2" y="7" width="20" height="14" rx="2" ry="2" />
-                    </svg>
-                  </div>
-                  <span className="text-[11px] font-semibold text-foreground group-hover:text-cyan-400 transition-colors">
-                    Open Positions
-                  </span>
-                </div>
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-muted-foreground group-hover:text-cyan-400">
-                  <polyline points="9 18 15 12 9 6" />
-                </svg>
-              </Link>
-
-              <Link
-                href="/orders"
-                className="px-2.5 py-1.5 rounded-xl surface-card border border-white/5 hover:border-cyan-500/30 flex items-center justify-between transition-all group"
-              >
-                <div className="flex items-center gap-2">
-                  <div className="w-5 h-5 rounded-md bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 flex items-center justify-center shrink-0">
-                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <line x1="8" y1="6" x2="21" y2="6" />
-                      <line x1="8" y1="12" x2="21" y2="12" />
-                      <line x1="8" y1="18" x2="21" y2="18" />
-                    </svg>
-                  </div>
-                  <span className="text-[11px] font-semibold text-foreground group-hover:text-cyan-400 transition-colors">
-                    Recent Trades
-                  </span>
-                </div>
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-muted-foreground group-hover:text-cyan-400">
-                  <polyline points="9 18 15 12 9 6" />
-                </svg>
-              </Link>
-
-              <Link
-                href="/events"
-                className="px-2.5 py-1.5 rounded-xl surface-card border border-white/5 hover:border-cyan-500/30 flex items-center justify-between transition-all group"
-              >
-                <div className="flex items-center gap-2">
-                  <div className="w-5 h-5 rounded-md bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 flex items-center justify-center shrink-0">
-                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
-                    </svg>
-                  </div>
-                  <span className="text-[11px] font-semibold text-foreground group-hover:text-cyan-400 transition-colors">
-                    Economic Calendar
-                  </span>
-                </div>
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-muted-foreground group-hover:text-cyan-400">
-                  <polyline points="9 18 15 12 9 6" />
-                </svg>
-              </Link>
+                  </Link>
+                );
+              })}
             </div>
           </div>
 
           {/* Widget 3: Assistant Capabilities */}
-          <div className="surface-card p-3 rounded-2xl border border-white/8 space-y-1.5 shrink-0">
-            <h3 className="text-xs font-bold text-foreground">Assistant Capabilities</h3>
-            <div className="space-y-1 text-[11px]">
-              {[
-                "Portfolio & PnL Analysis",
-                "Trade & Position Insights",
-                "Risk & Performance Metrics",
-                "Economic Event Analysis",
-                "Market & Strategy Insights",
-              ].map((cap) => (
-                <div key={cap} className="flex items-center gap-2 text-muted-foreground">
-                  <div className="w-3.5 h-3.5 rounded-full bg-emerald-500/15 text-emerald-400 flex items-center justify-center text-[9px] shrink-0 font-bold">
-                    ✓
+          <div className="surface-card p-4 rounded-2xl border border-white/10 space-y-4 shrink-0">
+            <div className="flex items-center gap-2">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-cyan-400">
+                <path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3L12 3Z" />
+              </svg>
+              <h3 className="text-sm font-bold text-foreground">Assistant Capabilities</h3>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3.5 text-xs">
+              <div className="space-y-3.5">
+                {[
+                  "Portfolio & PnL Analysis",
+                  "Trade & Position Insights",
+                  "Risk & Performance Metrics",
+                ].map((cap) => (
+                  <div key={cap} className="flex items-center gap-2.5 text-muted-foreground font-medium">
+                    <div className="w-4 h-4 rounded-full bg-emerald-500 text-black flex items-center justify-center shrink-0">
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="20 6 9 17 4 12" />
+                      </svg>
+                    </div>
+                    <span className="leading-tight">{cap}</span>
                   </div>
-                  <span>{cap}</span>
-                </div>
-              ))}
+                ))}
+              </div>
+
+              <div className="space-y-3.5">
+                {[
+                  "Economic Event Analysis",
+                  "Market & Strategy Insights",
+                ].map((cap) => (
+                  <div key={cap} className="flex items-center gap-2.5 text-muted-foreground font-medium">
+                    <div className="w-4 h-4 rounded-full bg-emerald-500 text-black flex items-center justify-center shrink-0">
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="20 6 9 17 4 12" />
+                      </svg>
+                    </div>
+                    <span className="leading-tight">{cap}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="border-t border-white/10 pt-3 mt-4 text-center">
+              <a
+                href="#"
+                onClick={(e) => { e.preventDefault(); alert("AI Assistant documentation coming soon."); }}
+                className="text-cyan-400 hover:text-cyan-300 text-xs font-semibold inline-flex items-center gap-1.5 transition-colors"
+              >
+                <span>Learn more about AI Assistant</span>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                  <polyline points="15 3 21 3 21 9" />
+                  <line x1="10" y1="14" x2="21" y2="3" />
+                </svg>
+              </a>
             </div>
           </div>
 
           {/* Widget 4: Tip of the Day Carousel */}
-          <div className="surface-card p-3 rounded-2xl border border-white/8 space-y-1.5 shrink-0">
+          <div className="surface-card p-4 rounded-2xl border border-white/10 space-y-2.5 shrink-0">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-1.5 text-amber-400 text-xs font-bold">
-                <span>💡</span> Tip of the day
+              <div className="flex items-center gap-2 text-amber-400 text-xs sm:text-sm font-bold">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-amber-400">
+                  <path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5" />
+                  <path d="M9 18h6" />
+                  <path d="M10 22h4" />
+                </svg>
+                <span>Tip of the day</span>
               </div>
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-1.5">
                 {tips.map((_, i) => (
                   <button
                     key={i}
                     onClick={() => setTipIndex(i)}
-                    className={`h-1.5 rounded-full transition-all ${
-                      tipIndex === i ? "w-4 bg-cyan-400 shadow-glow-cyan" : "w-1.5 bg-white/20"
+                    className={`h-2 rounded-full transition-all ${
+                      tipIndex === i ? "w-6 bg-cyan-400 shadow-[0_0_8px_#22d3ee]" : "w-3 bg-white/20 hover:bg-white/40"
                     }`}
                   />
                 ))}
               </div>
             </div>
-            <p className="text-[11px] text-muted-foreground/80 leading-snug">
+            <p className="text-xs text-muted-foreground/90 leading-relaxed">
               {tips[tipIndex]}
             </p>
           </div>
