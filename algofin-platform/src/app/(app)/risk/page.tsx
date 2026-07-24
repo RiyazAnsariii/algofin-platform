@@ -155,16 +155,16 @@ function RuleTypeCustomDropdown({
 
   return (
     <div className="relative w-full">
-      {/* Selected Box Trigger (Compact 0.75 Scale) */}
+      {/* Selected Box Trigger (Matching inputCls height, font-size, and radius) */}
       <button
         type="button"
         onClick={() => setIsOpen((v) => !v)}
-        className="w-full px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-[11px] font-semibold text-foreground hover:border-white/20 transition-all flex items-center justify-between gap-2 group"
+        className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-xs font-medium text-foreground hover:border-white/20 transition-all flex items-center justify-between gap-3 group"
       >
-        <span className="font-semibold text-[11px] text-foreground">{selectedOpt.label}</span>
+        <span className="font-medium text-xs text-foreground">{selectedOpt.label}</span>
         <svg
-          width="10"
-          height="10"
+          width="12"
+          height="12"
           viewBox="0 0 24 24"
           fill="none"
           stroke="currentColor"
@@ -175,9 +175,9 @@ function RuleTypeCustomDropdown({
         </svg>
       </button>
 
-      {/* Expanded Custom Dropdown Popover (Compact 0.75 Scale) */}
+      {/* Expanded Custom Dropdown Popover */}
       {isOpen && (
-        <div className="absolute top-full left-0 right-0 mt-1 z-50 p-1 rounded-xl bg-[#0b121c] border border-white/12 shadow-xl space-y-0.5 backdrop-blur-xl animate-fade-in">
+        <div className="absolute top-full left-0 right-0 mt-1.5 z-50 p-1.5 rounded-xl bg-[#0b121c] border border-white/12 shadow-2xl space-y-1 backdrop-blur-xl animate-fade-in">
           {RULE_OPTIONS.map((opt) => {
             const isSelected = opt.type === value;
             return (
@@ -188,16 +188,16 @@ function RuleTypeCustomDropdown({
                   onChange(opt.type);
                   setIsOpen(false);
                 }}
-                className={`w-full py-1.5 px-2 rounded-lg flex items-center gap-2 transition-all text-left group ${
+                className={`w-full py-2 px-2.5 rounded-lg flex items-center gap-2.5 transition-all text-left group ${
                   isSelected
                     ? "bg-cyan-500/10 border border-cyan-500/30 text-cyan-400"
                     : "hover:bg-white/5 border border-transparent text-foreground"
                 }`}
               >
-                <div className={`w-5 h-5 rounded-md ${opt.color} border flex items-center justify-center shrink-0`}>
+                <div className={`w-5.5 h-5.5 rounded-md ${opt.color} border flex items-center justify-center shrink-0`}>
                   {opt.icon}
                 </div>
-                <span className={`text-[11px] font-semibold ${isSelected ? "text-cyan-400" : "text-foreground group-hover:text-cyan-300"}`}>
+                <span className={`text-xs font-medium ${isSelected ? "text-cyan-400 font-semibold" : "text-foreground group-hover:text-cyan-300"}`}>
                   {opt.label}
                 </span>
               </button>
