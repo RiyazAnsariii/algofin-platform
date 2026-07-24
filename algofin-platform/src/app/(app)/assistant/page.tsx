@@ -274,9 +274,9 @@ export default function AssistantPage() {
   };
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto pb-10">
+    <div className="flex flex-col h-[calc(100vh-5.5rem)] max-w-7xl mx-auto overflow-hidden gap-3 pb-1">
       {/* ── Header Row ─────────────────────────────────────────────────── */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 shrink-0">
         <div>
           <div className="flex items-center gap-3">
             <h1 className="text-xl font-bold text-foreground">AI Assistant</h1>
@@ -305,37 +305,37 @@ export default function AssistantPage() {
 
       {/* Error Banners */}
       {apiKeyMissing && (
-        <div className="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-xs text-rose-300">
+        <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-xs text-rose-300 shrink-0">
           ⚠ Gemini API key invalid or missing. Update <code className="font-mono">GEMINI_API_KEY</code> in your backend.
         </div>
       )}
       {quotaError && (
-        <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-300 flex items-center justify-between">
+        <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-300 flex items-center justify-between shrink-0">
           <span>⚠ Gemini free-tier daily quota limit reached.</span>
           <button onClick={() => setQuotaError(null)} className="underline text-[11px]">Dismiss</button>
         </div>
       )}
 
       {/* ── 2-Column Split Grid Layout ──────────────────────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 flex-1 min-h-0 overflow-hidden">
         {/* ── Left Column (~70% width): Chat & Inputs ────────────────────── */}
-        <div className="lg:col-span-8 space-y-5">
+        <div className="lg:col-span-8 flex flex-col h-full overflow-hidden gap-3">
           {/* Top Hero Welcome Card */}
-          <div className="surface-card p-5 rounded-2xl border border-white/8 flex items-center gap-4 relative overflow-hidden">
+          <div className="surface-card p-4 rounded-2xl border border-white/8 flex items-center gap-4 relative overflow-hidden shrink-0">
             <RobotAvatar />
-            <div className="space-y-1 max-w-xl">
-              <h2 className="text-sm font-bold text-foreground">Hello! I'm your AlgoFin trading assistant.</h2>
-              <p className="text-xs text-muted-foreground/80 leading-relaxed">
+            <div className="space-y-0.5 max-w-xl">
+              <h2 className="text-xs font-bold text-foreground">Hello! I'm your AlgoFin trading assistant.</h2>
+              <p className="text-[11px] text-muted-foreground/80 leading-relaxed">
                 I can help you monitor your portfolio, track your realized profit and loss (PnL), check your open positions, view recent trades, and keep an eye on upcoming high-impact events.
               </p>
-              <p className="text-xs font-semibold text-cyan-400 flex items-center gap-1 pt-0.5">
+              <p className="text-[11px] font-semibold text-cyan-400 flex items-center gap-1 pt-0.5">
                 <span>✈</span> How can I assist you today?
               </p>
             </div>
           </div>
 
-          {/* Chat Feed Area */}
-          <div className="space-y-5 min-h-[380px] max-h-[560px] overflow-y-auto pr-1">
+          {/* Chat Feed Area (Flex-1 Internal Scrollbar) */}
+          <div className="flex-1 min-h-0 overflow-y-auto pr-2 space-y-4">
             <div className="text-center">
               <span className="text-[11px] text-muted-foreground/50 font-medium">Today</span>
             </div>
@@ -505,7 +505,7 @@ export default function AssistantPage() {
           </div>
 
           {/* Bottom Chat Input Bar */}
-          <div className="surface-card p-3 rounded-2xl border border-white/10 space-y-2">
+          <div className="surface-card p-3 rounded-2xl border border-white/10 space-y-2 shrink-0">
             <div className="flex items-center gap-3">
               <textarea
                 ref={inputRef}
@@ -547,7 +547,7 @@ export default function AssistantPage() {
         </div>
 
         {/* ── Right Sidebar Column (~30% width): Summary Widgets ──────────── */}
-        <div className="lg:col-span-4 space-y-5">
+        <div className="lg:col-span-4 h-full overflow-y-auto pr-1 space-y-4">
           {/* Widget 1: Portfolio Summary */}
           <div className="surface-card p-5 rounded-2xl border border-white/8 space-y-3">
             <div className="flex items-center justify-between">
