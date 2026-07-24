@@ -145,12 +145,25 @@ function CumulativePnLChart({
           </div>
         </div>
 
-        {/* X-Axis Dates */}
-        <div className="ml-10 flex justify-between text-[10px] text-muted-foreground/70 font-mono overflow-hidden">
+        {/* X-Axis Dates — Date below every single point */}
+        <div className="ml-10 relative h-6 mt-2 text-[8px] sm:text-[9px] text-muted-foreground/70 font-mono">
           {pointsDates.map((d, i) => {
-            const step = Math.ceil(numPoints / 6);
-            if (i !== 0 && i !== numPoints - 1 && i % step !== 0) return null;
-            return <span key={i}>{d}</span>;
+            const leftPct = (i / (numPoints - 1 || 1)) * 100;
+            return (
+              <span
+                key={i}
+                className={`absolute whitespace-nowrap ${
+                  i === 0
+                    ? "left-0 text-left"
+                    : i === numPoints - 1
+                    ? "right-0 text-right"
+                    : "-translate-x-1/2 text-center"
+                }`}
+                style={i !== 0 && i !== numPoints - 1 ? { left: `${leftPct}%` } : undefined}
+              >
+                {d}
+              </span>
+            );
           })}
         </div>
       </div>
@@ -209,11 +222,25 @@ function CumulativePnLChart({
         </svg>
       </div>
 
-      <div className="flex justify-between text-[10px] text-muted-foreground/70 font-mono px-1">
+      {/* X-Axis Dates — Date below every single point */}
+      <div className="relative h-6 mt-1 text-[8px] sm:text-[9px] text-muted-foreground/70 font-mono">
         {sampledData.map((d, i) => {
-          const step = Math.ceil(numPoints / 6);
-          if (i !== 0 && i !== numPoints - 1 && i % step !== 0) return null;
-          return <span key={i}>{d.date}</span>;
+          const leftPct = (i / (sampledData.length - 1 || 1)) * 100;
+          return (
+            <span
+              key={i}
+              className={`absolute whitespace-nowrap ${
+                i === 0
+                  ? "left-0 text-left"
+                  : i === sampledData.length - 1
+                  ? "right-0 text-right"
+                  : "-translate-x-1/2 text-center"
+              }`}
+              style={i !== 0 && i !== sampledData.length - 1 ? { left: `${leftPct}%` } : undefined}
+            >
+              {d.date}
+            </span>
+          );
         })}
       </div>
     </div>
