@@ -273,6 +273,27 @@ export default function AssistantPage() {
     setMessages([]);
   };
 
+  const [editingMsgId, setEditingMsgId]   = useState<string | null>(null);
+  const [editMsgText, setEditMsgText]     = useState("");
+
+  const handleDeleteMessage = (id: string) => {
+    setMessages((prev) => prev.filter((m) => m.id !== id));
+  };
+
+  const startEditMessage = (id: string, currentText: string) => {
+    setEditingMsgId(id);
+    setEditMsgText(currentText);
+  };
+
+  const saveEditMessage = (id: string) => {
+    if (!editMsgText.trim()) return;
+    setMessages((prev) => prev.map((m) => m.id === id ? { ...m, content: editMsgText.trim() } : m));
+    const textToSend = editMsgText.trim();
+    setEditingMsgId(null);
+    setEditMsgText("");
+    sendMessage(textToSend);
+  };
+
   return (
     <div className="flex flex-col h-[calc(100vh-3.25rem)] max-w-7xl mx-auto overflow-hidden gap-3">
       {/* ── Header Row ─────────────────────────────────────────────────── */}
@@ -470,24 +491,93 @@ export default function AssistantPage() {
               </>
             )}
 
-            {/* Active Real User/Assistant Messages */}
+            {/* Active Real User/Assistant Messages with Edit & Delete Options */}
             {messages.map((msg) => (
-              <div key={msg.id}>
+              <div key={msg.id} className="group">
                 {msg.role === "user" ? (
                   <div className="flex flex-col items-end space-y-1">
-                    <span className="text-[10px] text-muted-foreground/60 mr-11">{msg.time || "Now"}</span>
-                    <div className="flex items-center gap-3">
-                      <div className="max-w-[75%] px-4 py-2.5 rounded-2xl rounded-tr-md bg-[#0e2a36] border border-cyan-500/30 text-xs text-foreground leading-relaxed">
-                        {msg.content}
-                      </div>
+                    <div className="flex items-center gap-2 mr-11">
+                      <button
+                        type="button"
+                        onClick={() => startEditMessage(msg.id, msg.content)}
+                        className="opacity-0 group-hover:opacity-100 text-[10px] text-cyan-400 hover:underline transition-opacity flex items-center gap-0.5"
+                        title="Edit message"
+                      >
+                        ✏ Edit
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteMessage(msg.id)}
+                        className="opacity-0 group-hover:opacity-100 text-[10px] text-rose-400 hover:underline transition-opacity flex items-center gap-0.5"
+                        title="Delete message"
+                      >
+                        🗑 Delete
+                      </button>
+                      <span className="text-[10px] text-muted-foreground/60">{msg.time || "Now"}</span>
+                    </div>
+
+                    <div className="flex items-start gap-3 justify-end w-full">
+                      {editingMsgId === msg.id ? (
+                        <div className="max-w-[80%] w-full surface-card p-3 rounded-2xl border border-cyan-500/40 space-y-2">
+                          <textarea
+                            value={editMsgText}
+                            onChange={(e) => setEditMsgText(e.target.value)}
+                            rows={2}
+                            className="w-full bg-black/40 border border-white/10 rounded-xl p-2 text-xs text-foreground outline-none resize-y font-sans"
+                          />
+                          <div className="flex items-center justify-end gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setEditingMsgId(null)}
+                              className="px-2.5 py-1 rounded-lg border border-white/10 text-[11px] text-muted-foreground hover:text-foreground transition-all"
+                            >
+                              Cancel
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => saveEditMessage(msg.id)}
+                              className="px-3 py-1 rounded-lg bg-cyan-400 hover:bg-cyan-300 text-black text-[11px] font-semibold transition-all shadow-glow-cyan"
+                            >
+                              Save & Submit
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="max-w-[75%] px-4 py-2.5 rounded-2xl rounded-tr-md bg-[#0e2a36] border border-cyan-500/30 text-xs text-foreground leading-relaxed">
+                          {msg.content}
+                        </div>
+                      )}
                       <UserAvatar />
                     </div>
                   </div>
                 ) : (
                   <div className="flex gap-3">
                     <RobotAvatar />
-                    <div className="max-w-[85%] space-y-2">
-                      <span className="text-[10px] text-muted-foreground/60">{msg.time || "Now"}</span>
+                    <div className="max-w-[85%] space-y-1.5 flex-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] text-muted-foreground/60">{msg.time || "Now"}</span>
+                        <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              navigator.clipboard.writeText(msg.content);
+                              alert("Message copied to clipboard!");
+                            }}
+                            className="text-[10px] text-cyan-400 hover:underline flex items-center gap-0.5"
+                            title="Copy message"
+                          >
+                            📋 Copy
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteMessage(msg.id)}
+                            className="text-[10px] text-rose-400 hover:underline flex items-center gap-0.5"
+                            title="Delete message"
+                          >
+                            🗑 Delete
+                          </button>
+                        </div>
+                      </div>
                       {msg.content && (
                         <div className="text-xs text-foreground/90 leading-relaxed surface-card p-3 rounded-xl border border-white/8">
                           <RenderMarkdown text={msg.content} />
