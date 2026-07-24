@@ -93,21 +93,41 @@ export function DeltaLogo({ className = "w-10 h-10" }: { className?: string }) {
   );
 }
 
+const LOGO_URLS: Record<string, string> = {
+  binance: "https://assets.coingecko.com/markets/images/52/large/binance.png",
+  bybit: "https://assets.coingecko.com/markets/images/698/large/bybit_spot.png",
+  coinbase: "https://assets.coingecko.com/markets/images/23/large/Coinbase_Coin_Primary_Full_Color_RGB.png",
+  delta: "https://assets.coingecko.com/markets/images/409/large/delta_exchange.png",
+};
+
 function ExchangeLogo({ id, letter, live }: { id?: string; letter?: string; live?: boolean }) {
   const identifier = (id || letter || "").toLowerCase();
+  const [imgError, setImgError] = useState(false);
 
-  if (identifier.includes("binance") || identifier === "b") {
-    return <BinanceLogo className="w-10 h-10" />;
+  let key = "";
+  if (identifier.includes("binance") || identifier === "b") key = "binance";
+  else if (identifier.includes("bybit") || identifier === "y") key = "bybit";
+  else if (identifier.includes("coinbase") || identifier === "c") key = "coinbase";
+  else if (identifier.includes("delta") || identifier === "d") key = "delta";
+
+  if (key && LOGO_URLS[key] && !imgError) {
+    return (
+      <div className="w-10 h-10 rounded-xl bg-black/40 border border-white/10 flex items-center justify-center shrink-0 p-1 overflow-hidden shadow-md">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={LOGO_URLS[key]}
+          alt={key}
+          className="w-full h-full object-contain rounded-lg"
+          onError={() => setImgError(true)}
+        />
+      </div>
+    );
   }
-  if (identifier.includes("bybit") || identifier === "y") {
-    return <BybitLogo className="w-10 h-10" />;
-  }
-  if (identifier.includes("coinbase") || identifier === "c") {
-    return <CoinbaseLogo className="w-10 h-10" />;
-  }
-  if (identifier.includes("delta") || identifier === "d") {
-    return <DeltaLogo className="w-10 h-10" />;
-  }
+
+  if (key === "binance") return <BinanceLogo className="w-10 h-10" />;
+  if (key === "bybit") return <BybitLogo className="w-10 h-10" />;
+  if (key === "coinbase") return <CoinbaseLogo className="w-10 h-10" />;
+  if (key === "delta") return <DeltaLogo className="w-10 h-10" />;
 
   return (
     <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-base font-bold flex-shrink-0 ${
