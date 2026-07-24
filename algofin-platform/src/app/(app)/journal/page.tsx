@@ -73,13 +73,14 @@ function getChartPointsConfig(
 
   const daysDiff = Math.max(1, Math.round((endMs - startMs) / 86400000));
 
+  // User rule:
+  // <= 30 days: 1 point per day (up to 30 points for a whole month)
+  // > 30 days: 30 points total (1 pt = 2 days for 2 months, 3 days for 3 months, etc.)
   let numPoints: number;
-  if (daysDiff <= 10) {
+  if (daysDiff <= 30) {
     numPoints = Math.max(1, daysDiff);
-  } else if (daysDiff <= 100) {
-    numPoints = 10;
   } else {
-    numPoints = 20;
+    numPoints = 30;
   }
 
   return { daysDiff, numPoints, startMs, endMs };
@@ -147,7 +148,8 @@ function CumulativePnLChart({
         {/* X-Axis Dates */}
         <div className="ml-10 flex justify-between text-[10px] text-muted-foreground/70 font-mono overflow-hidden">
           {pointsDates.map((d, i) => {
-            if (numPoints > 12 && i % 2 !== 0 && i !== numPoints - 1) return null;
+            const step = Math.ceil(numPoints / 6);
+            if (i !== 0 && i !== numPoints - 1 && i % step !== 0) return null;
             return <span key={i}>{d}</span>;
           })}
         </div>
@@ -209,7 +211,8 @@ function CumulativePnLChart({
 
       <div className="flex justify-between text-[10px] text-muted-foreground/70 font-mono px-1">
         {sampledData.map((d, i) => {
-          if (numPoints > 12 && i % 2 !== 0 && i !== numPoints - 1) return null;
+          const step = Math.ceil(numPoints / 6);
+          if (i !== 0 && i !== numPoints - 1 && i % step !== 0) return null;
           return <span key={i}>{d.date}</span>;
         })}
       </div>
