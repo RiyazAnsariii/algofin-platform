@@ -145,9 +145,10 @@ function CumulativePnLChart({
           </div>
         </div>
 
-        {/* X-Axis Dates — Date below every single point */}
-        <div className="ml-10 relative h-6 mt-2 text-[8px] sm:text-[9px] text-muted-foreground/70 font-mono">
+        {/* X-Axis Dates — First point = starting date, then write date on every 2nd point (1 date - leave - next date) */}
+        <div className="ml-10 relative h-6 mt-2 text-[9px] text-muted-foreground/70 font-mono">
           {pointsDates.map((d, i) => {
+            if (i % 2 !== 0) return null;
             const leftPct = (i / (numPoints - 1 || 1)) * 100;
             return (
               <span
@@ -222,9 +223,10 @@ function CumulativePnLChart({
         </svg>
       </div>
 
-      {/* X-Axis Dates — Date below every single point */}
-      <div className="relative h-6 mt-1 text-[8px] sm:text-[9px] text-muted-foreground/70 font-mono">
+      {/* X-Axis Dates — First point = starting date, then write date on every 2nd point (1 date - leave - next date) */}
+      <div className="relative h-6 mt-1 text-[9px] text-muted-foreground/70 font-mono">
         {sampledData.map((d, i) => {
+          if (i % 2 !== 0) return null;
           const leftPct = (i / (sampledData.length - 1 || 1)) * 100;
           return (
             <span
