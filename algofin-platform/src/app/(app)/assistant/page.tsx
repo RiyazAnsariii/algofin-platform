@@ -407,33 +407,31 @@ export default function AssistantPage() {
         </div>
       )}
 
-      {/* ── Active Conversation Stream (Shown when user has chatted) ──────── */}
+      {/* ── Top Hero Welcome Banner (Always Visible) ──────────────────────── */}
+      <div className="surface-card p-6 rounded-2xl relative overflow-hidden flex flex-col md:flex-row justify-between items-center gap-6">
+        <div className="space-y-2.5 max-w-2xl">
+          <h2 className="text-base md:text-lg font-bold text-foreground leading-snug">
+            Hello! I am your AlgoFin trading assistant, specializing in multi-exchange crypto trading.
+          </h2>
+          <p className="text-xs text-muted-foreground/80 leading-relaxed">
+            I can help you monitor your portfolio, track your realized profit and loss (PnL), check your open positions, view recent trades, and keep an eye on upcoming high-impact economic events.
+          </p>
+          <p className="text-xs font-semibold text-cyan-400 flex items-center gap-1.5 pt-1">
+            <span>✈</span> How can I assist you today?
+          </p>
+        </div>
+        <RobotGraphic />
+      </div>
+
+      {/* ── Active Conversation Stream (Shown when messages exist) ──────── */}
       {hasHistory && (
-        <div className="surface-card p-6 space-y-4 max-h-[500px] overflow-y-auto">
+        <div className="surface-card p-6 space-y-4 max-h-[450px] overflow-y-auto border border-cyan-500/20 shadow-glow-cyan">
           {messages.map((msg) => (
             <MessageBubble key={msg.id} msg={msg} />
           ))}
           <div ref={bottomRef} />
         </div>
       )}
-
-      {/* ── Top Hero Welcome Banner ──────────────────────────────────────── */}
-      {!hasHistory && !loadingHistory && (
-        <>
-          <div className="surface-card p-6 rounded-2xl relative overflow-hidden flex flex-col md:flex-row justify-between items-center gap-6">
-            <div className="space-y-2.5 max-w-2xl">
-              <h2 className="text-base md:text-lg font-bold text-foreground leading-snug">
-                Hello! I am your AlgoFin trading assistant, specializing in multi-exchange crypto trading.
-              </h2>
-              <p className="text-xs text-muted-foreground/80 leading-relaxed">
-                I can help you monitor your portfolio, track your realized profit and loss (PnL), check your open positions, view recent trades, and keep an eye on upcoming high-impact economic events.
-              </p>
-              <p className="text-xs font-semibold text-cyan-400 flex items-center gap-1.5 pt-1">
-                <span>✈</span> How can I assist you today?
-              </p>
-            </div>
-            <RobotGraphic />
-          </div>
 
           {/* ── Section 1: "What I can help you with" (5 Cards Row) ─────────── */}
           <div className="space-y-3">
@@ -829,9 +827,6 @@ export default function AssistantPage() {
               </div>
             </div>
           </div>
-        </>
-      )}
-
       {/* ── Bottom Chat Input Area ────────────────────────────────────────── */}
       <div className="surface-card p-3 rounded-2xl border border-white/10 space-y-2">
         <div className="flex items-center gap-3">
