@@ -125,129 +125,181 @@ function CreateRuleForm({ onSuccess }: { onSuccess: () => void }) {
   const meta = RULE_META[ruleType];
 
   return (
-    <div className="surface-card p-6 space-y-4">
-      <h2 className="text-sm font-semibold text-foreground">Create New Risk Rule</h2>
-      {error && (
-        <div className="px-3 py-2 rounded-lg bg-rose-500/10 border border-rose-500/20 text-xs text-rose-400">
-          {error}
-        </div>
-      )}
-      <form onSubmit={handleSubmit} className="space-y-4">
-        {/* Rule Name */}
-        <div>
-          <label className={labelCls}>Rule Name</label>
-          <input
-            id="risk-rule-name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="e.g., My daily loss guard"
-            className={inputCls}
-          />
-        </div>
-
-        {/* Rule Type */}
-        <div>
-          <label className={labelCls}>Rule Type</label>
-          <div className="relative">
-            <select
-              id="risk-rule-type"
-              value={ruleType}
-              onChange={(e) => setRuleType(e.target.value as RuleType)}
-              className={`${inputCls} appearance-none pr-8 cursor-pointer`}
-            >
-              {(Object.keys(RULE_META) as RuleType[]).map((t) => (
-                <option key={t} value={t}>{RULE_META[t].label}</option>
-              ))}
-            </select>
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="absolute right-3 top-3 text-muted-foreground pointer-events-none">
-              <polyline points="6 9 12 15 18 9" />
-            </svg>
+    <div className="surface-card p-6 space-y-5 h-full flex flex-col justify-between">
+      <div className="space-y-4">
+        <h2 className="text-sm font-semibold text-foreground">Create New Risk Rule</h2>
+        {error && (
+          <div className="px-3 py-2 rounded-lg bg-rose-500/10 border border-rose-500/20 text-xs text-rose-400">
+            {error}
           </div>
-          <p className="mt-1.5 text-[11px] text-muted-foreground/70 leading-relaxed">
-            {meta.description}
-          </p>
-        </div>
+        )}
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Rule Name */}
+          <div>
+            <label className={labelCls}>Rule Name</label>
+            <input
+              id="risk-rule-name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="e.g., My daily loss guard"
+              className={inputCls}
+            />
+          </div>
 
-        {/* Limit */}
-        <div>
-          <label className={labelCls}>Limit ({meta.unit})</label>
-          <input
-            id="risk-rule-threshold"
-            type="number"
-            step="any"
-            min="0"
-            value={threshold}
-            onChange={(e) => setThreshold(e.target.value)}
-            placeholder="500"
-            required
-            className={inputCls}
-          />
-        </div>
-
-        {/* Action */}
-        <div>
-          <label className={labelCls}>Action</label>
-          <div className="grid grid-cols-2 gap-2">
-            <button
-              type="button"
-              id="risk-action-reject"
-              onClick={() => setAction("reject")}
-              className={`py-2 px-3 rounded-xl text-xs font-semibold border transition-all flex items-center justify-center gap-1.5 ${
-                action === "reject"
-                  ? "bg-rose-500/15 border-rose-500/40 text-rose-400"
-                  : "bg-white/5 border-white/10 text-muted-foreground hover:bg-white/10"
-              }`}
-            >
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <circle cx="12" cy="12" r="10" />
-                <line x1="4.93" y1="4.93" x2="19.07" y2="19.07" />
+          {/* Rule Type */}
+          <div>
+            <label className={labelCls}>Rule Type</label>
+            <div className="relative">
+              <select
+                id="risk-rule-type"
+                value={ruleType}
+                onChange={(e) => setRuleType(e.target.value as RuleType)}
+                className={`${inputCls} appearance-none pr-8 cursor-pointer`}
+              >
+                {(Object.keys(RULE_META) as RuleType[]).map((t) => (
+                  <option key={t} value={t}>{RULE_META[t].label}</option>
+                ))}
+              </select>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="absolute right-3 top-3 text-muted-foreground pointer-events-none">
+                <polyline points="6 9 12 15 18 9" />
               </svg>
-              Block Order
-            </button>
-            <button
-              type="button"
-              id="risk-action-alert"
-              onClick={() => setAction("alert")}
-              className={`py-2 px-3 rounded-xl text-xs font-semibold border transition-all flex items-center justify-center gap-1.5 ${
-                action === "alert"
-                  ? "bg-amber-500/15 border-amber-500/40 text-amber-400"
-                  : "bg-white/5 border-white/10 text-muted-foreground hover:bg-white/10"
-              }`}
-            >
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
-                <line x1="12" y1="9" x2="12" y2="13" />
-                <line x1="12" y1="17" x2="12.01" y2="17" />
-              </svg>
-              Alert Only
-            </button>
+            </div>
+            <p className="mt-1.5 text-[11px] text-muted-foreground/70 leading-relaxed">
+              {meta.description}
+            </p>
           </div>
+
+          {/* Limit */}
+          <div>
+            <label className={labelCls}>Limit ({meta.unit})</label>
+            <input
+              id="risk-rule-threshold"
+              type="number"
+              step="any"
+              min="0"
+              value={threshold}
+              onChange={(e) => setThreshold(e.target.value)}
+              placeholder="500"
+              required
+              className={inputCls}
+            />
+          </div>
+
+          {/* Action */}
+          <div>
+            <label className={labelCls}>Action</label>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                id="risk-action-reject"
+                onClick={() => setAction("reject")}
+                className={`py-2 px-3 rounded-xl text-xs font-semibold border transition-all flex items-center justify-center gap-1.5 ${
+                  action === "reject"
+                    ? "bg-rose-500/15 border-rose-500/40 text-rose-400"
+                    : "bg-white/5 border-white/10 text-muted-foreground hover:bg-white/10"
+                }`}
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <circle cx="12" cy="12" r="10" />
+                  <line x1="4.93" y1="4.93" x2="19.07" y2="19.07" />
+                </svg>
+                Block Order
+              </button>
+              <button
+                type="button"
+                id="risk-action-alert"
+                onClick={() => setAction("alert")}
+                className={`py-2 px-3 rounded-xl text-xs font-semibold border transition-all flex items-center justify-center gap-1.5 ${
+                  action === "alert"
+                    ? "bg-amber-500/15 border-amber-500/40 text-amber-400"
+                    : "bg-white/5 border-white/10 text-muted-foreground hover:bg-white/10"
+                }`}
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                  <line x1="12" y1="9" x2="12" y2="13" />
+                  <line x1="12" y1="17" x2="12.01" y2="17" />
+                </svg>
+                Alert Only
+              </button>
+            </div>
+          </div>
+
+          {/* Symbol (optional) */}
+          <div>
+            <div className="flex items-center gap-1 mb-1.5">
+              <label className="text-xs font-semibold text-muted-foreground">Symbol (optional)</label>
+              <span className="text-muted-foreground/60 text-[10px]" title="Target specific symbol or leave blank for all">ⓘ</span>
+            </div>
+            <input
+              id="risk-rule-symbol"
+              value={symbol}
+              onChange={(e) => setSymbol(e.target.value)}
+              placeholder="e.g., BTCUSDT (leave blank for all)"
+              className={inputCls}
+            />
+          </div>
+
+          <button
+            id="risk-rule-submit"
+            type="submit"
+            disabled={submitting}
+            className="w-full py-2.5 rounded-xl bg-cyan-400 hover:bg-cyan-300 text-black text-xs font-semibold transition-all shadow-glow-cyan disabled:opacity-50"
+          >
+            {submitting ? "Creating…" : "Create Rule"}
+          </button>
+        </form>
+      </div>
+
+      {/* ── Quick Presets to fill space cleanly ── */}
+      <div className="pt-4 border-t border-white/6 space-y-3">
+        <div className="flex items-center justify-between">
+          <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Quick Presets</span>
+          <span className="text-[10px] text-cyan-400 font-medium">Click to fill form</span>
         </div>
 
-        {/* Symbol (optional) */}
-        <div>
-          <div className="flex items-center gap-1 mb-1.5">
-            <label className="text-xs font-semibold text-muted-foreground">Symbol (optional)</label>
-            <span className="text-muted-foreground/60 text-[10px]" title="Target specific symbol or leave blank for all">ⓘ</span>
-          </div>
-          <input
-            id="risk-rule-symbol"
-            value={symbol}
-            onChange={(e) => setSymbol(e.target.value)}
-            placeholder="e.g., BTCUSDT (leave blank for all)"
-            className={inputCls}
-          />
+        <div className="grid grid-cols-2 gap-2 text-xs">
+          <button
+            type="button"
+            onClick={() => {
+              setName("Daily $200 Loss Cap");
+              setRuleType("MAX_DAILY_LOSS");
+              setThreshold("200");
+              setAction("reject");
+              setSymbol("");
+            }}
+            className="p-2.5 rounded-xl border border-white/6 bg-white/[0.02] hover:border-cyan-500/30 text-left transition-all space-y-0.5 group"
+          >
+            <p className="font-semibold text-foreground group-hover:text-cyan-400 transition-colors text-[11px]">$200 Daily Cap</p>
+            <p className="text-[10px] text-muted-foreground">Block on $200 loss</p>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setName("Max 5 Open Positions");
+              setRuleType("MAX_OPEN_POSITIONS");
+              setThreshold("5");
+              setAction("reject");
+              setSymbol("");
+            }}
+            className="p-2.5 rounded-xl border border-white/6 bg-white/[0.02] hover:border-cyan-500/30 text-left transition-all space-y-0.5 group"
+          >
+            <p className="font-semibold text-foreground group-hover:text-cyan-400 transition-colors text-[11px]">Max 5 Trades</p>
+            <p className="text-[10px] text-muted-foreground">Limit open positions</p>
+          </button>
         </div>
 
-        <button
-          id="risk-rule-submit"
-          type="submit"
-          disabled={submitting}
-          className="w-full py-2.5 rounded-xl bg-cyan-400 hover:bg-cyan-300 text-black text-xs font-semibold transition-all shadow-glow-cyan disabled:opacity-50"
-        >
-          {submitting ? "Creating…" : "Create Rule"}
-        </button>
-      </form>
+        <div className="px-3 py-2 rounded-xl bg-cyan-500/8 border border-cyan-500/20 text-[11px] text-cyan-400 flex items-start gap-2">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="shrink-0 mt-0.5">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+            <path d="M9 12l2 2 4-4" />
+          </svg>
+          <span className="leading-snug">
+            Rules evaluate automatically in ~15ms prior to order execution.
+          </span>
+        </div>
+      </div>
     </div>
   );
 }
@@ -543,7 +595,7 @@ export default function RiskPage() {
       {/* ── Main Body Grid (2 Columns) ──────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
         {/* Left Column (~38% width): Create New Risk Rule Form */}
-        <div className="lg:col-span-5">
+        <div className="lg:col-span-5 flex flex-col">
           <CreateRuleForm onSuccess={fetchRules} />
         </div>
 
