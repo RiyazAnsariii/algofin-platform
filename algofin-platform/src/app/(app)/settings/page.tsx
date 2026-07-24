@@ -6,7 +6,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import api from "@/lib/api";
-import { cachedGet } from "@/lib/apiCache";
+import { cachedGet, invalidateCachePrefix } from "@/lib/apiCache";
 import { useAuthStore } from "@/stores/auth.store";
 import type { User } from "@/types";
 
@@ -285,6 +285,7 @@ export default function SettingsPage() {
     try {
       await api.delete(`/auth/sessions/${tokenId}`);
       setSessions((prev) => prev.filter((s) => s.id !== tokenId));
+      invalidateCachePrefix("/auth");
       showToast("Session revoked.");
     } catch {
       showToast("Failed to revoke session.", "error");
@@ -302,6 +303,7 @@ export default function SettingsPage() {
         enabled:        telegramEnabled,
         high_impact_only: highImpactOnly,
       });
+      invalidateCachePrefix("/alerts");
       showToast("Notification preferences saved.");
     } catch {
       // Non-critical — just show success for now if endpoint not yet wired

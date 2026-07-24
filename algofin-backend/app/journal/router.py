@@ -6,6 +6,7 @@ from sqlalchemy import select, desc
 
 from app.common.deps import CurrentUser, DbSession
 from app.common.schemas import SuccessResponse
+from app.common.redis_cache import invalidate_redis_cache
 from app.journal.schemas import (
     JournalAnalyticsResponse,
     JournalEntryCreate,
@@ -61,6 +62,7 @@ async def create_entry(
     db.add(entry)
     await db.commit()
     await db.refresh(entry)
+    await invalidate_redis_cache("journal", user_id=str(current_user.id))
     return SuccessResponse(data=JournalEntryResponse.from_orm_obj(entry))
 
 
@@ -114,6 +116,7 @@ async def update_entry(
 
     await db.commit()
     await db.refresh(entry)
+    await invalidate_redis_cache("journal", user_id=str(current_user.id))
     return SuccessResponse(data=JournalEntryResponse.from_orm_obj(entry))
 
 
@@ -134,6 +137,7 @@ async def delete_entry(
         raise HTTPException(status_code=404, detail="Journal entry not found")
     await db.delete(entry)
     await db.commit()
+    await invalidate_redis_cache("journal", user_id=str(current_user.id))
     return SuccessResponse(data={"deleted": True})
 
 

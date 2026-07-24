@@ -381,11 +381,13 @@ function WebhookStrategyCard({
   });
   const handleTestMode = () => action(async () => {
     await api.patch(`/strategy/${strategy.id}/test-mode?enabled=${!strategy.is_test_mode}`);
+    invalidateCachePrefix("/strategy");
     onRefresh();
   });
   const handleSavePine = () => action(async () => {
     if (!pineCode.trim()) return;
     await api.post(`/strategy/${strategy.id}/pine`, { pine_code: pineCode });
+    invalidateCachePrefix("/strategy");
     setShowPineEditor(false);
     onRefresh();
   });

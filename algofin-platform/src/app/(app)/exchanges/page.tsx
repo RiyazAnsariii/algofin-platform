@@ -8,7 +8,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import api from "@/lib/api";
-import { cachedGet, invalidateCache } from "@/lib/apiCache";
+import { cachedGet, invalidateCache, invalidateCachePrefix } from "@/lib/apiCache";
 import { useDelayedLoading } from "@/hooks/useDelayedLoading";
 
 // ── Types ─────────────────────────────────────────────────────────
@@ -563,14 +563,14 @@ export default function ExchangesPage() {
 
   const handleSync = async (id: string) => {
     setActionLoading(true);
-    try { await api.post(`/exchanges/${id}/sync`, { sync_type: "full" }); invalidateCache("/exchanges"); await fetchAccounts(); }
+    try { await api.post(`/exchanges/${id}/sync`, { sync_type: "full" }); invalidateCache("/exchanges"); invalidateCachePrefix("/portfolio"); invalidateCachePrefix("/positions"); await fetchAccounts(); }
     catch { /* ignore */ } finally { setActionLoading(false); }
   };
 
   const handleRevoke = async (id: string) => {
     if (!confirm("Revoke this exchange account? Billing consent will also be removed.")) return;
     setActionLoading(true);
-    try { await api.delete(`/exchanges/${id}`); invalidateCache("/exchanges"); await fetchAccounts(); }
+    try { await api.delete(`/exchanges/${id}`); invalidateCache("/exchanges"); invalidateCachePrefix("/portfolio"); invalidateCachePrefix("/positions"); await fetchAccounts(); }
     catch { /* ignore */ } finally { setActionLoading(false); }
   };
 
@@ -578,6 +578,8 @@ export default function ExchangesPage() {
     setConnecting(null);
     setLoading(true);
     invalidateCache("/exchanges");
+    invalidateCachePrefix("/portfolio");
+    invalidateCachePrefix("/positions");
     await fetchAccounts();
   };
 

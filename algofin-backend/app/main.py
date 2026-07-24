@@ -14,6 +14,7 @@ from app.common.middleware import (
     RequestBodySizeLimitMiddleware,
     RequestLoggingMiddleware,
 )
+from app.common.cache_headers import CacheHeaderMiddleware
 
 from app.admin.router import router as admin_router
 from app.auth.router import router as auth_router
@@ -64,6 +65,7 @@ app.add_middleware(
 )
 
 # ── Security middleware ──────────────────────────────────────────
+app.add_middleware(CacheHeaderMiddleware)  # HTTP Cache-Control headers
 app.add_middleware(RequestBodySizeLimitMiddleware, max_body_size=524_288)
 app.add_middleware(RequestLoggingMiddleware)
 app.add_middleware(
