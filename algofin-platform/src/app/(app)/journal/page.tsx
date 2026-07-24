@@ -251,12 +251,319 @@ function EntryForm({
       </form>
     </div>
   );
+function formatDateRangeLabel(period: number, start?: string, end?: string): string {
+  if (start && end) {
+    try {
+      const s = new Date(start + "T00:00:00");
+      const e = new Date(end + "T00:00:00");
+      const sStr = s.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+      const eStr = e.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+      return `${sStr} - ${eStr}`;
+    } catch {
+      return `${start} - ${end}`;
+    }
+  }
+  const now = new Date();
+  const endStr = now.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+  if (period === 9999) return `All Time - ${endStr}`;
+  const startDt = new Date(now.getTime() - period * 86400_000);
+  const startStr = startDt.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+  return `${startStr} - ${endStr}`;
+}
+
+// ── Custom Date Range Popover Component (Matching reference screenshots) ───────
+function CustomDatePickerPopover({
+  isOpen,
+  onClose,
+  onApply,
+  currentStart,
+  currentEnd,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  onApply: (start: string, end: string) => void;
+  currentStart: string;
+  currentEnd: string;
+}) {
+  const [tab, setTab]                   = useState<"fixed" | "last">("fixed");
+  const [startDate, setStartDate]       = useState(currentStart || "2026-07-01");
+  const [endDate, setEndDate]           = useState(currentEnd || "2026-07-24");
+  const [activeTarget, setActiveTarget] = useState<"start" | "end">("start");
+
+  const initialDate = new Date();
+  const [viewYear, setViewYear]   = useState(initialDate.getFullYear());
+  const [viewMonth, setViewMonth] = useState(initialDate.getMonth());
+
+  if (!isOpen) return null;
+
+  const MONTH_NAMES = [
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December"
+  ];
+
+  const handlePrevMonth = () => {
+    if (viewMonth === 0) {
+      setViewMonth(11);
+      setViewYear((y) => y - 1);
+    } else {
+      setViewMonth((m) => m - 1);
+    }
+  };
+
+  const handleNextMonth = () => {
+    if (viewMonth === 11) {
+      setViewMonth(0);
+      setViewYear((y) => y + 1);
+    } else {
+      setViewMonth((m) => m + 1);
+    }
+  };
+
+  const firstDayOfWeek = new Date(viewYear, viewMonth, 1).getDay();
+  const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+  const daysInPrevMonth = new Date(viewYear, viewMonth, 0).getDate();
+
+  const calendarDays: Array<{ dateStr: string; dayNum: number; isCurrentMonth: boolean }> = [];
+
+  for (let i = firstDayOfWeek - 1; i >= 0; i--) {
+    const day = daysInPrevMonth - i;
+    const prevM = viewMonth === 0 ? 11 : viewMonth - 1;
+    const prevY = viewMonth === 0 ? viewYear - 1 : viewYear;
+    const mStr = String(prevM + 1).padStart(2, "0");
+    const dStr = String(day).padStart(2, "0");
+    calendarDays.push({ dateStr: `${prevY}-${mStr}-${dStr}`, dayNum: day, isCurrentMonth: false });
+  }
+
+  for (let d = 1; d <= daysInMonth; d++) {
+    const mStr = String(viewMonth + 1).padStart(2, "0");
+    const dStr = String(d).padStart(2, "0");
+    calendarDays.push({ dateStr: `${viewYear}-${mStr}-${dStr}`, dayNum: d, isCurrentMonth: true });
+  }
+
+  const remainingCells = (7 - (calendarDays.length % 7)) % 7;
+  for (let d = 1; d <= remainingCells; d++) {
+    const nextM = viewMonth === 11 ? 0 : viewMonth + 1;
+    const nextY = viewMonth === 11 ? viewYear + 1 : viewYear;
+    const mStr = String(nextM + 1).padStart(2, "0");
+    const dStr = String(d).padStart(2, "0");
+    calendarDays.push({ dateStr: `${nextY}-${mStr}-${dStr}`, dayNum: d, isCurrentMonth: false });
+  }
+
+  const handleSelectDay = (dateStr: string) => {
+    if (activeTarget === "start") {
+      setStartDate(dateStr);
+      setActiveTarget("end");
+    } else {
+      setEndDate(dateStr);
+    }
+  };
+
+  return (
+    <div className="absolute right-0 top-11 z-50 w-72 bg-[#12161f] border border-white/12 rounded-2xl shadow-2xl p-4 text-xs font-sans text-foreground animate-in fade-in zoom-in-95 duration-150">
+      {/* Top Tabs: Fixed | Last */}
+      <div className="flex items-center border-b border-white/10 mb-3.5 pb-1">
+        <button
+          type="button"
+          onClick={() => setTab("fixed")}
+          className={`flex-1 py-1 text-center font-bold text-sm relative transition-colors ${
+            tab === "fixed" ? "text-foreground" : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          Fixed
+          {tab === "fixed" && (
+            <span className="absolute bottom-0 left-4 right-4 h-0.5 bg-orange-500 rounded-full shadow-[0_0_8px_#f97316]" />
+          )}
+        </button>
+        <button
+          type="button"
+          onClick={() => setTab("last")}
+          className={`flex-1 py-1 text-center font-bold text-sm relative transition-colors ${
+            tab === "last" ? "text-foreground" : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          Last
+          {tab === "last" && (
+            <span className="absolute bottom-0 left-4 right-4 h-0.5 bg-orange-500 rounded-full shadow-[0_0_8px_#f97316]" />
+          )}
+        </button>
+      </div>
+
+      {tab === "fixed" ? (
+        <div className="space-y-3">
+          {/* Start Date Field */}
+          <div>
+            <label className="block text-[11px] text-muted-foreground mb-1 font-medium">Start Date</label>
+            <input
+              type="text"
+              readOnly
+              value={startDate}
+              onClick={() => setActiveTarget("start")}
+              className={`w-full px-3 py-1.5 rounded-xl bg-black/40 border text-xs font-mono outline-none cursor-pointer transition-all ${
+                activeTarget === "start"
+                  ? "border-orange-500/70 ring-1 ring-orange-500/50 text-foreground"
+                  : "border-white/10 text-muted-foreground"
+              }`}
+            />
+          </div>
+
+          {/* End Date Field */}
+          <div>
+            <label className="block text-[11px] text-muted-foreground mb-1 font-medium">End Date</label>
+            <input
+              type="text"
+              readOnly
+              value={endDate}
+              onClick={() => setActiveTarget("end")}
+              className={`w-full px-3 py-1.5 rounded-xl bg-black/40 border text-xs font-mono outline-none cursor-pointer transition-all ${
+                activeTarget === "end"
+                  ? "border-orange-500/70 ring-1 ring-orange-500/50 text-foreground"
+                  : "border-white/10 text-muted-foreground"
+              }`}
+            />
+          </div>
+
+          {/* Embedded Calendar Grid Picker */}
+          <div className="bg-[#181d28] border border-white/8 rounded-xl p-2.5 space-y-2 relative">
+            <div className="flex items-center justify-between">
+              <button
+                type="button"
+                onClick={handlePrevMonth}
+                className="w-6 h-6 rounded-lg hover:bg-white/10 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors font-bold"
+              >
+                ‹
+              </button>
+
+              <div className="flex items-center gap-1.5">
+                <select
+                  value={viewMonth}
+                  onChange={(e) => setViewMonth(Number(e.target.value))}
+                  className="bg-black/50 border border-white/10 rounded-lg px-1.5 py-0.5 text-[11px] font-semibold text-foreground outline-none cursor-pointer"
+                >
+                  {MONTH_NAMES.map((m, i) => (
+                    <option key={m} value={i} className="bg-[#181d28] text-foreground">
+                      {m}
+                    </option>
+                  ))}
+                </select>
+
+                <select
+                  value={viewYear}
+                  onChange={(e) => setViewYear(Number(e.target.value))}
+                  className="bg-black/50 border border-white/10 rounded-lg px-1.5 py-0.5 text-[11px] font-semibold text-foreground outline-none cursor-pointer"
+                >
+                  {[2023, 2024, 2025, 2026, 2027, 2028, 2029, 2030].map((y) => (
+                    <option key={y} value={y} className="bg-[#181d28] text-foreground">
+                      {y}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleNextMonth}
+                className="w-6 h-6 rounded-lg hover:bg-white/10 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors font-bold"
+              >
+                ›
+              </button>
+            </div>
+
+            {/* Days of Week Row */}
+            <div className="grid grid-cols-7 text-center text-[10px] text-muted-foreground/60 font-medium py-0.5">
+              <span>Su</span>
+              <span>Mo</span>
+              <span>Tu</span>
+              <span>We</span>
+              <span>Th</span>
+              <span>Fr</span>
+              <span>Sa</span>
+            </div>
+
+            {/* Days Grid */}
+            <div className="grid grid-cols-7 gap-1 text-center font-mono text-[11px]">
+              {calendarDays.map((cd, i) => {
+                const isStart = cd.dateStr === startDate;
+                const isEnd = cd.dateStr === endDate;
+                const isSelected = isStart || isEnd;
+
+                return (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => handleSelectDay(cd.dateStr)}
+                    className={`h-6 rounded-md flex items-center justify-center transition-all ${
+                      isSelected
+                        ? "bg-orange-500 text-white font-bold shadow-[0_0_10px_#f97316]"
+                        : cd.isCurrentMonth
+                        ? "hover:bg-white/10 text-foreground"
+                        : "text-muted-foreground/30 hover:bg-white/5"
+                    }`}
+                  >
+                    {cd.dayNum}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Action Buttons: Cancel & Apply */}
+          <div className="flex items-center justify-between pt-2 border-t border-white/10">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-3 py-1 text-xs text-muted-foreground hover:text-foreground transition-colors font-medium"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={() => onApply(startDate, endDate)}
+              className="px-4 py-1 rounded-xl bg-orange-500 hover:bg-orange-400 text-white font-bold text-xs transition-all shadow-[0_0_10px_#f97316]"
+            >
+              Apply
+            </button>
+          </div>
+        </div>
+      ) : (
+        /* Last Tab (Quick Presets) */
+        <div className="space-y-1 py-1">
+          {[
+            { label: "7 Days", days: 7 },
+            { label: "30 Days", days: 30 },
+            { label: "90 Days", days: 90 },
+            { label: "1 Year", days: 365 },
+            { label: "All Time", days: 9999 },
+          ].map((preset) => (
+            <button
+              key={preset.days}
+              type="button"
+              onClick={() => {
+                const now = new Date();
+                const endStr = now.toISOString().slice(0, 10);
+                const startDt = new Date(now.getTime() - preset.days * 86400_000);
+                const startStr = startDt.toISOString().slice(0, 10);
+                onApply(startStr, endStr);
+              }}
+              className="w-full text-left px-3 py-1.5 rounded-xl hover:bg-white/5 text-xs text-foreground font-medium transition-colors flex items-center justify-between"
+            >
+              <span>{preset.label}</span>
+              <span className="text-muted-foreground text-[10px]">›</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
 
 // ── Main Page Component ───────────────────────────────────────────────────────
 export default function JournalPage() {
-  const [activeTab, setActiveTab] = useState<"analytics" | "journal">("analytics");
-  const [period, setPeriod]       = useState(30);
+  const [activeTab, setActiveTab]       = useState<"analytics" | "journal">("analytics");
+  const [period, setPeriod]             = useState(30);
+  const [customStart, setCustomStart]   = useState<string>("");
+  const [customEnd, setCustomEnd]       = useState<string>("");
+  const [pickerOpen, setPickerOpen]     = useState(false);
+
   const [analytics, setAnalytics] = useState<Analytics | null>(null);
   const [analyticsLoading, setAnalyticsLoading] = useState(true);
 
@@ -264,10 +571,16 @@ export default function JournalPage() {
   const [showForm, setShowForm]   = useState(false);
   const [editEntry, setEditEntry] = useState<JournalEntry | null>(null);
 
-  const loadAnalytics = useCallback(async (d: number) => {
+  const loadAnalytics = useCallback(async (p: number, start?: string, end?: string) => {
     setAnalyticsLoading(true);
     try {
-      const data = await cachedGet<Analytics>(`/journal/analytics?days=${d}`, 60_000);
+      let url = "/journal/analytics?";
+      if (start && end) {
+        url += `start_date=${start}&end_date=${end}`;
+      } else {
+        url += `days=${p}`;
+      }
+      const data = await cachedGet<Analytics>(url, 30_000);
       setAnalytics(data);
     } catch { /* ignore */ } finally { setAnalyticsLoading(false); }
   }, []);
@@ -279,23 +592,53 @@ export default function JournalPage() {
     } catch { /* ignore */ }
   }, []);
 
-  useEffect(() => { loadAnalytics(period); }, [period, loadAnalytics]);
+  useEffect(() => {
+    loadAnalytics(period, customStart, customEnd);
+  }, [period, customStart, customEnd, loadAnalytics]);
+
   useEffect(() => { loadEntries(); }, [loadEntries]);
+
+  const handleExportReport = async () => {
+    try {
+      let url = "/journal/export?";
+      if (customStart && customEnd) {
+        url += `start_date=${customStart}&end_date=${customEnd}`;
+      } else {
+        url += `days=${period}`;
+      }
+      const token = (() => {
+        try {
+          const raw = localStorage.getItem("algofin-auth");
+          return raw ? (JSON.parse(raw) as { state?: { accessToken?: string } })?.state?.accessToken : null;
+        } catch { return null; }
+      })();
+
+      const res = await fetch(`/api/v1${url}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (!res.ok) throw new Error("Export failed");
+      const blob = await res.blob();
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = "trading_journal.csv";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch {
+      alert("Failed to export report CSV");
+    }
+  };
 
   const handleDelete = async (id: string) => {
     if (!confirm("Delete this journal entry?")) return;
     await api.delete(`/journal/entries/${id}`);
     invalidateCachePrefix("/journal");
     loadEntries();
-    loadAnalytics(period);
+    loadAnalytics(period, customStart, customEnd);
   };
 
   const a = analytics;
   const realizedPnLNum = Number(a?.realized_pnl ?? 0);
-  const winCount = a?.win_count ?? 0;
-  const lossCount = a?.loss_count ?? 0;
-  const winRatePct = a ? (a.win_rate * 100).toFixed(2) : "0.00";
-  const lossRatePct = a ? ((1 - a.win_rate) * 100).toFixed(2) : "0.00";
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-10">
@@ -310,7 +653,7 @@ export default function JournalPage() {
         <div className="flex items-center gap-2.5 shrink-0">
           <button
             type="button"
-            onClick={() => alert("Report exported successfully!")}
+            onClick={handleExportReport}
             className="surface-card px-3.5 py-1.5 rounded-xl border border-white/10 text-xs font-semibold text-foreground hover:bg-white/5 transition-all flex items-center gap-1.5"
           >
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -367,9 +710,13 @@ export default function JournalPage() {
               {PERIOD_OPTIONS.map((p) => (
                 <button
                   key={p.value}
-                  onClick={() => setPeriod(p.value)}
+                  onClick={() => {
+                    setCustomStart("");
+                    setCustomEnd("");
+                    setPeriod(p.value);
+                  }}
                   className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
-                    period === p.value
+                    !customStart && period === p.value
                       ? "bg-cyan-400 text-black shadow-glow-cyan"
                       : "text-muted-foreground hover:text-foreground"
                   }`}
@@ -379,17 +726,40 @@ export default function JournalPage() {
               ))}
             </div>
 
-            <div className="px-3.5 py-1.5 surface-card rounded-xl border border-white/10 text-xs text-muted-foreground flex items-center gap-2 cursor-pointer hover:border-white/20 transition-all w-fit">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-muted-foreground">
-                <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
-                <line x1="16" y1="2" x2="16" y2="6" />
-                <line x1="8" y1="2" x2="8" y2="6" />
-                <line x1="3" y1="10" x2="21" y2="10" />
-              </svg>
-              <span>24 Jun 2026 - 24 Jul 2026</span>
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <polyline points="6 9 12 15 18 9" />
-              </svg>
+            {/* Interactive Custom Date Range Picker Button & Popover */}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setPickerOpen((v) => !v)}
+                className={`px-3.5 py-1.5 surface-card rounded-xl border text-xs flex items-center gap-2 cursor-pointer transition-all w-fit ${
+                  pickerOpen || (customStart && customEnd)
+                    ? "border-orange-500/70 text-foreground ring-1 ring-orange-500/40"
+                    : "border-white/10 text-muted-foreground hover:border-white/20"
+                }`}
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-muted-foreground">
+                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                  <line x1="16" y1="2" x2="16" y2="6" />
+                  <line x1="8" y1="2" x2="8" y2="6" />
+                  <line x1="3" y1="10" x2="21" y2="10" />
+                </svg>
+                <span>{formatDateRangeLabel(period, customStart, customEnd)}</span>
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className={`transition-transform ${pickerOpen ? "rotate-180" : ""}`}>
+                  <polyline points="6 9 12 15 18 9" />
+                </svg>
+              </button>
+
+              <CustomDatePickerPopover
+                isOpen={pickerOpen}
+                onClose={() => setPickerOpen(false)}
+                onApply={(start, end) => {
+                  setCustomStart(start);
+                  setCustomEnd(end);
+                  setPickerOpen(false);
+                }}
+                currentStart={customStart}
+                currentEnd={customEnd}
+              />
             </div>
           </div>
 
