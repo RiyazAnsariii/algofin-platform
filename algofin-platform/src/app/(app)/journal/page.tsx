@@ -46,10 +46,74 @@ const PERIOD_OPTIONS = [
 ];
 
 // ── Interactive PnL Area/Line Chart Component ──────────────────────────────
-function CumulativePnLChart({ data, period }: { data: DailyPnL[]; period: number }) {
+function getChartPointsConfig(
+  period: number,
+  startDate?: string,
+  endDate?: string,
+  actualDataLength?: number
+) {
+  let startMs: number;
+  let endMs: number;
+
+  if (startDate && endDate) {
+    try {
+      startMs = new Date(startDate + "T00:00:00").getTime();
+      endMs = new Date(endDate + "T23:59:59").getTime();
+    } catch {
+      const now = new Date();
+      endMs = now.getTime();
+      startMs = endMs - (period === 9999 ? 30 : period) * 86400000;
+    }
+  } else {
+    const now = new Date();
+    const days = period === 9999 ? (actualDataLength || 30) : period;
+    endMs = now.getTime();
+    startMs = endMs - (days - 1) * 86400000;
+  }
+
+  const daysDiff = Math.max(1, Math.round((endMs - startMs) / 86400000));
+
+  let numPoints: number;
+  if (daysDiff <= 10) {
+    numPoints = Math.max(1, daysDiff);
+  } else if (daysDiff <= 100) {
+    numPoints = 10;
+  } else {
+    numPoints = 20;
+  }
+
+  return { daysDiff, numPoints, startMs, endMs };
+}
+
+function CumulativePnLChart({
+  data,
+  period,
+  startDate,
+  endDate,
+}: {
+  data: DailyPnL[];
+  period: number;
+  startDate?: string;
+  endDate?: string;
+}) {
+  const { daysDiff, numPoints, startMs, endMs } = getChartPointsConfig(
+    period,
+    startDate,
+    endDate,
+    data?.length
+  );
+
   if (!data || data.length === 0) {
-    // Generate default baseline data points if no trades
-    const dates = ["24 Jun", "29 Jun", "4 Jul", "9 Jul", "14 Jul", "19 Jul", "24 Jul"];
+    // Generate dynamic baseline date labels based on numPoints
+    const pointsDates: string[] = [];
+    for (let i = 0; i < numPoints; i++) {
+      const ratio = numPoints > 1 ? i / (numPoints - 1) : 0;
+      const ptMs = startMs + ratio * (endMs - startMs);
+      const d = new Date(ptMs);
+      const dateLabel = d.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+      pointsDates.push(dateLabel);
+    }
+
     return (
       <div className="space-y-4">
         <div className="relative h-44 w-full flex items-center">
@@ -70,7 +134,7 @@ function CumulativePnLChart({ data, period }: { data: DailyPnL[]; period: number
               {/* Baseline Line with glowing cyan dots */}
               <div className="w-full h-[1.5px] bg-cyan-400 shadow-glow-cyan" />
               <div className="absolute inset-0 flex justify-between items-center px-1">
-                {[...Array(7)].map((_, i) => (
+                {pointsDates.map((_, i) => (
                   <div key={i} className="w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_8px_#22d3ee] shrink-0" />
                 ))}
               </div>
@@ -81,25 +145,32 @@ function CumulativePnLChart({ data, period }: { data: DailyPnL[]; period: number
         </div>
 
         {/* X-Axis Dates */}
-        <div className="ml-10 flex justify-between text-[11px] text-muted-foreground/70 font-mono">
-          {dates.map((d) => (
-            <span key={d}>{d}</span>
-          ))}
+        <div className="ml-10 flex justify-between text-[10px] text-muted-foreground/70 font-mono overflow-hidden">
+          {pointsDates.map((d, i) => {
+            if (numPoints > 12 && i % 2 !== 0 && i !== numPoints - 1) return null;
+            return <span key={i}>{d}</span>;
+          })}
         </div>
       </div>
     );
   }
 
-  // Dynamic Chart Rendering for real data
-  const values = data.map((d) => parseFloat(d.cumulative_pnl));
+  // Sample data points according to numPoints rule
+  const sampledData: DailyPnL[] = [];
+  for (let i = 0; i < numPoints; i++) {
+    const idx = Math.round((i / (numPoints - 1 || 1)) * (data.length - 1));
+    sampledData.push(data[idx]);
+  }
+
+  const values = sampledData.map((d) => parseFloat(d.cumulative_pnl));
   const min = Math.min(-100, ...values);
   const max = Math.max(100, ...values);
   const range = max - min || 1;
   const W = 700;
   const H = 160;
 
-  const pts = data.map((_, i) => {
-    const x = (i / (data.length - 1 || 1)) * W;
+  const pts = sampledData.map((_, i) => {
+    const x = (i / (sampledData.length - 1 || 1)) * W;
     const y = H - ((values[i] - min) / range) * H;
     return `${x},${y}`;
   });
@@ -136,12 +207,11 @@ function CumulativePnLChart({ data, period }: { data: DailyPnL[]; period: number
         </svg>
       </div>
 
-      <div className="flex justify-between text-[11px] text-muted-foreground/70 font-mono">
-        <span>{data[0]?.date}</span>
-        <span className={pnlColor(lastVal)}>
-          {lastVal >= 0 ? "+" : ""}{fmt(lastVal)} USDT cumulative ({period}D)
-        </span>
-        <span>{data[data.length - 1]?.date}</span>
+      <div className="flex justify-between text-[10px] text-muted-foreground/70 font-mono px-1">
+        {sampledData.map((d, i) => {
+          if (numPoints > 12 && i % 2 !== 0 && i !== numPoints - 1) return null;
+          return <span key={i}>{d.date}</span>;
+        })}
       </div>
     </div>
   );
@@ -823,7 +893,12 @@ export default function JournalPage() {
               </div>
             </div>
 
-            <CumulativePnLChart data={a?.daily_pnl || []} period={period} />
+            <CumulativePnLChart
+              data={a?.daily_pnl || []}
+              period={period}
+              startDate={customStart}
+              endDate={customEnd}
+            />
           </div>
 
           {/* 8 Performance Stat Cards (4x2 Grid matching reference mockup) */}
