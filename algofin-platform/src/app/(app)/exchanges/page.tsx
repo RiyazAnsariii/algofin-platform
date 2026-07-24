@@ -42,15 +42,72 @@ const CONSENT_TEXT =
   "purposes. This is not a charge. All manual trades on this account are included " +
   "regardless of whether AlgoFin placed them.";
 
-// ── Exchange logo placeholder ─────────────────────────────────────
-function ExchangeLogo({ letter, live }: { letter: string; live: boolean }) {
+// ── Exchange SVG Logos ─────────────────────────────────────────────
+export function BinanceLogo({ className = "w-10 h-10" }: { className?: string }) {
+  return (
+    <div className={`${className} rounded-xl bg-black border border-amber-500/30 flex items-center justify-center shrink-0 p-1.5 shadow-md`}>
+      <svg width="100%" height="100%" viewBox="0 0 24 24" fill="none">
+        <circle cx="12" cy="12" r="12" fill="#000000"/>
+        <path d="M12 4l2.625 2.625L12 9.25 9.375 6.625 12 4zm-5.25 5.25l2.625 2.625L6.75 14.5 4.125 11.875 6.75 9.25zm10.5 0l2.625 2.625-2.625 2.625-2.625-2.625 2.625-2.625zM12 14.5l2.625 2.625L12 19.75l-2.625-2.625L12 14.5zm0-3.938l1.313-1.312 1.312 1.312-1.312 1.313L12 10.562z" fill="#F0B90B"/>
+      </svg>
+    </div>
+  );
+}
+
+export function BybitLogo({ className = "w-10 h-10" }: { className?: string }) {
+  return (
+    <div className={`${className} rounded-xl bg-[#17181E] border border-amber-500/20 flex items-center justify-center shrink-0 p-1.5 shadow-md`}>
+      <svg width="100%" height="100%" viewBox="0 0 24 24" fill="none">
+        <path d="M4 4h7v4H4V4zm0 6h11v4H4v-4zm0 6h16v4H4v-4z" fill="#F7A600"/>
+      </svg>
+    </div>
+  );
+}
+
+export function CoinbaseLogo({ className = "w-10 h-10" }: { className?: string }) {
+  return (
+    <div className={`${className} rounded-xl bg-[#0052FF]/15 border border-[#0052FF]/30 flex items-center justify-center shrink-0 p-1.5 shadow-md`}>
+      <svg width="100%" height="100%" viewBox="0 0 24 24" fill="none">
+        <circle cx="12" cy="12" r="10" fill="#0052FF"/>
+        <path d="M12 7C9.238 7 7 9.238 7 12s2.238 5 5 5 5-2.238 5-5-2.238-5-5-5zm-1.5 3.5h3v3h-3v-3z" fill="white"/>
+      </svg>
+    </div>
+  );
+}
+
+export function DeltaLogo({ className = "w-10 h-10" }: { className?: string }) {
+  return (
+    <div className={`${className} rounded-xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center shrink-0 p-1.5 shadow-md`}>
+      <svg width="100%" height="100%" viewBox="0 0 24 24" fill="none">
+        <path d="M12 3L2 21H22L12 3ZM12 8L18 18H6L12 8Z" fill="#10B981"/>
+      </svg>
+    </div>
+  );
+}
+
+function ExchangeLogo({ id, letter, live }: { id?: string; letter?: string; live?: boolean }) {
+  const identifier = (id || letter || "").toLowerCase();
+
+  if (identifier.includes("binance") || identifier === "b") {
+    return <BinanceLogo className="w-10 h-10" />;
+  }
+  if (identifier.includes("bybit") || identifier === "y") {
+    return <BybitLogo className="w-10 h-10" />;
+  }
+  if (identifier.includes("coinbase") || identifier === "c") {
+    return <CoinbaseLogo className="w-10 h-10" />;
+  }
+  if (identifier.includes("delta") || identifier === "d") {
+    return <DeltaLogo className="w-10 h-10" />;
+  }
+
   return (
     <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-base font-bold flex-shrink-0 ${
       live
         ? "bg-primary/15 border border-primary/25 text-primary"
         : "bg-white/5 border border-white/10 text-muted-foreground"
     }`}>
-      {letter}
+      {letter || "E"}
     </div>
   );
 }
@@ -108,14 +165,17 @@ function AccountCard({
   return (
     <div className="surface-card p-5 space-y-4">
       <div className="flex items-start justify-between gap-4">
-        <div className="space-y-1 min-w-0">
-          <div className="flex items-center gap-2.5">
-            <p className="font-semibold text-foreground truncate">{account.label}</p>
-            <SyncBadge status={account.sync_status} />
+        <div className="flex items-center gap-3 min-w-0">
+          <ExchangeLogo id={account.exchange_id} />
+          <div className="space-y-0.5 min-w-0">
+            <div className="flex items-center gap-2.5">
+              <p className="font-semibold text-foreground truncate">{account.label}</p>
+              <SyncBadge status={account.sync_status} />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {exchangeLabels[account.exchange_id] || account.exchange_id} · Last synced: {fmt(account.last_sync_at)}
+            </p>
           </div>
-          <p className="text-xs text-muted-foreground">
-            {exchangeLabels[account.exchange_id] || account.exchange_id} · Last synced: {fmt(account.last_sync_at)}
-          </p>
         </div>
         <div className="shrink-0 flex items-center gap-1.5 text-xs text-muted-foreground">
           <span className={`w-1.5 h-1.5 rounded-full ${account.billing_consent ? "bg-emerald-400" : "bg-rose-400"}`} />
@@ -287,7 +347,7 @@ function ConnectForm({
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <ExchangeLogo letter={exchange.logo_letter} live={exchange.status === "live"} />
+            <ExchangeLogo id={exchange.id} letter={exchange.logo_letter} live={exchange.status === "live"} />
             <div>
               <h2 className="font-semibold text-foreground">Connect {exchange.name}</h2>
               <p className="text-xs text-muted-foreground">{exchange.display_name}</p>
@@ -391,7 +451,7 @@ function ExchangeCard({
     >
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <ExchangeLogo letter={exchange.logo_letter} live={isLive} />
+          <ExchangeLogo id={exchange.id} letter={exchange.logo_letter} live={isLive} />
           <div>
             <div className="flex items-center gap-2">
               <h3 className="font-semibold text-foreground">{exchange.name}</h3>
