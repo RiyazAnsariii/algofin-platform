@@ -13,6 +13,7 @@ from sqlalchemy import and_, select
 from app.common.deps import CurrentUser, DbSession
 from app.common.schemas import SuccessResponse
 from app.config import settings
+from app.events.service import seed_events_if_empty
 from app.models.events import EconomicEvent
 
 router = APIRouter(prefix="/events", tags=["events"])
@@ -31,6 +32,8 @@ async def list_events(
     Filtered by impact level, currency, and look-ahead window.
     plan.md Section 7 — Economic Events Module.
     """
+    await seed_events_if_empty(db)
+
     now = datetime.now(timezone.utc)
     end = now + timedelta(days=days_ahead)
 
