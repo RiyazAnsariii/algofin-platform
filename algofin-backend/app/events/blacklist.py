@@ -44,7 +44,6 @@ EXCLUDED_EXACT_TITLES = {
     "Employment Cost - Benefits q/q",
     "Michigan Current Conditions Final",
     "Michigan Consumer Expectations Final",
-    "Michigan Inflation Expectations Final",
     "Budget Balance",
     "Baker Hughes Total Rigs Count",
     "Baker Hughes Oil Rig Count",
@@ -128,6 +127,10 @@ FORCED_MEDIUM_IMPACT_PATTERNS = [
     "german prelim cpi m/m",
     "german prelim gdp q/q",
     "advance gdp price index",
+    "revised uom consumer sentiment",
+    "revised uom inflation expectations",
+    "michigan consumer sentiment",
+    "michigan 5 year inflation expectations",
 ]
 
 
@@ -201,9 +204,9 @@ def is_event_blacklisted(title: str, currency: Optional[str] = None) -> bool:
     if "natural gas stocks change" in t_lower or "rig count" in t_lower or "baker hughes" in t_lower:
         return True
 
-    # 7. Generic Consumer Confidence
-    if t_lower == "consumer confidence" or t_lower.endswith(" consumer confidence"):
-        if curr == "JPY":
+    # 7. Generic Consumer Confidence (keep JPY Consumer Confidence)
+    if "consumer confidence" in t_lower:
+        if curr == "JPY" and "italian" not in t_lower and "french" not in t_lower and "german" not in t_lower:
             return False
         return True
 

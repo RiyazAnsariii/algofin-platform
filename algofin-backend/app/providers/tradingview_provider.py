@@ -409,6 +409,12 @@ def _format_title_forex_factory_style(title: str, country: str = "") -> str:
     t_clean = title.strip()
     t_lower = t_clean.lower()
 
+    if "nationwide" in t_lower:
+        return "Nationwide HPI m/m"
+    if "michigan" in t_lower and "sentiment" in t_lower:
+        return "Revised UoM Consumer Sentiment"
+    if "michigan" in t_lower and ("inflation" in t_lower or "5 year" in t_lower):
+        return "Revised UoM Inflation Expectations"
     if "ueda" in t_lower and ("speak" in t_lower or "speech" in t_lower):
         return "BOJ Press Conference"
     if "core" in t_lower and "flash" in t_lower and ("cpi" in t_lower or "inflation" in t_lower):
