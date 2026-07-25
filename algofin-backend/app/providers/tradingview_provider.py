@@ -127,6 +127,7 @@ _NOISE_KEYWORDS: tuple[str, ...] = (
     "gilt auction", "bund auction", "treasury auction",
     "bills auction", "ny fed bill", "bill purchases",
     "foreign bond investment", "stock investment by foreigner",
+    "olo auction", "btf auction",
 
     # Housing noise
     "building permits yoy", "building permits mom",
@@ -134,7 +135,7 @@ _NOISE_KEYWORDS: tuple[str, ...] = (
     "import prices", "export prices",
     "30-year mortgage", "15-year mortgage", "mortgage rate",
 
-    # Sentiment clutter (keep only Consumer Confidence)
+    # Sentiment clutter (keep headline Consumer Confidence & Ifo Business Climate)
     "business confidence",
     "industrial sentiment", "services sentiment",
     "economic sentiment", "selling price expectations",
@@ -142,6 +143,11 @@ _NOISE_KEYWORDS: tuple[str, ...] = (
     "anz business confidence", "kof leading",
     "nab business", "westpac consumer",
     "consumer confidence final",
+    "ifo current conditions", "ifo expectations",
+
+    # Leading & Banking Indicators
+    "leading economic index", "coincident index", "leading index",
+    "total credit",
 
     # GDP revisions — keep Flash/Advance, drop Preliminary & Final
     "gdp qoq prel", "gdp qoq final", "gdp qoq 2nd",
@@ -162,11 +168,13 @@ _NOISE_KEYWORDS: tuple[str, ...] = (
     "harmonised inflation", "harmonized inflation", "hicp",
     "ppi yoy", "ppi y/y",
 
-    # Miscellaneous low-value
+    # Miscellaneous low-value & China clutter
     "tourist arrivals", "car production", "vehicle production",
     "real consumer spending qoq", "real personal spending",
     "gdp sales", "gross fixed capital",
     "capacity utilization",
+    "politburo meeting", "industrial profits",
+
 )
 
 # Exact lowercase title matches to drop
