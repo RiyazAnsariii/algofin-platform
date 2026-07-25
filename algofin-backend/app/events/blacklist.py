@@ -63,6 +63,7 @@ EXCLUDED_EXACT_TITLES = {
     # ── Aug 04 ForexFactory Cleanups ─────────────────────────────────────────
     "Household Spending y/y",
     "AIB Manufacturing PMI",
+    "AIB Services PMI",
     "LMI Logistics Managers Index",
     "Logistics Managers Index",
     "JOLTs Job Quits",
@@ -80,6 +81,10 @@ EXCLUDED_EXACT_TITLES = {
     "Overtime Pay y/y",
     "Omdia Total Vehicle Sales",
     "Total Vehicle Sales",
+    "Wholesale Prices m/m",
+    "Wholesale Prices y/y",
+    "Global Supply Chain Pressure Index",
+    "Consumer Spending y/y",
 
     # ── Aug 05 ForexFactory Cleanups ─────────────────────────────────────────
     "RatingDog Composite PMI",
@@ -239,7 +244,7 @@ def is_event_blacklisted(title: str, currency: Optional[str] = None) -> bool:
 
     # 11. Italian Unemployment Rate / German Unemployment Rate / Unemployed Persons / Generic Unemployment Rate for EUR
     if (t_lower in ("italian unemployment rate", "german unemployment rate", "unemployed persons", "unemployment rate") and curr == "EUR") or t_lower == "unemployment rate":
-        if curr in ("JPY", "NZD"):
+        if curr in ("JPY", "NZD", "CHF"):
             return False
         return True
 
@@ -247,8 +252,8 @@ def is_event_blacklisted(title: str, currency: Optional[str] = None) -> bool:
     if "bailey speaks" in t_lower:
         return True
 
-    # 13. Sub-breakdown employment costs & sub-ISM indicators
-    if "employment cost -" in t_lower or "housing credit" in t_lower or "ism manufacturing new orders" in t_lower or "ism manufacturing employment" in t_lower or "ism services new orders" in t_lower or "ism services employment" in t_lower or "ism services business activity" in t_lower or "ism services prices" in t_lower:
+    # 13. Sub-breakdown employment costs & sub-ISM indicators & Construction PMI & Wholesale Prices & Supply Chain Index
+    if "employment cost -" in t_lower or "housing credit" in t_lower or "ism manufacturing new orders" in t_lower or "ism manufacturing employment" in t_lower or "ism services new orders" in t_lower or "ism services employment" in t_lower or "ism services business activity" in t_lower or "ism services prices" in t_lower or "construction pmi" in t_lower or "wholesale prices" in t_lower or "supply chain pressure" in t_lower or "aib services" in t_lower:
         return True
 
     # 14. Car registrations & Treasury refunding estimates
@@ -256,7 +261,7 @@ def is_event_blacklisted(title: str, currency: Optional[str] = None) -> bool:
         return True
 
     # 15. Minor bond auctions & PMI noise
-    if any(k in t_lower for k in ("letras auction", "schatz auction", "ragb auction", "gilt 2032", "tc auction", "logistics managers", "jolts job quits", "total household debt", "composite pmi", "fed balance sheet", "jobs/applications ratio", "vehicle sales")):
+    if any(k in t_lower for k in ("letras auction", "schatz auction", "ragb auction", "gilt 2032", "tc auction", "logistics managers", "jolts job quits", "total household debt", "composite pmi", "fed balance sheet", "jobs/applications ratio", "vehicle sales", "bonos y obligaciones")):
         return True
 
     # 16. Drop JPY Services PMI

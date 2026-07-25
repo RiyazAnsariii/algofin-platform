@@ -430,9 +430,21 @@ def _format_title_forex_factory_style(title: str, country: str = "") -> str:
             return "German Unemployment Change"
     if "job ad" in t_lower:
         return "ANZ Job Advertisements m/m"
-    if title in ("Imports", "Exports", "Trade Balance") or "trade balance" in t_lower:
+    if "nonfarm productivity" in t_lower:
+        return "Prelim Nonfarm Productivity q/q"
+    if "unit labour costs" in t_lower or "unit labor costs" in t_lower:
+        return "Prelim Unit Labor Costs q/q"
+    if "challenger job" in t_lower:
+        return "Challenger Job Cuts y/y"
+    if country in ("Germany", "DE") and "factory orders" in t_lower:
+        return "German Factory Orders m/m"
+    if country in ("France", "FR") and ("private payroll" in t_lower or "non farm payroll" in t_lower):
+        return "French Prelim Private Payrolls q/q"
+    if any(k in t_lower for k in ("exports", "imports", "trade balance")):
         if country in ("United States", "US", "Canada", "CA"):
             return "Trade Balance"
+        if country in ("Australia", "AU"):
+            return "Trade Balance m/m"
     if "inflation gauge" in t_lower:
         return "MI Inflation Gauge m/m"
     if country in ("Switzerland", "CH") and ("cpi" in t_lower or "inflation" in t_lower):
