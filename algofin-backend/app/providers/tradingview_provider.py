@@ -111,6 +111,70 @@ MAJOR_FOREX_CURRENCIES: frozenset[str] = frozenset({
     "AUD", "CAD", "CHF", "CNY", "EUR", "GBP", "JPY", "NZD", "USD",
 })
 
+# ── Event Noise Filter ────────────────────────────────────────────────────────
+# Keyword fragments (case-insensitive substring match on event title).
+# If ANY keyword appears in the title, the event is discarded.
+_NOISE_KEYWORDS: tuple[str, ...] = (
+    # Regional / State-level CPI (German states, Italian regions, etc.)
+    "bavaria cpi", "hesse cpi", "saxony cpi", "brandenburg cpi",
+    "north rhine westphalia", "baden wuerttemberg cpi",
+    "thuringia cpi", "mecklenburg cpi", "rhineland cpi",
+    "lower saxony cpi", "sachsen", "thueringen",
+
+    # Bond / Bill Auctions
+    "bill auction", "bond auction", "note auction",
+    "jgb auction", "btp auction", "oat auction",
+    "gilt auction", "bund auction", "treasury auction",
+    "bills auction", "ny fed bill", "bill purchases",
+    "foreign bond investment", "stock investment by foreigner",
+
+    # Housing noise
+    "building permits yoy", "building permits mom",
+    "private house approvals",
+    "import prices", "export prices",
+    "30-year mortgage", "15-year mortgage", "mortgage rate",
+
+    # Sentiment clutter (keep only Consumer Confidence)
+    "business confidence",
+    "industrial sentiment", "services sentiment",
+    "economic sentiment", "selling price expectations",
+    "consumer inflation expectations",
+    "anz business confidence", "kof leading",
+    "nab business", "westpac consumer",
+
+    # GDP revisions — keep Flash/Advance, drop Preliminary & Final
+    "gdp qoq prel", "gdp qoq final", "gdp qoq 2nd",
+    "gdp yoy prel", "gdp yoy final", "gdp yoy 2nd",
+    "gdp mom prel", "gdp mom final",
+    "gdp growth rate qoq prel", "gdp growth rate yoy prel",
+    "gdp growth rate qoq final", "gdp growth rate yoy final",
+    "gdp growth rate 2nd",
+
+    # Miscellaneous low-value
+    "tourist arrivals", "car production", "vehicle production",
+    "real consumer spending qoq", "real personal spending",
+    "gdp sales", "gross fixed capital",
+    "capacity utilization",
+)
+
+# Exact lowercase title matches to drop
+_NOISE_EXACT_TITLES: frozenset[str] = frozenset({
+    "building permits",
+    "import prices",
+    "export prices",
+    "tourist arrivals",
+    "car production yoy",
+})
+
+
+def _is_noise_event(title: str) -> bool:
+    """Return True if this event is noise and should be discarded."""
+    t = title.lower()
+    for kw in _NOISE_KEYWORDS:
+        if kw in t:
+            return True
+    return t in _NOISE_EXACT_TITLES
+
 
 _TV_CALENDAR_URL = "https://economic-calendar.tradingview.com/events"
 
@@ -250,6 +314,10 @@ class TradingViewProvider(BaseEconomicCalendarProvider):
 
                 title: str = item.get("title") or item.get("indicator") or "Unknown Event"
                 source: str = item.get("source") or "TradingView"
+
+                # Drop noisy / low-value events (regional CPI, bond auctions, etc.)
+                if _is_noise_event(title):
+                    continue
 
                 dto = NormalizedEventDTO(
                     provider_event_id=provider_event_id,
