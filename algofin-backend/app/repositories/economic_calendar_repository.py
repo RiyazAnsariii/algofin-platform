@@ -68,7 +68,18 @@ class EconomicCalendarRepository:
         )
 
         result = await self.db.execute(query)
-        return list(result.scalars().all())
+        raw_list = list(result.scalars().all())
+
+        # Read-path deduplication: keep only one event per (title, currency, event_time_utc)
+        unique_events: List[EconomicEvent] = []
+        seen_keys = set()
+        for evt in raw_list:
+            dedup_key = (evt.title.strip().lower(), evt.currency.strip().upper(), evt.event_time_utc)
+            if dedup_key not in seen_keys:
+                seen_keys.add(dedup_key)
+                unique_events.append(evt)
+
+        return unique_events
 
     async def get_event_summary(
         self,
@@ -156,6 +167,16 @@ class EconomicCalendarRepository:
                     select(EconomicEvent).where(
                         EconomicEvent.source == dto.source,
                         EconomicEvent.event_hash == dto.event_hash,
+                    )
+                )
+                existing = res.scalar_one_or_none()
+
+            if not existing:
+                res = await self.db.execute(
+                    select(EconomicEvent).where(
+                        EconomicEvent.title == dto.title,
+                        EconomicEvent.currency == dto.currency,
+                        EconomicEvent.event_time_utc == dto.event_time_utc,
                     )
                 )
                 existing = res.scalar_one_or_none()
