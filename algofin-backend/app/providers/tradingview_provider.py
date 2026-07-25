@@ -277,12 +277,7 @@ _EXACT_TITLE_MAP: dict[str, str] = {
     "API Crude Oil Stock": "API Weekly Statistical Bulletin",
     "API Weekly Crude Oil Stock": "API Weekly Statistical Bulletin",
     "EIA Crude Oil Stocks Change": "Crude Oil Inventories",
-    "EIA Crude Oil Stock Change": "Crude Oil Inventories",
-    "EIA Crude Oil Stocks": "Crude Oil Inventories",
     "BRC Shop Price Inflation": "BRC Shop Price Index y/y",
-    "ADP Employment Change Weekly": "ADP Employment Change",
-    "Goods Trade Balance Advance": "Advance Goods Trade Balance",
-    "Wholesale Inventories m/m Advance": "Advance Wholesale Inventories m/m",
     "CB Consumer Confidence": "Conference Board Consumer Confidence",
     "PPI m/m": "Producer Price Index (PPI) m/m",
     "BoC Summary of Deliberations": "BOC Summary of Deliberations",
@@ -292,6 +287,28 @@ _EXACT_TITLE_MAP: dict[str, str] = {
     "Net Lending to Individuals MoM": "Net Lending to Individuals m/m",
     "German 10-Yr Bond Auction": "German 10-y Bond Auction",
     "German 10-Year Bond Auction": "German 10-y Bond Auction",
+    "BoE Monetary Policy Report": "BOE Monetary Policy Report",
+    "BoE Monetary Policy Summary": "Monetary Policy Summary",
+    "Monetary Policy Summary": "Monetary Policy Summary",
+    "BoE MPC Rate Votes": "MPC Official Bank Rate Votes",
+    "MPC Rate Votes": "MPC Official Bank Rate Votes",
+    "BoE Interest Rate Decision": "Official Bank Rate",
+    "Initial Jobless Claims": "Unemployment Claims",
+    "Personal Income": "Personal Income m/m",
+    "Personal Income MoM": "Personal Income m/m",
+    "Personal Spending": "Personal Spending m/m",
+    "Personal Spending MoM": "Personal Spending m/m",
+    "EIA Natural Gas Storage Change": "Natural Gas Storage",
+    "Natural Gas Storage Change": "Natural Gas Storage",
+    "French Non-Farm Payrolls": "French Prelim Private Payrolls q/q",
+    "French Private Payrolls": "French Prelim Private Payrolls q/q",
+    "Eurozone Prelim GDP": "Prelim Flash GDP q/q",
+    "Eurozone Flash GDP q/q": "Prelim Flash GDP q/q",
+    "Italian 10-Yr Bond Auction": "Italian 10-y Bond Auction",
+    "Italian 10-Year Bond Auction": "Italian 10-y Bond Auction",
+    "Building Approvals": "Building Approvals m/m",
+    "Building Approvals MoM": "Building Approvals m/m",
+    "Import Prices QoQ": "Import Prices q/q",
 }
 
 
@@ -372,73 +389,50 @@ def _format_title_forex_factory_style(title: str, country: str = "") -> str:
     return re.sub(r"\s+", " ", t).strip()
 
 
-
 # ── Forex Factory Impact Classifier ──────────────────────────────────────────
-# Substrings (case-insensitive) that automatically elevate an event to HIGH IMPACT (Red)
-_HIGH_IMPACT_KEYWORDS: tuple[str, ...] = (
-    # Central Bank & Major Releases
-    "federal funds rate", "fomc statement", "fomc press conference",
-    "official bank rate", "rate decision", "monetary policy statement",
-    "monetary policy report", "cpi m/m", "cpi y/y", "trimmed mean cpi",
-    "advance gdp q/q", "non-farm payrolls", "nonfarm payrolls",
-)
-
-# Substrings (case-insensitive) that classify an event as MEDIUM IMPACT (Orange)
-_MEDIUM_IMPACT_KEYWORDS: tuple[str, ...] = (
-    "german prelim cpi", "german prelim gdp", "german flash gdp",
-    "advance gdp price index", "gdp price index", "unemployment claims",
-    "initial jobless claims", "producer price index", "ppi m/m", "retail sales",
-    "ism manufacturing", "ism services",
-)
-
-
 def _determine_impact_level(formatted_title: str, default_impact: str) -> str:
     """Classify event impact as High (🔴), Medium (🟠), or Low (🟡) matching Forex Factory screenshots 1:1."""
     t = formatted_title.lower()
 
-    # 1. High Impact 🔴 (Strict Red folder events: CPI m/m, CPI y/y, Trimmed Mean CPI m/m, Federal Funds Rate, FOMC Statement, etc.)
+    # 1. High Impact 🔴 (Strict Red folder events per Jul 29 & Jul 30 Forex Factory screenshots)
     if any(k in t for k in (
-        "fomc statement", "fomc press conference",
-        "federal funds rate", "official bank rate",
-        "trimmed mean cpi", "advance gdp q/q",
-        "non-farm payrolls", "nonfarm payrolls",
+        "fomc press conference", "fomc statement",
+        "boe monetary policy report", "monetary policy summary",
+        "mpc official bank rate votes", "official bank rate", "federal funds rate",
+        "advance gdp q/q", "core pce price index m/m",
+        "trimmed mean cpi", "non-farm payrolls", "nonfarm payrolls",
     )) or (t in ("cpi m/m", "cpi y/y", "cpi q/q") or t.startswith("cpi ")):
         return "High"
 
-    # 2. Force Low Impact 🟡 (All Low events matching Forex Factory Jul 29 screenshot)
+    # 2. Medium Impact 🟠 (Strict Orange folder events per Jul 29 & Jul 30 Forex Factory screenshots)
     if any(k in t for k in (
-        "api weekly statistical bulletin", "api weekly crude",
-        "german import prices", "ubs economic expectations",
-        "m4 money supply", "mortgage approvals", "net lending to individuals",
-        "german 10-y bond auction", "crude oil inventories",
-        "boc summary of deliberations", "natural gas", "anz business confidence",
-        "building approvals", "import prices", "export prices", "consumer confidence",
-        "french consumer spending", "kof economic", "spanish flash cpi",
-        "spanish flash gdp", "italian prelim gdp", "personal income", "personal spending",
-    )):
-        return "Low"
-
-    # 3. Medium Impact 🟠
-    if any(k in t for k in (
-        "german prelim cpi", "german prelim gdp", "german flash gdp",
-        "advance gdp price index", "unemployment claims", "initial jobless claims",
-        "producer price index", "ppi m/m", "retail sales",
+        "german prelim cpi", "german prelim gdp",
+        "advance gdp price index", "unemployment claims",
+        "initial jobless claims", "producer price index", "ppi m/m", "retail sales",
     )):
         return "Medium"
 
-    # 4. Keyword Fallback High
-    for kw in _HIGH_IMPACT_KEYWORDS:
-        if kw in t:
-            return "High"
+    # 3. Force Low Impact 🟡 (All Low events matching Forex Factory Jul 29 & Jul 30 screenshots)
+    if any(k in t for k in (
+        "rba assist gov hunter", "hunter speaks",
+        "anz business confidence", "building approvals",
+        "import prices", "export prices", "consumer confidence",
+        "french consumer spending", "french flash gdp", "french prelim",
+        "kof economic", "kof leading",
+        "spanish flash cpi", "spanish flash gdp",
+        "italian prelim gdp", "italian monthly unemployment",
+        "prelim flash gdp", "unemployment rate",
+        "italian 10-y bond", "german 10-y bond",
+        "personal income", "personal spending",
+        "natural gas", "natural gas storage",
+        "api weekly statistical bulletin", "api weekly crude",
+        "german import prices", "ubs economic expectations",
+        "m4 money supply", "mortgage approvals", "net lending to individuals",
+        "crude oil inventories", "boc summary of deliberations",
+    )):
+        return "Low"
 
-    # 5. Keyword Fallback Medium
-    for kw in _MEDIUM_IMPACT_KEYWORDS:
-        if kw in t:
-            return "Medium"
-
-    # Preserve provider High/Medium if present, otherwise Low
-    if default_impact in ("High", "Medium"):
-        return default_impact
+    return "Low"
 
 
 
