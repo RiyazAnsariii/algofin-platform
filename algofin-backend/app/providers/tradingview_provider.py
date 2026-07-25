@@ -105,6 +105,13 @@ _IMPORTANCE_MAP = {
     -1: "Low",
 }
 
+# Only store events for the 8 major forex currencies
+# All other currencies (CRC, TND, ZAR, INR, BRL, etc.) are filtered out
+MAJOR_FOREX_CURRENCIES: frozenset[str] = frozenset({
+    "AUD", "CAD", "CHF", "CNY", "EUR", "GBP", "JPY", "NZD", "USD",
+})
+
+
 _TV_CALENDAR_URL = "https://economic-calendar.tradingview.com/events"
 
 _HEADERS = {
@@ -216,6 +223,11 @@ class TradingViewProvider(BaseEconomicCalendarProvider):
                 country_code: str = item.get("country", "")
                 currency: str = item.get("currency") or _COUNTRY_CURRENCY.get(country_code, country_code)
                 country: str = _COUNTRY_NAMES.get(country_code, country_code)
+
+                # Skip non-major-forex currencies (CRC, TND, ZAR, INR, BRL, etc.)
+                if currency not in MAJOR_FOREX_CURRENCIES:
+                    continue
+
 
                 # Map importance: 1=High, 0=Medium, -1=Low
                 importance: int = item.get("importance", -1)

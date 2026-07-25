@@ -456,9 +456,9 @@ export default function EventsPage() {
         </div>
 
         <div className="flex items-center gap-2">
-          {/* Quick Currency Filter Pills */}
-          <div className="flex items-center gap-1 bg-[#121620] border border-white/10 rounded-xl p-1 text-xs">
-            {["ALL", "USD", "EUR", "GBP", "JPY"].map((curr) => (
+          {/* Quick Currency Filter Pills — 8 Major Forex Currencies */}
+          <div className="flex items-center gap-1 flex-wrap bg-[#121620] border border-white/10 rounded-xl p-1 text-xs">
+            {["ALL", "USD", "EUR", "GBP", "JPY", "AUD", "CAD", "CHF", "NZD", "CNY"].map((curr) => (
               <button
                 key={curr}
                 type="button"
