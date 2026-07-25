@@ -13,8 +13,8 @@ Create Date: 2026-07-25 22:30:00.000000
 from typing import Sequence, Union
 from alembic import op
 
-revision: str = 'e4f5a6b7c8d9'
-down_revision: Union[str, None] = 'd3e4f5a6b7c8'
+revision: str = '223344556677'
+down_revision: Union[str, None] = '112233445566'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
