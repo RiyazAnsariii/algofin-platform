@@ -429,7 +429,7 @@ export default function EventsPage() {
     fetchEvents();
   }, [fetchEvents]);
 
-  // Single Day Events Filter for the active viewDate
+  // Single Day Events Filter for the active viewDate & active currency / search / impact filters
   const singleDayEvents = useMemo(() => {
     const targetY = viewDate.getFullYear();
     const targetM = viewDate.getMonth();
@@ -437,13 +437,45 @@ export default function EventsPage() {
 
     return events.filter((e) => {
       const dt = new Date(e.event_time);
-      return (
+      const isSameDate =
         dt.getFullYear() === targetY &&
         dt.getMonth() === targetM &&
-        dt.getDate() === targetD
-      );
+        dt.getDate() === targetD;
+      const isSameCurrency =
+        selectedCurrency === "ALL" || e.currency?.toUpperCase() === selectedCurrency.toUpperCase();
+      const isSameImpact =
+        !selectedImpact || e.impact?.toLowerCase() === selectedImpact.toLowerCase();
+      const matchesSearch =
+        !searchQuery.trim() ||
+        e.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        e.currency.toLowerCase().includes(searchQuery.toLowerCase());
+
+      return isSameDate && isSameCurrency && isSameImpact && matchesSearch;
     });
-  }, [events, viewDate]);
+  }, [events, viewDate, selectedCurrency, selectedImpact, searchQuery]);
+
+  // All events for the active viewDate & active currency/search filter (for impact card count breakdown)
+  const singleDayAllEvents = useMemo(() => {
+    const targetY = viewDate.getFullYear();
+    const targetM = viewDate.getMonth();
+    const targetD = viewDate.getDate();
+
+    return events.filter((e) => {
+      const dt = new Date(e.event_time);
+      const isSameDate =
+        dt.getFullYear() === targetY &&
+        dt.getMonth() === targetM &&
+        dt.getDate() === targetD;
+      const isSameCurrency =
+        selectedCurrency === "ALL" || e.currency?.toUpperCase() === selectedCurrency.toUpperCase();
+      const matchesSearch =
+        !searchQuery.trim() ||
+        e.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        e.currency.toLowerCase().includes(searchQuery.toLowerCase());
+
+      return isSameDate && isSameCurrency && matchesSearch;
+    });
+  }, [events, viewDate, selectedCurrency, searchQuery]);
 
   // Date Header Label (Today, Yesterday, Tomorrow, or Formatted Date)
   const viewDateLabel = useMemo(() => {
@@ -481,11 +513,20 @@ export default function EventsPage() {
     return formattedDate;
   }, [viewDate]);
 
-  // Stats calculation from server response or fallback
-  const highCount = summaryData.high || events.filter((e) => e.impact?.toLowerCase() === "high").length;
-  const medCount = summaryData.medium || events.filter((e) => e.impact?.toLowerCase() === "medium").length;
-  const lowCount = summaryData.low || events.filter((e) => e.impact?.toLowerCase() === "low").length;
-  const totalCount = summaryData.total || events.length;
+  // Dynamic stats calculated specifically for the currently selected date (viewDate)
+  const highCount = useMemo(
+    () => singleDayAllEvents.filter((e) => e.impact?.toLowerCase() === "high").length,
+    [singleDayAllEvents]
+  );
+  const medCount = useMemo(
+    () => singleDayAllEvents.filter((e) => e.impact?.toLowerCase() === "medium").length,
+    [singleDayAllEvents]
+  );
+  const lowCount = useMemo(
+    () => singleDayAllEvents.filter((e) => e.impact?.toLowerCase() === "low").length,
+    [singleDayAllEvents]
+  );
+  const totalCount = singleDayAllEvents.length;
 
   // Up Next Event
   const nextEvent = useMemo(() => {
@@ -589,9 +630,9 @@ export default function EventsPage() {
             <span className="text-[11px] font-semibold text-cyan-400 uppercase tracking-wider">
               Total Scheduled
             </span>
-            <span className="text-xl font-bold text-foreground">{events.length}</span>
+            <span className="text-xl font-bold text-foreground">{totalCount}</span>
           </div>
-          <p className="text-[11px] text-muted-foreground/70">Next {daysAhead} days window</p>
+          <p className="text-[11px] text-muted-foreground/70">Events for selected date</p>
         </div>
       </div>
 
