@@ -150,7 +150,7 @@ _NOISE_KEYWORDS: tuple[str, ...] = (
     "leading economic index", "coincident index", "leading index",
     "total credit",
 
-    # GDP revisions — keep Flash/Advance, drop Preliminary & Final
+    # GDP revisions — keep Flash/Advance q/q, drop Preliminary, Final, and Advance y/y permanently
     "gdp qoq prel", "gdp qoq final", "gdp qoq 2nd",
     "gdp yoy prel", "gdp yoy final", "gdp yoy 2nd",
     "gdp mom prel", "gdp mom final",
@@ -158,6 +158,9 @@ _NOISE_KEYWORDS: tuple[str, ...] = (
     "gdp growth rate qoq final", "gdp growth rate yoy final",
     "gdp growth rate 2nd", "gdp price index",
     "advance gdp yoy", "advance gdp y/y",
+
+    # Trimmed Mean CPI noise (drop generic & y/y versions permanently)
+    "trimmed mean cpi yoy", "trimmed mean cpi y/y",
 
     # Low-value / Clutter events explicitly requested for removal
     "jobless claims 4-week", "4-week avg jobless", "4-week average jobless",
@@ -207,16 +210,28 @@ _NOISE_EXACT_TITLES: frozenset[str] = frozenset({
     "australian cpi",
     "italian 10-year bond auction",
     "balance of trade",
+    "advance gdp y/y",
+    "advance gdp yoy",
+    "trimmed mean cpi",
+    "trimmed mean cpi y/y",
+    "trimmed mean cpi yoy",
 })
 
 
 def _is_noise_event(title: str) -> bool:
     """Return True if this event is noise and should be discarded."""
     t = title.lower()
+    # Permanently drop Advance GDP y/y
+    if "advance gdp" in t and ("y/y" in t or "yoy" in t):
+        return True
+    # Permanently drop generic Trimmed Mean CPI & Trimmed Mean CPI y/y (keep only m/m / q/q)
+    if "trimmed mean cpi" in t and not ("m/m" in t or "q/q" in t or "mom" in t or "qoq" in t):
+        return True
     for kw in _NOISE_KEYWORDS:
         if kw in t:
             return True
     return t in _NOISE_EXACT_TITLES
+
 
 
 # ── Forex Factory Title Normalizer ──────────────────────────────────────────
