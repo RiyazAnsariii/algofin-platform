@@ -14,6 +14,7 @@ from app.common.deps import CurrentUser, DbSession
 from app.common.schemas import SuccessResponse
 from app.config import settings
 from app.events.service import seed_events_if_empty
+from app.events.blacklist import is_event_blacklisted
 from app.models.events import EconomicEvent
 
 router = APIRouter(prefix="/events", tags=["events"])
@@ -56,6 +57,7 @@ async def list_events(
         .limit(200)
     )
     events = result.scalars().all()
+    events = [e for e in events if not is_event_blacklisted(e.title, e.currency)]
 
     # Compute staleness
     stale_threshold = timedelta(minutes=settings.stale_events_minutes)

@@ -9,6 +9,7 @@ from datetime import date, datetime, timedelta, timezone
 from typing import List, Tuple
 
 from app.providers.base import BaseEconomicCalendarProvider, NormalizedEventDTO
+from app.events.blacklist import is_event_blacklisted
 
 logger = logging.getLogger(__name__)
 
@@ -322,7 +323,8 @@ class MacroCalendarProvider(BaseEconomicCalendarProvider):
                         source=self.provider_name,
                         raw_payload=event_def,
                     )
-                    dtos.append(dto)
+                    if not is_event_blacklisted(dto.title, dto.currency):
+                        dtos.append(dto)
 
         # Sort strictly by event_time_utc ASC
         dtos.sort(key=lambda x: x.event_time_utc)

@@ -7,6 +7,7 @@ from sqlalchemy import select, delete, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.events import EconomicEvent
+from app.events.blacklist import is_event_blacklisted
 
 # ForexFactory Exact Schedule Templates
 EXACT_FOREX_FACTORY_EVENTS = [
@@ -237,6 +238,8 @@ async def seed_events_if_empty(db: AsyncSession) -> None:
 
     new_events = []
     for idx, item in enumerate(EXACT_FOREX_FACTORY_EVENTS):
+        if is_event_blacklisted(item["title"], item.get("currency")):
+            continue
         target_date = base_date + timedelta(days=item["day_offset"])
         event_dt = datetime(
             target_date.year,

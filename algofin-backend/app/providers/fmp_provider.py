@@ -11,6 +11,7 @@ import httpx
 
 from app.config import settings
 from app.providers.base import BaseEconomicCalendarProvider, NormalizedEventDTO
+from app.events.blacklist import is_event_blacklisted
 
 logger = logging.getLogger(__name__)
 
@@ -88,7 +89,15 @@ class FMPProvider(BaseEconomicCalendarProvider):
                         )
                         return [], response.status_code
 
-                    normalized = [self._normalize_item(item) for item in data if isinstance(item, dict)]
+                    normalized = [
+                        self._normalize_item(item)
+                        for item in data
+                        if isinstance(item, dict)
+                    ]
+                    normalized = [
+                        dto for dto in normalized
+                        if not is_event_blacklisted(dto.title, dto.currency)
+                    ]
                     return normalized, response.status_code
 
             except (httpx.TimeoutException, httpx.NetworkError, httpx.HTTPStatusError) as exc:

@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.economic_event import EconomicEvent
 from app.providers.base import NormalizedEventDTO
+from app.events.blacklist import is_event_blacklisted
 
 logger = logging.getLogger(__name__)
 
@@ -70,10 +71,12 @@ class EconomicCalendarRepository:
         result = await self.db.execute(query)
         raw_list = list(result.scalars().all())
 
-        # Read-path deduplication: keep only one event per (title, currency, event_time_utc)
+        # Read-path deduplication & blacklist filtering
         unique_events: List[EconomicEvent] = []
         seen_keys = set()
         for evt in raw_list:
+            if is_event_blacklisted(evt.title, evt.currency):
+                continue
             dedup_key = (evt.title.strip().lower(), evt.currency.strip().upper(), evt.event_time_utc)
             if dedup_key not in seen_keys:
                 seen_keys.add(dedup_key)
@@ -91,51 +94,19 @@ class EconomicCalendarRepository:
         """
         Compute SQL summary counts (High, Medium, Low, Total) matching the filter window.
         """
-        now = datetime.now(timezone.utc)
-        start_time = (now - timedelta(days=2)).replace(
-            hour=0, minute=0, second=0, microsecond=0
+        events = await self.get_filtered_events(
+            days=days, impact=impact, currency=currency, search=search, limit=5000
         )
-        end_time = now + timedelta(days=days)
-
-        filters = [
-            EconomicEvent.event_time_utc >= start_time,
-            EconomicEvent.event_time_utc <= end_time,
-        ]
-
-        if currency and currency.lower() != "all":
-            filters.append(EconomicEvent.currency == currency.strip().upper())
-
-        if search and search.strip():
-            term = f"%{search.strip()}%"
-            filters.append(
-                or_(
-                    EconomicEvent.title.ilike(term),
-                    EconomicEvent.country.ilike(term),
-                )
-            )
-
-        if impact and impact.lower() != "all":
-            filters.append(EconomicEvent.impact == impact.strip().capitalize())
-
-        query = (
-            select(EconomicEvent.impact, func.count(EconomicEvent.id))
-            .where(and_(*filters))
-            .group_by(EconomicEvent.impact)
-        )
-
-        result = await self.db.execute(query)
-        counts = {row[0].capitalize(): row[1] for row in result.all()}
-
-        high = counts.get("High", 0)
-        medium = counts.get("Medium", 0)
-        low = counts.get("Low", 0)
-        total = sum(counts.values())
+        counts = {"High": 0, "Medium": 0, "Low": 0}
+        for e in events:
+            imp = e.impact.strip().capitalize() if e.impact else "Low"
+            counts[imp] = counts.get(imp, 0) + 1
 
         return {
-            "high": high,
-            "medium": medium,
-            "low": low,
-            "total": total,
+            "high": counts.get("High", 0),
+            "medium": counts.get("Medium", 0),
+            "low": counts.get("Low", 0),
+            "total": len(events),
         }
 
     async def bulk_upsert_events(self, events: List[NormalizedEventDTO]) -> int:
@@ -151,6 +122,10 @@ class EconomicCalendarRepository:
         now = datetime.now(timezone.utc)
 
         for dto in events:
+            # Skip any blacklisted events permanently
+            if is_event_blacklisted(dto.title, dto.currency):
+                continue
+
             # Look for existing record by provider_event_id or fallback event_hash
             existing: Optional[EconomicEvent] = None
             if dto.provider_event_id:
@@ -280,3 +255,20 @@ class EconomicCalendarRepository:
             dtos.append(dto)
 
         await self.bulk_upsert_events(dtos)
+
+    async def purge_blacklisted_events(self) -> int:
+        """
+        Permanently delete all existing economic events in database that match blacklisted event titles/patterns.
+        """
+        result = await self.db.execute(select(EconomicEvent))
+        all_events = result.scalars().all()
+        deleted_count = 0
+        for evt in all_events:
+            if is_event_blacklisted(evt.title, evt.currency):
+                await self.db.delete(evt)
+                deleted_count += 1
+        if deleted_count > 0:
+            await self.db.commit()
+            logger.info(f"[EconomicCalendarRepository] Purged {deleted_count} blacklisted events from database.")
+        return deleted_count
+
