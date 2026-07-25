@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.economic_event import EconomicEvent
 from app.providers.base import NormalizedEventDTO
-from app.events.blacklist import is_event_blacklisted, is_forced_high_impact
+from app.events.blacklist import is_event_blacklisted, is_forced_high_impact, is_forced_medium_impact
 
 logger = logging.getLogger(__name__)
 
@@ -79,6 +79,8 @@ class EconomicCalendarRepository:
                 continue
             if is_forced_high_impact(evt.title):
                 evt.impact = "High"
+            elif is_forced_medium_impact(evt.title, evt.currency):
+                evt.impact = "Medium"
             dedup_key = (evt.title.strip().lower(), evt.currency.strip().upper(), evt.event_time_utc)
             if dedup_key not in seen_keys:
                 seen_keys.add(dedup_key)
@@ -129,6 +131,8 @@ class EconomicCalendarRepository:
                 continue
             if is_forced_high_impact(dto.title):
                 dto.impact = "High"
+            elif is_forced_medium_impact(dto.title, dto.currency):
+                dto.impact = "Medium"
 
             # Look for existing record by provider_event_id or fallback event_hash
             existing: Optional[EconomicEvent] = None

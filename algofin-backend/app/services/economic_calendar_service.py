@@ -12,7 +12,7 @@ import redis.asyncio as aioredis
 
 from app.config import settings
 from app.models.economic_event import EconomicEvent
-from app.events.blacklist import is_event_blacklisted, is_forced_high_impact
+from app.events.blacklist import is_event_blacklisted, is_forced_high_impact, is_forced_medium_impact
 from app.providers import get_economic_calendar_provider
 from app.repositories.economic_calendar_repository import EconomicCalendarRepository
 from app.services.economic_calendar_cache import EconomicCalendarCache
@@ -212,7 +212,7 @@ class EconomicCalendarService:
             if is_event_blacklisted(e.title, e.currency):
                 continue
             status = self.calculate_status(e.event_time_utc, e.actual)
-            impact = "High" if is_forced_high_impact(e.title) else e.impact
+            impact = "High" if is_forced_high_impact(e.title) else ("Medium" if is_forced_medium_impact(e.title, e.currency) else e.impact)
             formatted_events.append(
                 {
                     "id": str(e.id),

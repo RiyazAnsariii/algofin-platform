@@ -144,8 +144,50 @@ function isForcedHighImpactFrontend(title: string): boolean {
     "fomc press conference",
     "fomc statement",
     "federal funds rate",
+    "boj policy rate",
+    "boj interest rate decision",
+    "boj outlook report",
+    "boj quarterly outlook report",
+    "boj press conference",
+    "boj gov ueda speaks",
+    "monetary policy statement",
+    "gdp m/m",
+    "ism manufacturing pmi",
+    "nz unemployment rate",
+    "employment change q/q",
+    "non-farm employment change",
+    "nonfarm payrolls",
   ];
   return highImpactKeywords.some((kw) => tLower.includes(kw));
+}
+
+function isForcedMediumImpactFrontend(title: string, currency?: string): boolean {
+  if (!title) return false;
+  const tLower = title.trim().toLowerCase();
+  const curr = (currency || "").trim().toUpperCase();
+  if (curr === "CHF" && tLower.includes("cpi m/m")) return true;
+
+  const mediumImpactKeywords = [
+    "tokyo core cpi",
+    "core cpi flash estimate",
+    "cpi flash estimate",
+    "employment cost index",
+    "chicago pmi",
+    "ism manufacturing prices",
+    "jolts job openings",
+    "adp non-farm employment change",
+    "adp employment change",
+    "ism services pmi",
+    "german prelim cpi m/m",
+    "german prelim gdp q/q",
+    "advance gdp price index",
+    "revised uom consumer sentiment",
+    "revised uom inflation expectations",
+    "michigan consumer sentiment",
+    "michigan 5 year inflation expectations",
+    "unemployment claims",
+  ];
+  return mediumImpactKeywords.some((kw) => tLower.includes(kw));
 }
 
 // ── Exact ForexFactory Events Generator ───────────────────────────
@@ -779,9 +821,12 @@ export default function EventsPage() {
                     </td>
                   </tr>
                   {/* Event Rows for Selected Single Day */}
-                  {singleDayEvents.map((evt) => {
-                      const impactKey = (evt.impact || "low").toLowerCase() as ImpactLevel;
-                      const impactCfg = IMPACT_CONFIG[impactKey] || IMPACT_CONFIG.low;
+                      const effectiveImpact = isForcedHighImpactFrontend(evt.title)
+                        ? "high"
+                        : (isForcedMediumImpactFrontend(evt.title, evt.currency)
+                            ? "medium"
+                            : ((evt.impact || "low").toLowerCase() as ImpactLevel));
+                      const impactCfg = IMPACT_CONFIG[effectiveImpact] || IMPACT_CONFIG.low;
                       const isAlertOn = alertMap[evt.id];
                       const isActualBetter =
                         evt.actual && evt.forecast && parseFloat(evt.actual) > parseFloat(evt.forecast);

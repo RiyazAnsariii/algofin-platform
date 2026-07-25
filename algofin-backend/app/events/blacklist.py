@@ -104,6 +104,7 @@ EXCLUDED_EXACT_TITLES = {
     "Eurozone Unemployment Rate",
 }
 
+# 🔴 High Impact (Red Folder) Events on Forex Factory
 FORCED_HIGH_IMPACT_PATTERNS = [
     "boe monetary policy report",
     "monetary policy summary",
@@ -125,8 +126,13 @@ FORCED_HIGH_IMPACT_PATTERNS = [
     "ism manufacturing pmi",
     "nz unemployment rate",
     "employment change q/q",
+    "non-farm employment change",
+    "nonfarm payrolls",
+    "cpi m/m (us)",
+    "cpi y/y (us)",
 ]
 
+# 🟠 Medium Impact (Orange Folder) Events on Forex Factory
 FORCED_MEDIUM_IMPACT_PATTERNS = [
     "tokyo core cpi",
     "core cpi flash estimate",
@@ -145,7 +151,7 @@ FORCED_MEDIUM_IMPACT_PATTERNS = [
     "revised uom inflation expectations",
     "michigan consumer sentiment",
     "michigan 5 year inflation expectations",
-    "cpi m/m",
+    "unemployment claims",
 ]
 
 
@@ -160,11 +166,17 @@ def is_forced_high_impact(title: str) -> bool:
     return False
 
 
-def is_forced_medium_impact(title: str) -> bool:
+def is_forced_medium_impact(title: str, currency: Optional[str] = None) -> bool:
     """Check if an economic event title is explicitly classified as Medium Impact (🟠)."""
     if not title:
         return False
     t_lower = title.strip().lower()
+    curr = (currency or "").strip().upper()
+
+    # CHF CPI m/m is Medium Impact
+    if curr == "CHF" and "cpi m/m" in t_lower:
+        return True
+
     for pattern in FORCED_MEDIUM_IMPACT_PATTERNS:
         if pattern in t_lower:
             return True
@@ -261,7 +273,7 @@ def is_event_blacklisted(title: str, currency: Optional[str] = None) -> bool:
         return True
 
     # 15. Minor bond auctions & PMI noise
-    if any(k in t_lower for k in ("letras auction", "schatz auction", "ragb auction", "gilt 2032", "tc auction", "logistics managers", "jolts job quits", "total household debt", "composite pmi", "fed balance sheet", "jobs/applications ratio", "vehicle sales", "bonos y obligaciones")):
+    if any(k in t_lower for k in ("letras auction", "schatz auction", "ragb auction", "gilt 2032", "tc auction", "logistics managers", "jolts job quits", "total household debt", "composite pmi", "fed balance sheet", "jobs/applications ratio", "vehicle sales", "bonos y obligations")):
         return True
 
     # 16. Drop JPY Services PMI
