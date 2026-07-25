@@ -410,6 +410,11 @@ export default function EventsPage() {
   // Date Navigation State (Active Selected View Date)
   const [viewDate, setViewDate] = useState<Date>(new Date());
 
+  // Forex Factory Style Date Range Picker Modal State
+  const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
+  const [pickerTempDate, setPickerTempDate] = useState<Date>(new Date());
+  const [pickerMonthOffset, setPickerMonthOffset] = useState<number>(0);
+
   // Interactivity States
   const [alertMap, setAlertMap] = useState<Record<string, boolean>>({});
   const [activeModalEvent, setActiveModalEvent] = useState<EconomicEvent | null>(null);
@@ -555,6 +560,63 @@ export default function EventsPage() {
     return formattedDate;
   }, [viewDate]);
 
+  const MONTH_NAMES = useMemo(() => [
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December"
+  ], []);
+
+  const leftMonthDate = useMemo(() => {
+    return new Date(pickerTempDate.getFullYear(), pickerTempDate.getMonth() + pickerMonthOffset, 1);
+  }, [pickerTempDate, pickerMonthOffset]);
+
+  const rightMonthDate = useMemo(() => {
+    return new Date(pickerTempDate.getFullYear(), pickerTempDate.getMonth() + pickerMonthOffset + 1, 1);
+  }, [pickerTempDate, pickerMonthOffset]);
+
+  const leftMonthDays = useMemo(() => {
+    const year = leftMonthDate.getFullYear();
+    const month = leftMonthDate.getMonth();
+    const firstDay = new Date(year, month, 1).getDay();
+    const totalDays = new Date(year, month + 1, 0).getDate();
+    const days: (number | null)[] = [];
+    for (let i = 0; i < firstDay; i++) days.push(null);
+    for (let d = 1; d <= totalDays; d++) days.push(d);
+    return days;
+  }, [leftMonthDate]);
+
+  const rightMonthDays = useMemo(() => {
+    const year = rightMonthDate.getFullYear();
+    const month = rightMonthDate.getMonth();
+    const firstDay = new Date(year, month, 1).getDay();
+    const totalDays = new Date(year, month + 1, 0).getDate();
+    const days: (number | null)[] = [];
+    for (let i = 0; i < firstDay; i++) days.push(null);
+    for (let d = 1; d <= totalDays; d++) days.push(d);
+    return days;
+  }, [rightMonthDate]);
+
+  const handleOpenDatePicker = () => {
+    setPickerTempDate(new Date(viewDate));
+    setPickerMonthOffset(0);
+    setIsDatePickerOpen(true);
+  };
+
+  const handleQuickPreset = (preset: "this_week" | "next_week" | "this_month" | "next_month") => {
+    const now = new Date();
+    if (preset === "this_week") {
+      setPickerTempDate(now);
+    } else if (preset === "next_week") {
+      const nextWk = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 7);
+      setPickerTempDate(nextWk);
+    } else if (preset === "this_month") {
+      const thisMo = new Date(now.getFullYear(), now.getMonth(), 1);
+      setPickerTempDate(thisMo);
+    } else if (preset === "next_month") {
+      const nextMo = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+      setPickerTempDate(nextMo);
+    }
+  };
+
   // Dynamic stats calculated specifically for the currently selected date (viewDate)
   const highCount = useMemo(
     () => singleDayAllEvents.filter((e) => e.impact?.toLowerCase() === "high").length,
@@ -695,14 +757,12 @@ export default function EventsPage() {
               </button>
               <button
                 type="button"
-                onClick={handleResetToday}
-                className="px-4 py-1.5 font-bold text-foreground bg-cyan-500/10 text-cyan-400 hover:bg-cyan-500/20 transition-all flex items-center gap-2"
-                title="Click to reset to Today"
+                onClick={handleOpenDatePicker}
+                className="px-4 py-1.5 font-bold text-foreground bg-cyan-500/10 text-cyan-400 hover:bg-cyan-500/20 transition-all flex items-center gap-2 cursor-pointer"
+                title="Click to open Date Range Calendar Picker"
               >
                 <span>{viewDateLabel}</span>
-                {viewDateLabel.startsWith("Today") && (
-                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                )}
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 border border-emerald-300 shadow-sm" />
               </button>
               <button
                 type="button"
@@ -1139,6 +1199,240 @@ export default function EventsPage() {
                 className="px-4 py-1.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs transition-all"
               >
                 Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Forex Factory Style Date Range Picker Modal ───────────────────── */}
+      {isDatePickerOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 animate-in fade-in duration-200"
+          onClick={() => setIsDatePickerOpen(false)}
+        >
+          <div
+            className="bg-[#f8fafc] text-zinc-800 border-4 border-emerald-500/40 rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden font-sans text-xs"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="p-4 border-b border-zinc-200 bg-white flex items-center justify-between">
+              <div>
+                <label className="block text-xs font-bold text-zinc-700 mb-1">
+                  Date Range
+                </label>
+                <input
+                  type="text"
+                  readOnly
+                  value={pickerTempDate.toLocaleDateString("en-US", {
+                    month: "short",
+                    day: "numeric",
+                    year: "numeric",
+                  })}
+                  className="border border-zinc-300 rounded px-3 py-1.5 text-xs text-zinc-900 bg-zinc-50 w-64 font-mono font-medium shadow-sm"
+                />
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsDatePickerOpen(false)}
+                className="text-zinc-400 hover:text-zinc-700 font-bold text-base px-2"
+                title="Close"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Calendar Months Container */}
+            <div className="p-4 bg-white grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Left Month Calendar */}
+              <div>
+                <div className="flex items-center justify-between font-bold text-zinc-700 mb-2">
+                  <div className="flex items-center gap-1 text-cyan-700 font-bold">
+                    <button
+                      type="button"
+                      onClick={() => setPickerMonthOffset((prev) => prev - 12)}
+                      className="px-1.5 py-0.5 hover:bg-zinc-200 rounded transition-colors text-sm"
+                      title="Previous Year (<<)"
+                    >
+                      «
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPickerMonthOffset((prev) => prev - 1)}
+                      className="px-1.5 py-0.5 hover:bg-zinc-200 rounded transition-colors text-sm"
+                      title="Previous Month (<)"
+                    >
+                      ‹
+                    </button>
+                  </div>
+                  <span className="text-zinc-800 font-bold text-xs">
+                    {MONTH_NAMES[leftMonthDate.getMonth()]} {leftMonthDate.getFullYear()}
+                  </span>
+                  <span className="w-8" />
+                </div>
+
+                {/* Day Headers */}
+                <div className="grid grid-cols-7 text-center font-semibold text-zinc-400 text-[11px] mb-1">
+                  <span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span>
+                </div>
+
+                {/* Days Grid */}
+                <div className="grid grid-cols-7 gap-1 text-center text-xs">
+                  {leftMonthDays.map((d, i) => {
+                    if (d === null) return <div key={`left-empty-${i}`} className="h-7" />;
+                    const isSelected =
+                      pickerTempDate.getFullYear() === leftMonthDate.getFullYear() &&
+                      pickerTempDate.getMonth() === leftMonthDate.getMonth() &&
+                      pickerTempDate.getDate() === d;
+                    const isToday =
+                      new Date().getFullYear() === leftMonthDate.getFullYear() &&
+                      new Date().getMonth() === leftMonthDate.getMonth() &&
+                      new Date().getDate() === d;
+
+                    return (
+                      <button
+                        type="button"
+                        key={`left-day-${d}`}
+                        onClick={() =>
+                          setPickerTempDate(
+                            new Date(leftMonthDate.getFullYear(), leftMonthDate.getMonth(), d)
+                          )
+                        }
+                        className={`h-7 w-7 mx-auto flex items-center justify-center rounded transition-all ${
+                          isSelected
+                            ? "bg-[#62ba75] text-white font-bold shadow"
+                            : isToday
+                            ? "border border-emerald-500 text-emerald-700 font-bold hover:bg-emerald-50"
+                            : "hover:bg-zinc-100 text-zinc-700"
+                        }`}
+                      >
+                        {d}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Right Month Calendar */}
+              <div>
+                <div className="flex items-center justify-between font-bold text-zinc-700 mb-2">
+                  <span className="w-8" />
+                  <span className="text-zinc-800 font-bold text-xs">
+                    {MONTH_NAMES[rightMonthDate.getMonth()]} {rightMonthDate.getFullYear()}
+                  </span>
+                  <div className="flex items-center gap-1 text-cyan-700 font-bold">
+                    <button
+                      type="button"
+                      onClick={() => setPickerMonthOffset((prev) => prev + 1)}
+                      className="px-1.5 py-0.5 hover:bg-zinc-200 rounded transition-colors text-sm"
+                      title="Next Month (>)"
+                    >
+                      ›
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPickerMonthOffset((prev) => prev + 12)}
+                      className="px-1.5 py-0.5 hover:bg-zinc-200 rounded transition-colors text-sm"
+                      title="Next Year (>>)"
+                    >
+                      »
+                    </button>
+                  </div>
+                </div>
+
+                {/* Day Headers */}
+                <div className="grid grid-cols-7 text-center font-semibold text-zinc-400 text-[11px] mb-1">
+                  <span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span>
+                </div>
+
+                {/* Days Grid */}
+                <div className="grid grid-cols-7 gap-1 text-center text-xs">
+                  {rightMonthDays.map((d, i) => {
+                    if (d === null) return <div key={`right-empty-${i}`} className="h-7" />;
+                    const isSelected =
+                      pickerTempDate.getFullYear() === rightMonthDate.getFullYear() &&
+                      pickerTempDate.getMonth() === rightMonthDate.getMonth() &&
+                      pickerTempDate.getDate() === d;
+                    const isToday =
+                      new Date().getFullYear() === rightMonthDate.getFullYear() &&
+                      new Date().getMonth() === rightMonthDate.getMonth() &&
+                      new Date().getDate() === d;
+
+                    return (
+                      <button
+                        type="button"
+                        key={`right-day-${d}`}
+                        onClick={() =>
+                          setPickerTempDate(
+                            new Date(rightMonthDate.getFullYear(), rightMonthDate.getMonth(), d)
+                          )
+                        }
+                        className={`h-7 w-7 mx-auto flex items-center justify-center rounded transition-all ${
+                          isSelected
+                            ? "bg-[#62ba75] text-white font-bold shadow"
+                            : isToday
+                            ? "border border-emerald-500 text-emerald-700 font-bold hover:bg-emerald-50"
+                            : "hover:bg-zinc-100 text-zinc-700"
+                        }`}
+                      >
+                        {d}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
+            {/* Quick Presets Section */}
+            <div className="px-4 py-2 bg-zinc-50 border-t border-b border-zinc-200 flex flex-wrap gap-4 text-xs font-semibold text-cyan-700">
+              <button
+                type="button"
+                onClick={() => handleQuickPreset("this_week")}
+                className="hover:underline hover:text-cyan-900 transition-colors"
+              >
+                This Week
+              </button>
+              <button
+                type="button"
+                onClick={() => handleQuickPreset("next_week")}
+                className="hover:underline hover:text-cyan-900 transition-colors"
+              >
+                Next Week
+              </button>
+              <button
+                type="button"
+                onClick={() => handleQuickPreset("this_month")}
+                className="hover:underline hover:text-cyan-900 transition-colors"
+              >
+                This Month
+              </button>
+              <button
+                type="button"
+                onClick={() => handleQuickPreset("next_month")}
+                className="hover:underline hover:text-cyan-900 transition-colors"
+              >
+                Next Month
+              </button>
+            </div>
+
+            {/* Bottom Action Footer */}
+            <div className="p-3 bg-zinc-200/80 flex items-center justify-center gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setViewDate(pickerTempDate);
+                  setIsDatePickerOpen(false);
+                }}
+                className="px-4 py-1.5 bg-white border border-zinc-400 hover:bg-zinc-100 text-zinc-800 font-semibold text-xs rounded shadow-sm transition-all"
+              >
+                Apply Settings
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsDatePickerOpen(false)}
+                className="px-4 py-1.5 bg-white border border-zinc-400 hover:bg-zinc-100 text-zinc-800 font-semibold text-xs rounded shadow-sm transition-all"
+              >
+                Cancel
               </button>
             </div>
           </div>
