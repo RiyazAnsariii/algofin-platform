@@ -71,6 +71,17 @@ EXCLUDED_EXACT_TITLES = {
     "Ai Group Industry Index",
     "Ai Group Manufacturing Index",
     "Ai Group Construction Index",
+    "API Weekly Statistical Bulletin",
+    "API Crude Oil Stock Change",
+    "API Cushing Crude Oil Stock Change",
+    "API Gasoline Stock Change",
+    "API Distillate Stock Change",
+    "Participation Rate",
+    "Labour Costs Index y/y",
+    "Average Cash Earnings y/y",
+    "Overtime Pay y/y",
+    "Omdia Total Vehicle Sales",
+    "Total Vehicle Sales",
 
     # ── Aug 05 ForexFactory Cleanups ─────────────────────────────────────────
     "RatingDog Composite PMI",
@@ -176,9 +187,12 @@ def is_event_blacklisted(title: str, currency: Optional[str] = None) -> bool:
     if curr == "CHF" and ("cpi y/y" in t_lower or "swiss cpi y/y" in t_lower):
         return True
 
-    # Allow authentic NZD employment releases
-    if curr == "NZD" and any(k in t_lower for k in ("unemployment rate", "employment change", "labor cost index", "labour costs index")):
-        return False
+    # Allow authentic NZD employment releases (NZ Unemployment Rate, Employment Change q/q, Labor Cost Index q/q)
+    if curr == "NZD":
+        if "participation rate" in t_lower or "y/y" in t_lower:
+            return True
+        if any(k in t_lower for k in ("unemployment rate", "employment change", "labor cost index", "labour cost index")):
+            return False
 
     # 1. Any GDP y/y release (ForexFactory only lists GDP q/q or Flash GDP q/q or GDP m/m)
     if "gdp y/y" in t_lower:
@@ -201,8 +215,8 @@ def is_event_blacklisted(title: str, currency: Optional[str] = None) -> bool:
         if "q/q" in t_lower or "y/y" in t_lower or (t_lower.endswith("index m/m") and "core" not in t_lower):
             return True
 
-    # 6. EIA Natural Gas Stocks Change & Rig counts
-    if "natural gas stocks change" in t_lower or "rig count" in t_lower or "baker hughes" in t_lower:
+    # 6. EIA Natural Gas Stocks Change & Rig counts & API
+    if "natural gas stocks change" in t_lower or "rig count" in t_lower or "baker hughes" in t_lower or "api weekly" in t_lower:
         return True
 
     # 7. Generic Consumer Confidence (keep JPY Consumer Confidence)
@@ -244,7 +258,7 @@ def is_event_blacklisted(title: str, currency: Optional[str] = None) -> bool:
         return True
 
     # 15. Minor bond auctions & PMI noise
-    if any(k in t_lower for k in ("letras auction", "schatz auction", "ragb auction", "gilt 2032", "tc auction", "logistics managers", "jolts job quits", "total household debt", "composite pmi", "fed balance sheet", "jobs/applications ratio")):
+    if any(k in t_lower for k in ("letras auction", "schatz auction", "ragb auction", "gilt 2032", "tc auction", "logistics managers", "jolts job quits", "total household debt", "composite pmi", "fed balance sheet", "jobs/applications ratio", "vehicle sales")):
         return True
 
     # 16. Drop JPY Services PMI
