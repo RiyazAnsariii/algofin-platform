@@ -141,6 +141,7 @@ _NOISE_KEYWORDS: tuple[str, ...] = (
     "consumer inflation expectations",
     "anz business confidence", "kof leading",
     "nab business", "westpac consumer",
+    "consumer confidence final",
 
     # GDP revisions — keep Flash/Advance, drop Preliminary & Final
     "gdp qoq prel", "gdp qoq final", "gdp qoq 2nd",
@@ -148,7 +149,18 @@ _NOISE_KEYWORDS: tuple[str, ...] = (
     "gdp mom prel", "gdp mom final",
     "gdp growth rate qoq prel", "gdp growth rate yoy prel",
     "gdp growth rate qoq final", "gdp growth rate yoy final",
-    "gdp growth rate 2nd",
+    "gdp growth rate 2nd", "gdp price index",
+
+    # Low-value / Clutter events explicitly requested for removal
+    "jobless claims 4-week", "4-week avg jobless", "4-week average jobless",
+    "continuing jobless claims",
+    "core pce prices q/q", "pce prices q/q",
+    "average weekly earnings",
+    "industrial production",
+    "balance of trade",
+    "retail sales yoy", "retail sales y/y",
+    "harmonised inflation", "harmonized inflation", "hicp",
+    "ppi yoy", "ppi y/y",
 
     # Miscellaneous low-value
     "tourist arrivals", "car production", "vehicle production",
@@ -164,6 +176,8 @@ _NOISE_EXACT_TITLES: frozenset[str] = frozenset({
     "export prices",
     "tourist arrivals",
     "car production yoy",
+    "balance of trade",
+    "continuing jobless claims",
 })
 
 
@@ -179,47 +193,85 @@ def _is_noise_event(title: str) -> bool:
 # ── Forex Factory Title Normalizer ──────────────────────────────────────────
 import re
 
+_COUNTRY_ADJECTIVES: dict[str, str] = {
+    "Germany": "German",
+    "France": "French",
+    "Spain": "Spanish",
+    "Italy": "Italian",
+    "Eurozone": "Eurozone",
+    "United Kingdom": "UK",
+    "Japan": "Japanese",
+    "Australia": "Australian",
+    "Canada": "Canadian",
+    "Switzerland": "Swiss",
+    "New Zealand": "NZ",
+    "China": "Chinese",
+}
+
 _EXACT_TITLE_MAP: dict[str, str] = {
     "Fed Press Conference": "FOMC Press Conference",
     "BoE Gov Bailey Speech": "BOE Gov Bailey Speaks",
-    "RBA Hunter Speech": "RBA Official Speaks",
+    "BoE Gov Bailey Speaks": "BOE Gov Bailey Speaks",
+    "RBA Hunter Speech": "RBA Assist Gov Hunter Speaks",
+    "RBA Hunter Speaks": "RBA Assist Gov Hunter Speaks",
+    "RBA Official Speech": "RBA Official Speaks",
     "RBA Gov Bullock Speech": "RBA Gov Bullock Speaks",
     "RBNZ Gov Orr Speech": "RBNZ Gov Orr Speaks",
     "BOC Gov Macklem Speech": "BOC Gov Macklem Speaks",
     "SNB Chairman Schlegel Speech": "SNB Chairman Schlegel Speaks",
     "ECB Pres Lagarde Speech": "ECB Pres Lagarde Speaks",
-    "GDP Growth Rate QoQ Adv": "GDP q/q (Advance)",
-    "GDP Growth Rate QoQ Flash": "GDP q/q (Flash)",
-    "GDP Growth Rate YoY Flash": "GDP y/y (Flash)",
-    "GDP Growth Rate QoQ Final": "GDP q/q (Final)",
-    "GDP Growth Rate YoY Final": "GDP y/y (Final)",
-    "GDP Growth Rate QoQ": "GDP q/q",
-    "GDP Growth Rate YoY": "GDP y/y",
-    "GDP Growth Rate MoM": "GDP m/m",
 }
 
 
-def _format_title_forex_factory_style(title: str) -> str:
+def _format_title_forex_factory_style(title: str, country: str = "") -> str:
     """Transform TradingView raw titles into standard Forex Factory style names."""
     if title in _EXACT_TITLE_MAP:
         return _EXACT_TITLE_MAP[title]
 
     t = title
+    adj = _COUNTRY_ADJECTIVES.get(country, "")
 
-    # 1. Simplify GDP titles
+    # 1. Household Consumption -> French Consumer Spending m/m, etc.
+    if "Household Consumption" in t:
+        period = "m/m" if ("MoM" in t or "m/m" in t) else ("y/y" if ("YoY" in t or "y/y" in t) else "")
+        return f"{adj} Consumer Spending {period}".strip() if adj else f"Consumer Spending {period}".strip()
+
+    # 2. Country-specific Flash / Advance / Prelim GDP
+    if "GDP" in t:
+        if "Flash" in t:
+            if "QoQ" in t or "q/q" in t:
+                return f"{adj} Flash GDP q/q" if adj else "Flash GDP q/q"
+            if "YoY" in t or "y/y" in t:
+                return f"{adj} Flash GDP y/y" if adj else "Flash GDP y/y"
+        if "Adv" in t or "Advance" in t:
+            if "QoQ" in t or "q/q" in t:
+                return "Advance GDP q/q" if (country in ("United States", "US")) else (f"{adj} Advance GDP q/q" if adj else "Advance GDP q/q")
+            if "YoY" in t or "y/y" in t:
+                return "Advance GDP y/y" if (country in ("United States", "US")) else (f"{adj} Advance GDP y/y" if adj else "Advance GDP y/y")
+        if "Prel" in t or "Preliminary" in t:
+            if "QoQ" in t or "q/q" in t:
+                return f"{adj} Prelim GDP q/q" if adj else "Prelim GDP q/q"
+            if "YoY" in t or "y/y" in t:
+                return f"{adj} Prelim GDP y/y" if adj else "Prelim GDP y/y"
+
+    # 3. Country-specific Prelim CPI / Inflation
+    if "Inflation Rate" in t or "CPI" in t:
+        if "Prel" in t or "Preliminary" in t:
+            period = "y/y" if ("YoY" in t or "y/y" in t) else ("m/m" if ("MoM" in t or "m/m" in t) else "")
+            return f"{adj} Prelim CPI {period}".strip() if adj else f"Prelim CPI {period}".strip()
+
+    # 4. Country-prefixed Unemployment Rate for non-US
+    if t.strip() == "Unemployment Rate" and adj and country not in ("United States", "US"):
+        return f"{adj} Unemployment Rate"
+
+    # 5. Standard Forex Factory format conversions
     t = re.sub(r"\bGDP Growth Rate\b", "GDP", t)
-
-    # 2. Convert period notations: MoM -> m/m, YoY -> y/y, QoQ -> q/q
     t = re.sub(r"\bMoM\b", "m/m", t)
     t = re.sub(r"\bYoY\b", "y/y", t)
     t = re.sub(r"\bQoQ\b", "q/q", t)
-
-    # 3. Speech -> Speaks (Forex Factory convention)
     t = re.sub(r"\bSpeech\b", "Speaks", t)
-
-    # 4. Format Adv/Flash descriptors cleanly
-    t = re.sub(r"\bAdv\b", "(Advance)", t)
-    t = re.sub(r"\bFlash\b(?!\))", "(Flash)", t)
+    t = re.sub(r"\bAdv\b", "Advance", t)
+    t = re.sub(r"\bPrel\b", "Prelim", t)
 
     # Clean up whitespace
     return re.sub(r"\s+", " ", t).strip()
@@ -368,7 +420,7 @@ class TradingViewProvider(BaseEconomicCalendarProvider):
                 if _is_noise_event(raw_title):
                     continue
 
-                title: str = _format_title_forex_factory_style(raw_title)
+                title: str = _format_title_forex_factory_style(raw_title, country=country)
 
                 dto = NormalizedEventDTO(
                     provider_event_id=provider_event_id,
