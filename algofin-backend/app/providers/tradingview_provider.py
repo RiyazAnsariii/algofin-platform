@@ -121,15 +121,17 @@ _NOISE_KEYWORDS: tuple[str, ...] = (
     "thuringia cpi", "mecklenburg cpi", "rhineland cpi",
     "lower saxony cpi", "sachsen", "thueringen",
 
-    # Bond / Bill Auctions
+    # Clutter Auctions & Regional Fed Sub-Components
     "bill auction", "bond auction", "note auction",
     "jgb auction", "btp auction", "oat auction",
     "gilt auction", "bund auction", "treasury auction",
     "bills auction", "ny fed bill", "bill purchases",
     "foreign bond investment", "stock investment by foreigner",
-    "olo auction", "btf auction",
+    "olo auction", "btf auction", "atb auction", "gilt tender",
+    "richmond fed shipments", "richmond fed services",
+    "dallas fed services",
 
-    # Housing noise
+    # Housing noise (Keep FHFA House Price Index y/y / m/m)
     "building permits yoy", "building permits mom",
     "private house approvals",
     "import prices", "export prices",
@@ -164,7 +166,6 @@ _NOISE_KEYWORDS: tuple[str, ...] = (
     "average weekly earnings",
     "industrial production",
     "industrial sales",
-    "balance of trade",
     "retail sales yoy", "retail sales y/y",
     "harmonised inflation", "harmonized inflation", "hicp",
     "ppi yoy", "ppi y/y",
@@ -193,7 +194,6 @@ _NOISE_EXACT_TITLES: frozenset[str] = frozenset({
     "export prices",
     "tourist arrivals",
     "car production yoy",
-    "balance of trade",
     "continuing jobless claims",
     "boc market participants survey",
     "australian cpi",
@@ -257,7 +257,16 @@ _EXACT_TITLE_MAP: dict[str, str] = {
     "EIA Crude Oil Stocks Change": "Crude Oil Inventories",
     "EIA Crude Oil Stock Change": "Crude Oil Inventories",
     "EIA Crude Oil Stocks": "Crude Oil Inventories",
+    "BRC Shop Price Inflation": "BRC Shop Price Index y/y",
+    "ADP Employment Change Weekly": "ADP Employment Change",
+    "Goods Trade Balance Advance": "Advance Goods Trade Balance",
+    "Wholesale Inventories m/m Advance": "Advance Wholesale Inventories m/m",
+    "House Price Index": "FHFA House Price Index",
+    "House Price Index y/y": "FHFA House Price Index y/y",
+    "House Price Index m/m": "FHFA House Price Index m/m",
+    "CB Consumer Confidence": "Conference Board Consumer Confidence",
 }
+
 
 
 
