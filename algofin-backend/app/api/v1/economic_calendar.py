@@ -45,24 +45,33 @@ async def get_economic_calendar(
 ) -> EconomicCalendarApiResponse:
     """
     Public economic calendar API endpoint.
-    Multi-layer resolution: Redis (5m TTL) -> PostgreSQL -> FMP Provider fallback.
+    Multi-layer resolution: Redis (5m TTL) -> PostgreSQL -> TradingView Provider sync.
     """
+    from fastapi import HTTPException
+
     redis_client: Optional[aioredis.Redis] = None
     try:
         redis_client = await get_redis_client()
     except Exception as exc:
         logger.warning(f"[EconomicCalendarAPI] Redis client error: {exc}")
 
-    service = EconomicCalendarService(db)
-    payload = await service.get_calendar_response(
-        days=days,
-        impact=impact,
-        currency=currency,
-        search=search,
-        redis=redis_client,
-    )
+    # Normalize filter values — treat "All" as no filter
+    impact_filter = None if (not impact or impact.lower() == "all") else impact
+    currency_filter = None if (not currency or currency.lower() == "all") else currency
 
-    return EconomicCalendarApiResponse(**payload)
+    try:
+        service = EconomicCalendarService(db)
+        payload = await service.get_calendar_response(
+            days=days,
+            impact=impact_filter,
+            currency=currency_filter,
+            search=search,
+            redis=redis_client,
+        )
+        return EconomicCalendarApiResponse(**payload)
+    except Exception as exc:
+        logger.error(f"[EconomicCalendarAPI] Unhandled error: {exc}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Economic calendar error: {str(exc)}")
 
 
 @router.get(
