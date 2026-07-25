@@ -157,6 +157,7 @@ _NOISE_KEYWORDS: tuple[str, ...] = (
     "gdp growth rate qoq prel", "gdp growth rate yoy prel",
     "gdp growth rate qoq final", "gdp growth rate yoy final",
     "gdp growth rate 2nd", "gdp price index",
+    "advance gdp yoy", "advance gdp y/y",
 
     # Low-value / Clutter events explicitly requested for removal
     "jobless claims 4-week", "4-week avg jobless", "4-week average jobless",
@@ -167,10 +168,12 @@ _NOISE_KEYWORDS: tuple[str, ...] = (
     "retail sales yoy", "retail sales y/y",
     "harmonised inflation", "harmonized inflation", "hicp",
     "ppi yoy", "ppi y/y",
+    "import prices yoy", "import prices y/y",
     "non defense goods orders", "ex defense",
     "market participants survey",
     "jgb purchase", "unicredit", "bot auction", "frn auction",
     "mba ", "mba purchase", "mba mortgage",
+
 
     # Niche EIA Oil Sub-Reports (Keep headline Crude Oil Inventories)
     "eia gasoline", "eia distillate", "eia refinery", "eia cushing",
@@ -255,12 +258,9 @@ _EXACT_TITLE_MAP: dict[str, str] = {
     "Durable Goods Orders MoM": "Durable Goods Orders m/m",
     "CBI Distributive Trades": "CBI Realized Sales",
     "CBI Distributive Trades Survey": "CBI Realized Sales",
-    "Loans to Households y/y": "Private Loans y/y",
-    "Loans to Households MoM": "Private Loans m/m",
-    "Loans to Companies y/y": "Corporate Loans y/y",
-    "Loans to Companies MoM": "Corporate Loans m/m",
-    "API Crude Oil Stock Change": "API Weekly Crude Oil Stock",
-    "API Crude Oil Stock": "API Weekly Crude Oil Stock",
+    "API Crude Oil Stock Change": "API Weekly Statistical Bulletin",
+    "API Crude Oil Stock": "API Weekly Statistical Bulletin",
+    "API Weekly Crude Oil Stock": "API Weekly Statistical Bulletin",
     "EIA Crude Oil Stocks Change": "Crude Oil Inventories",
     "EIA Crude Oil Stock Change": "Crude Oil Inventories",
     "EIA Crude Oil Stocks": "Crude Oil Inventories",
@@ -273,6 +273,7 @@ _EXACT_TITLE_MAP: dict[str, str] = {
     "House Price Index m/m": "FHFA House Price Index m/m",
     "CB Consumer Confidence": "Conference Board Consumer Confidence",
     "PPI m/m": "Producer Price Index (PPI) m/m",
+    "BoC Summary of Deliberations": "BOC Summary of Deliberations",
 }
 
 
@@ -316,7 +317,7 @@ def _format_title_forex_factory_style(title: str, country: str = "") -> str:
         prefix = f"{adj} " if adj else ""
         return f"{prefix}{tag}GDP {period}".strip()
 
-    # 4. Country-specific CPI: German Prelim CPI y/y, French Flash CPI m/m, Core PCE Price Index m/m, etc.
+    # 4. Country-specific CPI: German Prelim CPI y/y, French Flash CPI m/m, CPI m/m (Australia/AUD), etc.
     if "Inflation Rate" in t or "CPI" in t:
         period = "y/y" if ("YoY" in t or "y/y" in t) else ("m/m" if ("MoM" in t or "m/m" in t) else "")
         tag = ""
@@ -325,7 +326,10 @@ def _format_title_forex_factory_style(title: str, country: str = "") -> str:
         elif "Prel" in t or "Preliminary" in t:
             tag = "Prelim "
 
-        cpi_type = "Core CPI" if "Core" in t else "CPI"
+        cpi_type = "Core CPI" if "Core" in t else ("Trimmed Mean CPI" if "Trimmed" in t else "CPI")
+
+        if country in ("Australia", "AU"):
+            return f"{tag}{cpi_type} {period}".strip() if period else f"{tag}{cpi_type}".strip()
 
         if country in ("United States", "US"):
             return f"{cpi_type} {period}".strip() if period else f"{cpi_type}"
@@ -373,7 +377,7 @@ _HIGH_IMPACT_KEYWORDS: tuple[str, ...] = (
     "gdp", "advance gdp", "flash gdp", "prelim gdp",
 
     # Energy
-    "crude oil inventories", "api weekly crude oil stock",
+    "crude oil inventories",
 )
 
 # Substrings (case-insensitive) that classify an event as MEDIUM IMPACT (Orange)
@@ -397,7 +401,7 @@ _MEDIUM_IMPACT_KEYWORDS: tuple[str, ...] = (
     "rate vote", "mpc vote",
 
     # Central Bank Reports
-    "summary of deliberations", "economic outlook", "financial stability report",
+    "summary of deliberations", "boc summary of deliberations", "economic outlook", "financial stability report",
 )
 
 
@@ -413,7 +417,7 @@ def _determine_impact_level(formatted_title: str, default_impact: str) -> str:
         "mpc official bank rate votes", "rate votes",
         "official bank rate", "federal funds rate",
         "advance gdp q/q",
-        "core pce price index m/m",
+        "core pce price index m/m", "crude oil inventories",
     )):
         return "High"
 
@@ -424,11 +428,14 @@ def _determine_impact_level(formatted_title: str, default_impact: str) -> str:
         "advance gdp price index", "gdp price index",
         "unemployment claims", "initial jobless claims",
         "producer price index", "ppi m/m", "retail sales",
+        "boc summary of deliberations", "mortgage approvals",
+        "m4 money supply", "net lending to individuals",
     )):
         return "Medium"
 
     # 3. Low Impact 🟡 (All secondary events per Forex Factory screenshot)
     if any(k in t for k in (
+        "api weekly statistical bulletin", "api weekly crude",
         "rba assist gov hunter", "hunter speaks",
         "anz business confidence", "building approvals",
         "import prices", "export prices", "consumer confidence",
@@ -437,8 +444,8 @@ def _determine_impact_level(formatted_title: str, default_impact: str) -> str:
         "spanish flash cpi", "spanish flash gdp",
         "italian prelim gdp", "italian monthly unemployment",
         "prelim flash gdp", "unemployment rate",
-        "italian 10-year bond", "personal income", "personal spending",
-        "natural gas", "natural gas storage",
+        "italian 10-year bond", "german 10-y bond", "personal income", "personal spending",
+        "natural gas", "natural gas storage", "wage growth", "ubs economic",
     )):
         return "Low"
 
@@ -557,8 +564,10 @@ class TradingViewProvider(BaseEconomicCalendarProvider):
     def _normalize_events(self, raw_events: list[dict]) -> List[NormalizedEventDTO]:
         """
         Normalize TradingView raw events into provider-agnostic NormalizedEventDTO objects.
+        Collapse duplicate sub-series events into headline releases matching Forex Factory.
         """
         dtos: List[NormalizedEventDTO] = []
+        seen_keys: set[tuple[str, str, datetime]] = set()
 
         for item in raw_events:
             try:
@@ -610,6 +619,12 @@ class TradingViewProvider(BaseEconomicCalendarProvider):
                 title: str = _format_title_forex_factory_style(raw_title, country=country)
                 impact = _determine_impact_level(title, default_impact=impact)
 
+                # Batch deduplication: keep only one headline release per (title, currency, time)
+                dedup_key = (title, currency, event_dt)
+                if dedup_key in seen_keys:
+                    continue
+                seen_keys.add(dedup_key)
+
                 dto = NormalizedEventDTO(
                     provider_event_id=provider_event_id,
                     event_hash=event_hash,
@@ -633,6 +648,7 @@ class TradingViewProvider(BaseEconomicCalendarProvider):
                     },
                 )
                 dtos.append(dto)
+
 
             except Exception as exc:
                 logger.warning(f"[TradingViewProvider] Skipping malformed event: {exc} | Raw: {item}")
