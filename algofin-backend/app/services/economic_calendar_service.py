@@ -176,8 +176,11 @@ class EconomicCalendarService:
         db_events = await self.repo.get_filtered_events(
             days=days, impact=impact, currency=currency, search=search
         )
+        # If DB is empty, trigger a live sync first (no seed fallback needed with live provider)
         if not db_events:
-            await self.repo.seed_fallback_events_if_empty()
+            from datetime import date, timedelta
+            today = date.today()
+            await self.sync_events(today, today + timedelta(days=30), redis=redis)
             db_events = await self.repo.get_filtered_events(
                 days=days, impact=impact, currency=currency, search=search
             )

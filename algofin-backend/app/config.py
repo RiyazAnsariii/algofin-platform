@@ -91,12 +91,17 @@ class Settings(BaseSettings):
     sync_events_interval_minutes: int = 30
 
     # ── Economic Calendar ──────────────────────────────────────────
-    economic_calendar_provider: str = "macro"
+    # "tradingview" → free real data (no API key needed)
+    # "fmp"         → Financial Modeling Prep (paid plan required)
+    # "macro"       → structured template fallback
+    economic_calendar_provider: str = "tradingview"
     fmp_api_key: str = ""
     fmp_base_url: str = "https://financialmodelingprep.com/api/v3"
     economic_calendar_cache_ttl_seconds: int = 300
     fmp_connect_timeout_seconds: float = 5.0
     fmp_read_timeout_seconds: float = 10.0
+    tradingview_connect_timeout_seconds: float = 5.0
+    tradingview_read_timeout_seconds: float = 15.0
 
     # ── Staleness thresholds (minutes) ────────────────────────────
     # Must match plan.md Section 8
