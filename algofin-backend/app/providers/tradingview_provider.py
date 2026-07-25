@@ -329,6 +329,77 @@ def _format_title_forex_factory_style(title: str, country: str = "") -> str:
     return re.sub(r"\s+", " ", t).strip()
 
 
+# ── Forex Factory Impact Classifier ──────────────────────────────────────────
+# Substrings (case-insensitive) that automatically elevate an event to HIGH IMPACT (Red)
+_HIGH_IMPACT_KEYWORDS: tuple[str, ...] = (
+    # Central Bank
+    "rate decision", "interest rate", "federal funds rate", "official bank rate",
+    "monetary policy statement", "press conference", "fomc press conference",
+    "monetary policy report", "meeting minutes", "rate vote",
+    "speaks", "speech", "statement",
+
+    # Inflation
+    "cpi", "core cpi", "pce price index", "core pce price index",
+    "trimmed mean cpi",
+
+    # Employment
+    "non-farm payrolls", "nonfarm payrolls", "unemployment rate",
+    "initial jobless claims", "average hourly earnings",
+    "employment change", "adp employment",
+
+    # Growth
+    "gdp", "advance gdp", "flash gdp", "prelim gdp",
+
+    # Energy
+    "crude oil inventories", "api weekly crude oil stock",
+)
+
+# Substrings (case-insensitive) that classify an event as MEDIUM IMPACT (Orange)
+_MEDIUM_IMPACT_KEYWORDS: tuple[str, ...] = (
+    # Inflation
+    "ppi", "core ppi", "import prices", "export prices",
+
+    # Consumer
+    "retail sales", "personal income", "personal spending",
+    "consumer confidence", "consumer sentiment", "consumer spending",
+
+    # Manufacturing & Services PMIs
+    "pmi", "manufacturing pmi", "services pmi", "composite pmi",
+    "ism manufacturing", "ism services", "dallas fed", "richmond fed",
+    "empire state", "philadelphia fed", "philly fed", "chicago pmi",
+    "durable goods",
+
+    # Credit & Money Supply
+    "mortgage approvals", "m4 money supply", "m3 money supply",
+    "private loans", "corporate loans", "net lending", "money supply",
+
+    # Central Bank Reports
+    "summary of deliberations", "economic outlook", "financial stability report",
+)
+
+
+def _determine_impact_level(formatted_title: str, default_impact: str) -> str:
+    """Classify event impact as High, Medium, or Low based on Forex Factory standards."""
+    t = formatted_title.lower()
+
+    # Check High Impact first
+    for kw in _HIGH_IMPACT_KEYWORDS:
+        if kw in t:
+            return "High"
+
+    # Check Medium Impact next
+    for kw in _MEDIUM_IMPACT_KEYWORDS:
+        if kw in t:
+            return "Medium"
+
+    # Preserve provider High/Medium if present, otherwise Low
+    if default_impact in ("High", "Medium"):
+        return default_impact
+
+    return "Low"
+
+
+
 _TV_CALENDAR_URL = "https://economic-calendar.tradingview.com/events"
 
 _HEADERS = {
@@ -473,6 +544,7 @@ class TradingViewProvider(BaseEconomicCalendarProvider):
                     continue
 
                 title: str = _format_title_forex_factory_style(raw_title, country=country)
+                impact = _determine_impact_level(title, default_impact=impact)
 
                 dto = NormalizedEventDTO(
                     provider_event_id=provider_event_id,
