@@ -394,27 +394,31 @@ def _determine_impact_level(formatted_title: str, default_impact: str) -> str:
     """Classify event impact as High, Medium, or Low based on Forex Factory standards."""
     t = formatted_title.lower()
 
-    # 1. Force Low Impact (🟡 Change High/Medium -> Low for secondary indicators)
+    # 1. Force Low Impact (🟡 Secondary indicators & sub-reports)
     if any(k in t for k in (
         "core pce prices q/q", "pce prices q/q",
         "natural gas", "eia natural gas",
         "anz business confidence", "building approvals",
         "import prices", "export prices", "kof economic", "kof leading",
+        "wage growth", "ubs economic", "bond auction",
     )):
         return "Low"
 
-    # 2. Force Medium Impact (🟠 Change High -> Medium for secondary releases)
+    # 2. Force Medium Impact (🟠 Important secondary releases & oil inventories)
     if any(k in t for k in (
+        "api weekly crude oil stock", "crude oil inventories",
         "french consumer spending",
         "producer price index", "ppi m/m", "ppi y/y",
         "retail sales",
         "mpc vote", "rate vote",
         "personal income", "personal spending",
         "eurozone consumer confidence", "jpy consumer confidence",
+        "mortgage approvals", "mortgage lending", "boe consumer credit",
+        "net lending", "m4 money supply", "boc summary of deliberations",
     )):
         return "Medium"
 
-    # 3. High Impact (🔴 Keep High for headline releases)
+    # 3. High Impact (🔴 Headline market movers: Rates, Statements, CPI, NFP, Unemployment, GDP, FOMC)
     for kw in _HIGH_IMPACT_KEYWORDS:
         if kw in t:
             return "High"
@@ -429,6 +433,7 @@ def _determine_impact_level(formatted_title: str, default_impact: str) -> str:
         return default_impact
 
     return "Low"
+
 
 
 
