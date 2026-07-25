@@ -23,10 +23,17 @@ const CURRENCY_FLAGS: Record<string, string> = {
 
 // ── Impact Styling ────────────────────────────────────────────────────────────
 const IMPACT_CONFIG: Record<
-  ImpactLevel,
+  string,
   { label: string; bg: string; text: string; border: string; folderBg: string }
 > = {
   high: {
+    label: "High",
+    bg: "bg-rose-500/15",
+    text: "text-rose-400",
+    border: "border-rose-500/30",
+    folderBg: "bg-rose-500",
+  },
+  High: {
     label: "High",
     bg: "bg-rose-500/15",
     text: "text-rose-400",
@@ -40,7 +47,21 @@ const IMPACT_CONFIG: Record<
     border: "border-amber-500/30",
     folderBg: "bg-amber-500",
   },
+  Medium: {
+    label: "Medium",
+    bg: "bg-amber-500/15",
+    text: "text-amber-400",
+    border: "border-amber-500/30",
+    folderBg: "bg-amber-500",
+  },
   low: {
+    label: "Low",
+    bg: "bg-emerald-500/15",
+    text: "text-emerald-400",
+    border: "border-emerald-500/30",
+    folderBg: "bg-emerald-500",
+  },
+  Low: {
     label: "Low",
     bg: "bg-emerald-500/15",
     text: "text-emerald-400",
@@ -218,6 +239,8 @@ function generateFallbackEvents(): EconomicEvent[] {
       previous: item.previous,
       actual: item.actual,
       source: item.source,
+      status: "Upcoming",
+      last_updated_at: now.toISOString(),
       fetched_at: now.toISOString(),
       is_stale: false,
     };
@@ -258,13 +281,13 @@ export default function EventsPage() {
   const [events, setEvents] = useState<EconomicEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [daysAhead, setDaysAhead] = useState(7);
+  const [daysAhead, setDaysAhead] = useState(30);
   const [selectedImpact, setSelectedImpact] = useState<ImpactLevel | null>(null);
   const [selectedCurrency, setSelectedCurrency] = useState<string>("ALL");
   const [searchQuery, setSearchQuery] = useState("");
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
-  // Date Navigation State
+  // Date Navigation State (Active Selected View Date)
   const [viewDate, setViewDate] = useState<Date>(new Date());
 
   // Interactivity States
@@ -316,21 +339,57 @@ export default function EventsPage() {
     fetchEvents();
   }, [fetchEvents]);
 
-  // Combined Filtering Logic
-  const filteredEvents = useMemo(() => {
-    return events;
-  }, [events]);
+  // Single Day Events Filter for the active viewDate
+  const singleDayEvents = useMemo(() => {
+    const targetY = viewDate.getFullYear();
+    const targetM = viewDate.getMonth();
+    const targetD = viewDate.getDate();
 
-  // Grouping by Date
-  const groupedEvents = useMemo(() => {
-    const map = new Map<string, EconomicEvent[]>();
-    for (const e of filteredEvents) {
-      const dayKey = e.event_time.slice(0, 10);
-      if (!map.has(dayKey)) map.set(dayKey, []);
-      map.get(dayKey)!.push(e);
-    }
-    return map;
-  }, [filteredEvents]);
+    return events.filter((e) => {
+      const dt = new Date(e.event_time);
+      return (
+        dt.getFullYear() === targetY &&
+        dt.getMonth() === targetM &&
+        dt.getDate() === targetD
+      );
+    });
+  }, [events, viewDate]);
+
+  // Date Header Label (Today, Yesterday, Tomorrow, or Formatted Date)
+  const viewDateLabel = useMemo(() => {
+    const now = new Date();
+    const targetY = viewDate.getFullYear();
+    const targetM = viewDate.getMonth();
+    const targetD = viewDate.getDate();
+
+    const isToday =
+      now.getFullYear() === targetY &&
+      now.getMonth() === targetM &&
+      now.getDate() === targetD;
+
+    const yesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+    const isYesterday =
+      yesterday.getFullYear() === targetY &&
+      yesterday.getMonth() === targetM &&
+      yesterday.getDate() === targetD;
+
+    const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+    const isTomorrow =
+      tomorrow.getFullYear() === targetY &&
+      tomorrow.getMonth() === targetM &&
+      tomorrow.getDate() === targetD;
+
+    const formattedDate = viewDate.toLocaleDateString("en-US", {
+      weekday: "short",
+      month: "short",
+      day: "numeric",
+    });
+
+    if (isToday) return `Today: ${formattedDate}`;
+    if (isYesterday) return `Yesterday: ${formattedDate}`;
+    if (isTomorrow) return `Tomorrow: ${formattedDate}`;
+    return formattedDate;
+  }, [viewDate]);
 
   // Stats calculation from server response or fallback
   const highCount = summaryData.high || events.filter((e) => e.impact?.toLowerCase() === "high").length;
@@ -350,10 +409,10 @@ export default function EventsPage() {
   };
 
   const handlePrevDay = () => {
-    setViewDate((d) => new Date(d.getTime() - 86400_000));
+    setViewDate((d) => new Date(d.getFullYear(), d.getMonth(), d.getDate() - 1));
   };
   const handleNextDay = () => {
-    setViewDate((d) => new Date(d.getTime() + 86400_000));
+    setViewDate((d) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1));
   };
   const handleResetToday = () => {
     setViewDate(new Date());
@@ -452,28 +511,31 @@ export default function EventsPage() {
         <div className="bg-[#181d29] border-b border-white/10 px-4 py-2.5 flex flex-wrap items-center justify-between gap-3 text-xs">
           {/* Left Date Controls */}
           <div className="flex items-center gap-2">
-            <div className="flex items-center bg-black/40 border border-white/10 rounded-xl overflow-hidden">
+            <div className="flex items-center bg-black/40 border border-white/10 rounded-xl overflow-hidden shadow-inner">
               <button
                 type="button"
                 onClick={handlePrevDay}
-                className="px-2.5 py-1.5 hover:bg-white/10 text-muted-foreground hover:text-foreground transition-colors"
-                title="Previous Day"
+                className="px-3 py-1.5 hover:bg-white/10 text-muted-foreground hover:text-cyan-400 font-bold transition-colors border-r border-white/10"
+                title="Previous Day (◀)"
               >
                 ◀
               </button>
               <button
                 type="button"
                 onClick={handleResetToday}
-                className="px-3.5 py-1.5 font-bold text-foreground bg-cyan-500/10 text-cyan-400 border-x border-white/10 hover:bg-cyan-500/20 transition-all flex items-center gap-1.5"
+                className="px-4 py-1.5 font-bold text-foreground bg-cyan-500/10 text-cyan-400 hover:bg-cyan-500/20 transition-all flex items-center gap-2"
+                title="Click to reset to Today"
               >
-                <span>Today: {viewDate.toLocaleDateString("en-US", { month: "short", day: "numeric" })}</span>
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                <span>{viewDateLabel}</span>
+                {viewDateLabel.startsWith("Today") && (
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                )}
               </button>
               <button
                 type="button"
                 onClick={handleNextDay}
-                className="px-2.5 py-1.5 hover:bg-white/10 text-muted-foreground hover:text-foreground transition-colors"
-                title="Next Day"
+                className="px-3 py-1.5 hover:bg-white/10 text-muted-foreground hover:text-cyan-400 font-bold transition-colors border-l border-white/10"
+                title="Next Day (▶)"
               >
                 ▶
               </button>
@@ -554,31 +616,39 @@ export default function EventsPage() {
                     <p className="text-xs">Loading Economic Calendar...</p>
                   </td>
                 </tr>
-              ) : groupedEvents.size === 0 ? (
+              ) : singleDayEvents.length === 0 ? (
                 <tr>
                   <td colSpan={11} className="py-12 text-center text-muted-foreground">
-                    <p className="text-sm font-semibold text-foreground mb-1">No matching events found</p>
+                    <p className="text-sm font-semibold text-foreground mb-1">
+                      No scheduled events for {viewDate.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric" })}
+                    </p>
                     <p className="text-xs text-muted-foreground/70">
-                      Try clearing your search query or selecting "All Impacts".
+                      Use the ◀ and ▶ buttons above to navigate dates.
                     </p>
                   </td>
                 </tr>
               ) : (
-                Array.from(groupedEvents.entries()).map(([dateStr, dayEvents]) => (
-                  <Fragment key={dateStr}>
-                    {/* Day Separator Subheader Row (Matching ForexFactory date group) */}
-                    <tr className="bg-[#121620]/90 text-cyan-400 font-bold border-y border-white/8 text-[11px]">
-                      <td colSpan={11} className="py-1.5 px-4">
-                        <div className="flex items-center justify-between">
-                          <span>{formatDateHeader(dateStr)}</span>
-                          <span className="text-[10px] text-muted-foreground/70 font-normal">
-                            {dayEvents.length} events
-                          </span>
-                        </div>
-                      </td>
-                    </tr>
-                    {/* Event Rows for this Day */}
-                    {dayEvents.map((evt) => {
+                <>
+                  {/* Single Day Header Row */}
+                  <tr className="bg-[#121620]/90 text-cyan-400 font-bold border-y border-white/8 text-[11px]">
+                    <td colSpan={11} className="py-1.5 px-4">
+                      <div className="flex items-center justify-between">
+                        <span>
+                          {viewDate.toLocaleDateString("en-US", {
+                            weekday: "long",
+                            month: "short",
+                            day: "numeric",
+                            year: "numeric",
+                          })}
+                        </span>
+                        <span className="text-[10px] text-muted-foreground/70 font-normal">
+                          {singleDayEvents.length} scheduled event{singleDayEvents.length === 1 ? "" : "s"}
+                        </span>
+                      </div>
+                    </td>
+                  </tr>
+                  {/* Event Rows for Selected Single Day */}
+                  {singleDayEvents.map((evt) => {
                       const impactKey = (evt.impact || "low").toLowerCase() as ImpactLevel;
                       const impactCfg = IMPACT_CONFIG[impactKey] || IMPACT_CONFIG.low;
                       const isAlertOn = alertMap[evt.id];
@@ -726,16 +796,17 @@ export default function EventsPage() {
                         </tr>
                       );
                     })}
-                  </Fragment>
-                ))
-              )}
+                  </>
+                )}
             </tbody>
           </table>
         </div>
 
         {/* Footer info bar */}
         <div className="bg-[#121620] border-t border-white/10 px-4 py-2 flex items-center justify-between text-[11px] text-muted-foreground/70">
-          <span>Showing {filteredEvents.length} economic events</span>
+          <span>
+            Showing {singleDayEvents.length} event{singleDayEvents.length === 1 ? "" : "s"} for {viewDate.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+          </span>
           <span>Timezone: {Intl.DateTimeFormat().resolvedOptions().timeZone}</span>
         </div>
       </div>
