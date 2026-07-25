@@ -129,12 +129,11 @@ _NOISE_KEYWORDS: tuple[str, ...] = (
     "foreign bond investment", "stock investment by foreigner",
     "olo auction", "btf auction", "atb auction", "gilt tender",
     "richmond fed shipments", "richmond fed services",
-    "dallas fed services",
+    "dallas fed services", "italian 10-year bond", "italian bond auction",
 
     # Housing noise (Keep FHFA House Price Index y/y / m/m)
     "building permits yoy", "building permits mom",
     "private house approvals",
-    "import prices", "export prices",
     "30-year mortgage", "15-year mortgage", "mortgage rate",
 
     # Sentiment clutter (keep headline Consumer Confidence & Ifo Business Climate)
@@ -162,7 +161,6 @@ _NOISE_KEYWORDS: tuple[str, ...] = (
     # Low-value / Clutter events explicitly requested for removal
     "jobless claims 4-week", "4-week avg jobless", "4-week average jobless",
     "continuing jobless claims",
-    "core pce prices q/q", "pce prices q/q",
     "average weekly earnings",
     "industrial production",
     "industrial sales",
@@ -190,13 +188,12 @@ _NOISE_KEYWORDS: tuple[str, ...] = (
 # Exact lowercase title matches to drop
 _NOISE_EXACT_TITLES: frozenset[str] = frozenset({
     "building permits",
-    "import prices",
-    "export prices",
     "tourist arrivals",
     "car production yoy",
     "continuing jobless claims",
     "boc market participants survey",
     "australian cpi",
+    "italian 10-year bond auction",
 })
 
 
@@ -265,11 +262,8 @@ _EXACT_TITLE_MAP: dict[str, str] = {
     "House Price Index y/y": "FHFA House Price Index y/y",
     "House Price Index m/m": "FHFA House Price Index m/m",
     "CB Consumer Confidence": "Conference Board Consumer Confidence",
+    "PPI m/m": "Producer Price Index (PPI) m/m",
 }
-
-
-
-
 
 
 def _format_title_forex_factory_style(title: str, country: str = "") -> str:
@@ -280,12 +274,20 @@ def _format_title_forex_factory_style(title: str, country: str = "") -> str:
     t = title
     adj = _COUNTRY_ADJECTIVES.get(country, "")
 
-    # 1. Household Consumption -> French Consumer Spending m/m, etc.
+    # 1. Household Consumption / Consumer Spending -> French Consumer Spending m/m, etc.
     if "Household Consumption" in t:
         period = "m/m" if ("MoM" in t or "m/m" in t) else ("y/y" if ("YoY" in t or "y/y" in t) else "")
         return f"{adj} Consumer Spending {period}".strip() if adj else f"Consumer Spending {period}".strip()
 
-    # 2. Country-specific GDP: French Flash GDP q/q, German Prelim GDP q/q, Advance GDP q/q, etc.
+    # 2. Consumer Confidence with country prefix
+    if t.strip() == "Consumer Confidence" or t.strip() == "Consumer Confidence Indicator":
+        if country in ("Eurozone", "EU", "European Union"):
+            return "Eurozone Consumer Confidence"
+        if country in ("Japan", "JP"):
+            return "JPY Consumer Confidence"
+        return f"{adj} Consumer Confidence".strip() if adj else "Consumer Confidence"
+
+    # 3. Country-specific GDP: French Flash GDP q/q, US Advance GDP q/q, Eurozone Flash GDP q/q, etc.
     if "GDP" in t:
         period = "q/q" if ("QoQ" in t or "q/q" in t) else ("y/y" if ("YoY" in t or "y/y" in t) else ("m/m" if ("MoM" in t or "m/m" in t) else ""))
         tag = ""
@@ -298,13 +300,13 @@ def _format_title_forex_factory_style(title: str, country: str = "") -> str:
 
         if country in ("United States", "US"):
             if tag == "Advance ":
-                return f"Advance GDP {period}".strip()
-            return f"{tag}GDP {period}".strip() if tag else f"GDP {period}".strip()
+                return f"US Advance GDP {period}".strip()
+            return f"US {tag}GDP {period}".strip() if tag else f"US GDP {period}".strip()
 
         prefix = f"{adj} " if adj else ""
         return f"{prefix}{tag}GDP {period}".strip()
 
-    # 3. Country-specific CPI: German Prelim CPI y/y, French Flash CPI m/m, US Core CPI m/m, etc.
+    # 4. Country-specific CPI: German Prelim CPI y/y, French Flash CPI m/m, US Core CPI m/m, etc.
     if "Inflation Rate" in t or "CPI" in t:
         period = "y/y" if ("YoY" in t or "y/y" in t) else ("m/m" if ("MoM" in t or "m/m" in t) else "")
         tag = ""
@@ -321,11 +323,11 @@ def _format_title_forex_factory_style(title: str, country: str = "") -> str:
         prefix = f"{adj} " if adj else ""
         return f"{prefix}{tag}{cpi_type} {period}".strip()
 
-    # 4. Country-prefixed Unemployment Rate for non-US
+    # 5. Country-prefixed Unemployment Rate for non-US
     if t.strip() == "Unemployment Rate" and adj and country not in ("United States", "US"):
         return f"{adj} Unemployment Rate"
 
-    # 5. Standard Forex Factory format conversions
+    # 6. Standard Forex Factory format conversions
     t = re.sub(r"\bGDP Growth Rate\b", "GDP", t)
     t = re.sub(r"\bMoM\b", "m/m", t)
     t = re.sub(r"\bYoY\b", "y/y", t)
@@ -344,7 +346,7 @@ _HIGH_IMPACT_KEYWORDS: tuple[str, ...] = (
     # Central Bank
     "rate decision", "interest rate", "federal funds rate", "official bank rate",
     "monetary policy statement", "press conference", "fomc press conference",
-    "monetary policy report", "meeting minutes", "rate vote",
+    "monetary policy report", "meeting minutes",
     "speaks", "speech", "statement",
 
     # Inflation
@@ -366,7 +368,7 @@ _HIGH_IMPACT_KEYWORDS: tuple[str, ...] = (
 # Substrings (case-insensitive) that classify an event as MEDIUM IMPACT (Orange)
 _MEDIUM_IMPACT_KEYWORDS: tuple[str, ...] = (
     # Inflation
-    "ppi", "core ppi", "import prices", "export prices",
+    "ppi", "core ppi", "producer price index",
 
     # Consumer
     "retail sales", "personal income", "personal spending",
@@ -381,6 +383,7 @@ _MEDIUM_IMPACT_KEYWORDS: tuple[str, ...] = (
     # Credit & Money Supply
     "mortgage approvals", "m4 money supply", "m3 money supply",
     "private loans", "corporate loans", "net lending", "money supply",
+    "rate vote", "mpc vote",
 
     # Central Bank Reports
     "summary of deliberations", "economic outlook", "financial stability report",
@@ -391,12 +394,32 @@ def _determine_impact_level(formatted_title: str, default_impact: str) -> str:
     """Classify event impact as High, Medium, or Low based on Forex Factory standards."""
     t = formatted_title.lower()
 
-    # Check High Impact first
+    # 1. Force Low Impact (🟡 Change High/Medium -> Low for secondary indicators)
+    if any(k in t for k in (
+        "core pce prices q/q", "pce prices q/q",
+        "natural gas", "eia natural gas",
+        "anz business confidence", "building approvals",
+        "import prices", "export prices", "kof economic", "kof leading",
+    )):
+        return "Low"
+
+    # 2. Force Medium Impact (🟠 Change High -> Medium for secondary releases)
+    if any(k in t for k in (
+        "french consumer spending",
+        "producer price index", "ppi m/m", "ppi y/y",
+        "retail sales",
+        "mpc vote", "rate vote",
+        "personal income", "personal spending",
+        "eurozone consumer confidence", "jpy consumer confidence",
+    )):
+        return "Medium"
+
+    # 3. High Impact (🔴 Keep High for headline releases)
     for kw in _HIGH_IMPACT_KEYWORDS:
         if kw in t:
             return "High"
 
-    # Check Medium Impact next
+    # 4. Medium Impact
     for kw in _MEDIUM_IMPACT_KEYWORDS:
         if kw in t:
             return "Medium"
@@ -406,6 +429,7 @@ def _determine_impact_level(formatted_title: str, default_impact: str) -> str:
         return default_impact
 
     return "Low"
+
 
 
 
