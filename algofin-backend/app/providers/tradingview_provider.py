@@ -236,29 +236,41 @@ def _format_title_forex_factory_style(title: str, country: str = "") -> str:
         period = "m/m" if ("MoM" in t or "m/m" in t) else ("y/y" if ("YoY" in t or "y/y" in t) else "")
         return f"{adj} Consumer Spending {period}".strip() if adj else f"Consumer Spending {period}".strip()
 
-    # 2. Country-specific Flash / Advance / Prelim GDP
+    # 2. Country-specific GDP: French Flash GDP q/q, German Prelim GDP q/q, Advance GDP q/q, etc.
     if "GDP" in t:
+        period = "q/q" if ("QoQ" in t or "q/q" in t) else ("y/y" if ("YoY" in t or "y/y" in t) else ("m/m" if ("MoM" in t or "m/m" in t) else ""))
+        tag = ""
         if "Flash" in t:
-            if "QoQ" in t or "q/q" in t:
-                return f"{adj} Flash GDP q/q" if adj else "Flash GDP q/q"
-            if "YoY" in t or "y/y" in t:
-                return f"{adj} Flash GDP y/y" if adj else "Flash GDP y/y"
-        if "Adv" in t or "Advance" in t:
-            if "QoQ" in t or "q/q" in t:
-                return "Advance GDP q/q" if (country in ("United States", "US")) else (f"{adj} Advance GDP q/q" if adj else "Advance GDP q/q")
-            if "YoY" in t or "y/y" in t:
-                return "Advance GDP y/y" if (country in ("United States", "US")) else (f"{adj} Advance GDP y/y" if adj else "Advance GDP y/y")
-        if "Prel" in t or "Preliminary" in t:
-            if "QoQ" in t or "q/q" in t:
-                return f"{adj} Prelim GDP q/q" if adj else "Prelim GDP q/q"
-            if "YoY" in t or "y/y" in t:
-                return f"{adj} Prelim GDP y/y" if adj else "Prelim GDP y/y"
+            tag = "Flash "
+        elif "Adv" in t or "Advance" in t:
+            tag = "Advance "
+        elif "Prel" in t or "Preliminary" in t:
+            tag = "Prelim "
 
-    # 3. Country-specific Prelim CPI / Inflation
+        if country in ("United States", "US"):
+            if tag == "Advance ":
+                return f"Advance GDP {period}".strip()
+            return f"{tag}GDP {period}".strip() if tag else f"GDP {period}".strip()
+
+        prefix = f"{adj} " if adj else ""
+        return f"{prefix}{tag}GDP {period}".strip()
+
+    # 3. Country-specific CPI: German Prelim CPI y/y, French Flash CPI m/m, US Core CPI m/m, etc.
     if "Inflation Rate" in t or "CPI" in t:
-        if "Prel" in t or "Preliminary" in t:
-            period = "y/y" if ("YoY" in t or "y/y" in t) else ("m/m" if ("MoM" in t or "m/m" in t) else "")
-            return f"{adj} Prelim CPI {period}".strip() if adj else f"Prelim CPI {period}".strip()
+        period = "y/y" if ("YoY" in t or "y/y" in t) else ("m/m" if ("MoM" in t or "m/m" in t) else "")
+        tag = ""
+        if "Flash" in t:
+            tag = "Flash "
+        elif "Prel" in t or "Preliminary" in t:
+            tag = "Prelim "
+
+        cpi_type = "Core CPI" if "Core" in t else "CPI"
+
+        if country in ("United States", "US"):
+            return f"US {cpi_type} {period}".strip() if period else f"US {cpi_type}"
+
+        prefix = f"{adj} " if adj else ""
+        return f"{prefix}{tag}{cpi_type} {period}".strip()
 
     # 4. Country-prefixed Unemployment Rate for non-US
     if t.strip() == "Unemployment Rate" and adj and country not in ("United States", "US"):
