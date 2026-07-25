@@ -176,6 +176,12 @@ _NOISE_KEYWORDS: tuple[str, ...] = (
     "eia gasoline", "eia distillate", "eia refinery", "eia cushing",
     "eia heating oil", "eia crude oil imports", "eia crude oil exports",
 
+    # Holidays / Bank Holidays / National Days (No market data metrics)
+    "national day", "bank holiday", "public holiday", "day off",
+    "independence day", "constitution day", "republic day",
+    "liberation day", "anniversary of", "civic holiday",
+    "summer bank holiday", "holiday", "swiss national day",
+
     # Miscellaneous low-value & China clutter
     "tourist arrivals", "car production", "vehicle production",
     "real consumer spending qoq", "real personal spending",
@@ -594,10 +600,11 @@ class TradingViewProvider(BaseEconomicCalendarProvider):
                 event_hash = hashlib.sha256(hash_input).hexdigest()
 
                 raw_title: str = item.get("title") or item.get("indicator") or "Unknown Event"
+                category: str = str(item.get("category", "")).lower()
                 source: str = item.get("source") or "TradingView"
 
-                # Drop noisy / low-value events (regional CPI, bond auctions, etc.)
-                if _is_noise_event(raw_title):
+                # Drop noisy / low-value events & holidays (Swiss National Day, Bank Holidays, etc.)
+                if "holiday" in category or _is_noise_event(raw_title):
                     continue
 
                 title: str = _format_title_forex_factory_style(raw_title, country=country)
