@@ -188,12 +188,16 @@ _NOISE_KEYWORDS: tuple[str, ...] = (
 # Exact lowercase title matches to drop
 _NOISE_EXACT_TITLES: frozenset[str] = frozenset({
     "building permits",
+    "import prices",
+    "export prices",
+    "export prices q/q",
     "tourist arrivals",
     "car production yoy",
     "continuing jobless claims",
     "boc market participants survey",
     "australian cpi",
     "italian 10-year bond auction",
+    "balance of trade",
 })
 
 
@@ -279,15 +283,15 @@ def _format_title_forex_factory_style(title: str, country: str = "") -> str:
         period = "m/m" if ("MoM" in t or "m/m" in t) else ("y/y" if ("YoY" in t or "y/y" in t) else "")
         return f"{adj} Consumer Spending {period}".strip() if adj else f"Consumer Spending {period}".strip()
 
-    # 2. Consumer Confidence with country prefix
+    # 2. Consumer Confidence: Eurozone Consumer Confidence, or generic Consumer Confidence (Japan/US)
     if t.strip() == "Consumer Confidence" or t.strip() == "Consumer Confidence Indicator":
         if country in ("Eurozone", "EU", "European Union"):
             return "Eurozone Consumer Confidence"
         if country in ("Japan", "JP"):
-            return "JPY Consumer Confidence"
+            return "Consumer Confidence"
         return f"{adj} Consumer Confidence".strip() if adj else "Consumer Confidence"
 
-    # 3. Country-specific GDP: French Flash GDP q/q, US Advance GDP q/q, Eurozone Flash GDP q/q, etc.
+    # 3. Country-specific GDP: French Flash GDP q/q, Advance GDP q/q (US), Eurozone Flash GDP q/q, etc.
     if "GDP" in t:
         period = "q/q" if ("QoQ" in t or "q/q" in t) else ("y/y" if ("YoY" in t or "y/y" in t) else ("m/m" if ("MoM" in t or "m/m" in t) else ""))
         tag = ""
@@ -300,13 +304,13 @@ def _format_title_forex_factory_style(title: str, country: str = "") -> str:
 
         if country in ("United States", "US"):
             if tag == "Advance ":
-                return f"US Advance GDP {period}".strip()
-            return f"US {tag}GDP {period}".strip() if tag else f"US GDP {period}".strip()
+                return f"Advance GDP {period}".strip()
+            return f"{tag}GDP {period}".strip() if tag else f"GDP {period}".strip()
 
         prefix = f"{adj} " if adj else ""
         return f"{prefix}{tag}GDP {period}".strip()
 
-    # 4. Country-specific CPI: German Prelim CPI y/y, French Flash CPI m/m, US Core CPI m/m, etc.
+    # 4. Country-specific CPI: German Prelim CPI y/y, French Flash CPI m/m, Core PCE Price Index m/m, etc.
     if "Inflation Rate" in t or "CPI" in t:
         period = "y/y" if ("YoY" in t or "y/y" in t) else ("m/m" if ("MoM" in t or "m/m" in t) else "")
         tag = ""
@@ -318,7 +322,7 @@ def _format_title_forex_factory_style(title: str, country: str = "") -> str:
         cpi_type = "Core CPI" if "Core" in t else "CPI"
 
         if country in ("United States", "US"):
-            return f"US {cpi_type} {period}".strip() if period else f"US {cpi_type}"
+            return f"{cpi_type} {period}".strip() if period else f"{cpi_type}"
 
         prefix = f"{adj} " if adj else ""
         return f"{prefix}{tag}{cpi_type} {period}".strip()
@@ -338,6 +342,7 @@ def _format_title_forex_factory_style(title: str, country: str = "") -> str:
 
     # Clean up whitespace
     return re.sub(r"\s+", " ", t).strip()
+
 
 
 # ── Forex Factory Impact Classifier ──────────────────────────────────────────
