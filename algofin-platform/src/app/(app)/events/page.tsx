@@ -24,49 +24,61 @@ const CURRENCY_FLAGS: Record<string, string> = {
 // ── Impact Styling ────────────────────────────────────────────────────────────
 const IMPACT_CONFIG: Record<
   string,
-  { label: string; bg: string; text: string; border: string; folderBg: string }
+  { label: string; bg: string; text: string; border: string; folderBg: string; folderFill: string; folderColor: string }
 > = {
   high: {
     label: "High",
-    bg: "bg-rose-500/15",
-    text: "text-rose-400",
-    border: "border-rose-500/30",
-    folderBg: "bg-rose-500",
+    bg: "bg-red-500/15",
+    text: "text-red-400",
+    border: "border-red-500/30",
+    folderBg: "bg-red-500",
+    folderFill: "#ef4444",
+    folderColor: "text-red-400 hover:bg-red-500/20 border-red-500/30",
   },
   High: {
     label: "High",
-    bg: "bg-rose-500/15",
-    text: "text-rose-400",
-    border: "border-rose-500/30",
-    folderBg: "bg-rose-500",
+    bg: "bg-red-500/15",
+    text: "text-red-400",
+    border: "border-red-500/30",
+    folderBg: "bg-red-500",
+    folderFill: "#ef4444",
+    folderColor: "text-red-400 hover:bg-red-500/20 border-red-500/30",
   },
   medium: {
     label: "Medium",
-    bg: "bg-amber-500/15",
-    text: "text-amber-400",
-    border: "border-amber-500/30",
-    folderBg: "bg-amber-500",
+    bg: "bg-[#7c2d12]/30",
+    text: "text-[#f97316]",
+    border: "border-[#9a3412]/50",
+    folderBg: "bg-[#b45309]",
+    folderFill: "#b45309",
+    folderColor: "text-[#d97706] hover:bg-[#b45309]/20 border-[#b45309]/30",
   },
   Medium: {
     label: "Medium",
-    bg: "bg-amber-500/15",
-    text: "text-amber-400",
-    border: "border-amber-500/30",
-    folderBg: "bg-amber-500",
+    bg: "bg-[#7c2d12]/30",
+    text: "text-[#f97316]",
+    border: "border-[#9a3412]/50",
+    folderBg: "bg-[#b45309]",
+    folderFill: "#b45309",
+    folderColor: "text-[#d97706] hover:bg-[#b45309]/20 border-[#b45309]/30",
   },
   low: {
     label: "Low",
-    bg: "bg-emerald-500/15",
-    text: "text-emerald-400",
-    border: "border-emerald-500/30",
-    folderBg: "bg-emerald-500",
+    bg: "bg-yellow-500/15",
+    text: "text-yellow-400",
+    border: "border-yellow-500/30",
+    folderBg: "bg-yellow-400",
+    folderFill: "#eab308",
+    folderColor: "text-yellow-400 hover:bg-yellow-500/20 border-yellow-500/30",
   },
   Low: {
     label: "Low",
-    bg: "bg-emerald-500/15",
-    text: "text-emerald-400",
-    border: "border-emerald-500/30",
-    folderBg: "bg-emerald-500",
+    bg: "bg-yellow-500/15",
+    text: "text-yellow-400",
+    border: "border-yellow-500/30",
+    folderBg: "bg-yellow-400",
+    folderFill: "#eab308",
+    folderColor: "text-yellow-400 hover:bg-yellow-500/20 border-yellow-500/30",
   },
 };
 
@@ -735,10 +747,19 @@ export default function EventsPage() {
                                 setActiveModalEvent(evt);
                                 setModalTab("detail");
                               }}
-                              className="p-1 rounded-lg text-muted-foreground/60 hover:text-cyan-400 hover:bg-cyan-500/10 transition-colors"
-                              title="View Event Details"
+                              className={`p-1 rounded-lg border transition-all flex items-center justify-center mx-auto ${impactCfg.folderColor}`}
+                              title={`View Details (${impactCfg.label} Impact)`}
                             >
-                              📁
+                              <svg
+                                width="14"
+                                height="14"
+                                viewBox="0 0 24 24"
+                                fill={impactCfg.folderFill}
+                                stroke="currentColor"
+                                strokeWidth="1.5"
+                              >
+                                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+                              </svg>
                             </button>
                           </td>
 
