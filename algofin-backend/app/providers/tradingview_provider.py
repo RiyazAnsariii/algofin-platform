@@ -249,12 +249,16 @@ def _is_noise_event(title: str) -> bool:
     if t == "money supply":
         return True
     # Permanently drop generic House Price Index and y/y (keep HPI m/m & S&P/CS Composite-20 HPI y/y)
-    if t in ("house price index", "house price index y/y", "s&p/case-shiller home price m/m"):
+    if ("house price index" in t or "home price" in t) and not ("composite-20" in t or "hpi m/m" in t):
+        return True
+    # Permanently drop regional European Retail Sales (Spanish, Italian, Austrian, Portuguese, Dutch, Greek)
+    if "retail sales" in t and any(c in t for c in ("spanish", "italian", "austrian", "portuguese", "dutch", "greek", "belgian", "irish")):
         return True
     for kw in _NOISE_KEYWORDS:
         if kw in t:
             return True
     return t in _NOISE_EXACT_TITLES
+
 
 
 
