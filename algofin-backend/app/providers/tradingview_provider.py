@@ -188,6 +188,14 @@ _NOISE_KEYWORDS: tuple[str, ...] = (
     "liberation day", "anniversary of", "civic holiday",
     "summer bank holiday", "holiday", "swiss national day",
 
+    # Permanent removals identified from Forex Factory screenshots
+    "french consumer confidence",
+    "atb auction", "atb 20", "gilt tender", "treasury gilt",
+    "btp", "btp€i", "unemployment benefit claims", "jobseekers total",
+    "retail inventories", "redbook", "case-shiller home price m/m",
+    "s&p/case-shiller home price m/m", "richmond fed manufacturing shipments",
+    "richmond manufacturing shipments",
+
     # Miscellaneous low-value & China clutter
     "tourist arrivals", "car production", "vehicle production",
     "real consumer spending qoq", "real personal spending",
@@ -215,6 +223,16 @@ _NOISE_EXACT_TITLES: frozenset[str] = frozenset({
     "trimmed mean cpi",
     "trimmed mean cpi y/y",
     "trimmed mean cpi yoy",
+    "french consumer confidence",
+    "house price index",
+    "house price index y/y",
+    "money supply",
+    "redbook y/y",
+    "redbook",
+    "retail inventories ex autos m/m advance",
+    "richmond fed manufacturing shipments index",
+    "jobseekers total",
+    "unemployment benefit claims",
 })
 
 
@@ -227,10 +245,17 @@ def _is_noise_event(title: str) -> bool:
     # Permanently drop generic Trimmed Mean CPI & Trimmed Mean CPI y/y (keep only m/m / q/q)
     if "trimmed mean cpi" in t and not ("m/m" in t or "q/q" in t or "mom" in t or "qoq" in t):
         return True
+    # Permanently drop generic Money Supply (keep M4 Money Supply m/m & M3 Money Supply y/y)
+    if t == "money supply":
+        return True
+    # Permanently drop generic House Price Index and y/y (keep HPI m/m & S&P/CS Composite-20 HPI y/y)
+    if t in ("house price index", "house price index y/y", "s&p/case-shiller home price m/m"):
+        return True
     for kw in _NOISE_KEYWORDS:
         if kw in t:
             return True
     return t in _NOISE_EXACT_TITLES
+
 
 
 
