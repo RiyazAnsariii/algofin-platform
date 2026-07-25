@@ -22,36 +22,16 @@ def upgrade() -> None:
     conn = op.get_bind()
     is_pg = conn.dialect.name == "postgresql"
 
-    # 1. Enable pg_trgm extension (idempotent)
     if is_pg:
+        # 1. Enable pg_trgm extension (idempotent)
         op.execute("CREATE EXTENSION IF NOT EXISTS pg_trgm;")
 
-    # 2. Create table only if it does not exist at all
-    if is_pg:
-        op.execute("""
-            CREATE TABLE IF NOT EXISTS economic_events (
-                id UUID NOT NULL DEFAULT gen_random_uuid(),
-                source VARCHAR(100) NOT NULL DEFAULT 'FMP',
-                provider_event_id VARCHAR(100),
-                event_hash VARCHAR(64) NOT NULL DEFAULT '',
-                title VARCHAR(500) NOT NULL DEFAULT '',
-                country VARCHAR(100) NOT NULL DEFAULT '',
-                currency VARCHAR(10) NOT NULL DEFAULT '',
-                impact VARCHAR(10) NOT NULL DEFAULT '',
-                event_time_utc TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
-                actual VARCHAR(100),
-                forecast VARCHAR(100),
-                previous VARCHAR(100),
-                raw_payload JSON,
-                revision_count INTEGER NOT NULL DEFAULT 0,
-                last_updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
-                created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
-                PRIMARY KEY (id)
-            );
-        """)
+        # 2. Wipe old seed/fake data so we start fresh with real TradingView data.
+        #    economic_events is a pure cache table — it is repopulated automatically
+        #    on every startup and every 30-minute sync cycle.
+        op.execute("TRUNCATE TABLE economic_events;")
 
-        # 3. Add any columns that may be missing in older table versions
-        #    ADD COLUMN IF NOT EXISTS is idempotent — safe to run multiple times
+        # 3. Add missing columns (idempotent — ADD COLUMN IF NOT EXISTS)
         op.execute("ALTER TABLE economic_events ADD COLUMN IF NOT EXISTS source VARCHAR(100) NOT NULL DEFAULT 'FMP';")
         op.execute("ALTER TABLE economic_events ADD COLUMN IF NOT EXISTS provider_event_id VARCHAR(100);")
         op.execute("ALTER TABLE economic_events ADD COLUMN IF NOT EXISTS event_hash VARCHAR(64) NOT NULL DEFAULT '';")
@@ -68,7 +48,7 @@ def upgrade() -> None:
         op.execute("ALTER TABLE economic_events ADD COLUMN IF NOT EXISTS last_updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now();")
         op.execute("ALTER TABLE economic_events ADD COLUMN IF NOT EXISTS created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now();")
 
-        # 4. Add unique constraints if not already present (ignore errors if they exist)
+        # 4. Add unique constraints (now safe because table is empty after TRUNCATE)
         op.execute("""
             DO $$
             BEGIN
@@ -96,7 +76,7 @@ def upgrade() -> None:
             END $$;
         """)
 
-        # 5. Create all indexes (IF NOT EXISTS — fully idempotent)
+        # 5. Create all indexes (IF NOT EXISTS — idempotent)
         op.execute("CREATE INDEX IF NOT EXISTS ix_economic_events_source ON economic_events (source);")
         op.execute("CREATE INDEX IF NOT EXISTS ix_economic_events_provider_event_id ON economic_events (provider_event_id);")
         op.execute("CREATE INDEX IF NOT EXISTS ix_economic_events_event_hash ON economic_events (event_hash);")
