@@ -17,7 +17,11 @@ from typing import List, Optional, Tuple
 import httpx
 
 from app.providers.base import BaseEconomicCalendarProvider, NormalizedEventDTO
-from app.events.blacklist import is_event_blacklisted
+from app.events.blacklist import (
+    is_event_blacklisted,
+    is_forced_high_impact,
+    is_forced_medium_impact,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -316,8 +320,19 @@ _EXACT_TITLE_MAP: dict[str, str] = {
     "Net Lending to Individuals": "Net Lending to Individuals m/m",
     "Net Lending to Individuals MoM": "Net Lending to Individuals m/m",
     "German 10-Yr Bond Auction": "German 10-y Bond Auction",
-    "German 10-Year Bond Auction": "German 10-y Bond Auction",
     "BoE Monetary Policy Report": "BOE Monetary Policy Report",
+    "BoJ Interest Rate Decision": "BOJ Policy Rate",
+    "BoJ Quarterly Outlook Report": "BOJ Outlook Report",
+    "BoJ Gov Ueda Speaks": "BOJ Press Conference",
+    "NBS Manufacturing PMI": "Manufacturing PMI",
+    "NBS Non Manufacturing PMI": "Non-Manufacturing PMI",
+    "Nationwide Housing Prices m/m": "Nationwide HPI m/m",
+    "Eurozone Flash Core CPI y/y": "Core CPI Flash Estimate y/y",
+    "Eurozone Flash CPI y/y": "CPI Flash Estimate y/y",
+    "Canadian GDP m/m": "GDP m/m",
+    "Michigan Consumer Sentiment Final": "Revised UoM Consumer Sentiment",
+    "Michigan 5 Year Inflation Expectations Final": "Revised UoM Inflation Expectations",
+    "Unemployment Change": "German Unemployment Change",
     "BoE Monetary Policy Summary": "Monetary Policy Summary",
     "Monetary Policy Summary": "Monetary Policy Summary",
     "BoE MPC Rate Votes": "MPC Official Bank Rate Votes",
@@ -376,6 +391,18 @@ def _format_title_forex_factory_style(title: str, country: str = "") -> str:
     """Transform TradingView raw titles into standard Forex Factory style names."""
     if title in _EXACT_TITLE_MAP:
         return _EXACT_TITLE_MAP[title]
+
+    t_clean = title.strip()
+    t_lower = t_clean.lower()
+
+    if "ueda" in t_lower and ("speak" in t_lower or "speech" in t_lower):
+        return "BOJ Press Conference"
+    if "core" in t_lower and "flash" in t_lower and ("cpi" in t_lower or "inflation" in t_lower):
+        return "Core CPI Flash Estimate y/y"
+    if "flash" in t_lower and ("cpi" in t_lower or "inflation" in t_lower):
+        return "CPI Flash Estimate y/y"
+    if country in ("Canada", "CA") and "gdp" in t_lower:
+        return "GDP m/m"
 
     t = title
     adj = _COUNTRY_ADJECTIVES.get(country, "")
@@ -452,6 +479,11 @@ def _format_title_forex_factory_style(title: str, country: str = "") -> str:
 # ── Forex Factory Impact Classifier ──────────────────────────────────────────
 def _determine_impact_level(formatted_title: str, default_impact: str) -> str:
     """Classify event impact as High (🔴), Medium (🟠), or Low (🟡) matching Forex Factory screenshots 1:1."""
+    if is_forced_high_impact(formatted_title):
+        return "High"
+    if is_forced_medium_impact(formatted_title):
+        return "Medium"
+
     t = formatted_title.lower()
 
     # 1. High Impact 🔴 (Strict Red folder events per Forex Factory screenshots)
@@ -462,7 +494,9 @@ def _determine_impact_level(formatted_title: str, default_impact: str) -> str:
         "mpc official bank rate votes", "official bank rate", "federal funds rate",
         "advance gdp q/q", "core pce price index m/m",
         "trimmed mean cpi", "non-farm payrolls", "nonfarm payrolls",
-    )) or (t in ("cpi m/m", "cpi y/y", "cpi q/q") or t.startswith("cpi ")):
+        "boj policy rate", "boj interest rate decision", "boj outlook report",
+        "boj press conference", "gdp m/m",
+    )):
         return "High"
 
     # 2. Medium Impact 🟠 (Strict Orange folder events per Forex Factory screenshots)
@@ -471,6 +505,8 @@ def _determine_impact_level(formatted_title: str, default_impact: str) -> str:
         "german prelim cpi", "german prelim gdp",
         "advance gdp price index", "unemployment claims",
         "initial jobless claims", "producer price index", "ppi m/m", "retail sales",
+        "tokyo core cpi", "core cpi flash estimate", "cpi flash estimate",
+        "employment cost index",
     )):
         return "Medium"
 

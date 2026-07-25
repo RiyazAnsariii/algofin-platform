@@ -5,6 +5,7 @@
 from typing import Optional
 
 EXCLUDED_EXACT_TITLES = {
+    # ── Previous Blacklist ───────────────────────────────────────────────────
     "Export Prices q/q",
     "Spanish Prelim CPI m/m",
     "Spanish Prelim Core CPI y/y",
@@ -24,6 +25,31 @@ EXCLUDED_EXACT_TITLES = {
     "BOE Gov Bailey Speaks",
     "BoE Gov Bailey Speaks",
     "EIA Natural Gas Stocks Change",
+
+    # ── Jul 31 ForexFactory Cleanups ─────────────────────────────────────────
+    "Private Sector Credit y/y",
+    "NBS General PMI",
+    "Housing Credit m/m",
+    "Construction Orders y/y",
+    "Nationwide Housing Prices y/y",
+    "French Prelim CPI y/y",
+    "Early Close Bond Market",
+    "Unemployed Persons",
+    "German Unemployment Rate",
+    "Current Account",
+    "Eurozone Flash CPI m/m",
+    "Eurozone Flash CPI",
+    "Italian Prelim CPI y/y",
+    "Employment Cost - Wages q/q",
+    "Employment Cost - Benefits q/q",
+    "Michigan Current Conditions Final",
+    "Michigan Consumer Expectations Final",
+    "Michigan Inflation Expectations Final",
+    "Budget Balance",
+    "Baker Hughes Total Rigs Count",
+    "Baker Hughes Oil Rig Count",
+    "Prelim CPI y/y",
+    "Prelim CPI m/m",
 }
 
 FORCED_HIGH_IMPACT_PATTERNS = [
@@ -36,17 +62,42 @@ FORCED_HIGH_IMPACT_PATTERNS = [
     "fomc press conference",
     "fomc statement",
     "federal funds rate",
+    "boj policy rate",
+    "boj interest rate decision",
+    "boj outlook report",
+    "boj quarterly outlook report",
+    "boj press conference",
+    "boj gov ueda speaks",
+    "monetary policy statement",
+    "gdp m/m",
+]
+
+FORCED_MEDIUM_IMPACT_PATTERNS = [
+    "tokyo core cpi",
+    "core cpi flash estimate",
+    "cpi flash estimate",
+    "employment cost index",
+    "chicago pmi",
 ]
 
 
 def is_forced_high_impact(title: str) -> bool:
-    """
-    Check if an economic event title is explicitly classified as High Impact (🔴).
-    """
+    """Check if an economic event title is explicitly classified as High Impact (🔴)."""
     if not title:
         return False
     t_lower = title.strip().lower()
     for pattern in FORCED_HIGH_IMPACT_PATTERNS:
+        if pattern in t_lower:
+            return True
+    return False
+
+
+def is_forced_medium_impact(title: str) -> bool:
+    """Check if an economic event title is explicitly classified as Medium Impact (🟠)."""
+    if not title:
+        return False
+    t_lower = title.strip().lower()
+    for pattern in FORCED_MEDIUM_IMPACT_PATTERNS:
         if pattern in t_lower:
             return True
     return False
@@ -67,12 +118,12 @@ def is_event_blacklisted(title: str, currency: Optional[str] = None) -> bool:
     if t_clean in EXCLUDED_EXACT_TITLES:
         return True
 
-    # 1. Any GDP y/y release (ForexFactory only lists GDP q/q or Flash GDP q/q)
+    # 1. Any GDP y/y release (ForexFactory only lists GDP q/q or Flash GDP q/q or GDP m/m)
     if "gdp y/y" in t_lower:
         return True
 
-    # 2. Export prices
-    if "export prices" in t_lower:
+    # 2. Export prices & Private Sector Credit y/y
+    if "export prices" in t_lower or "private sector credit y/y" in t_lower:
         return True
 
     # 3. Spanish Prelim CPI m/m / Core CPI y/y / Flash GDP y/y
@@ -83,16 +134,16 @@ def is_event_blacklisted(title: str, currency: Optional[str] = None) -> bool:
     if "mpc vote" in t_lower:
         return True
 
-    # 5. Non-standard PCE releases (ForexFactory only lists Core PCE Price Index m/m)
+    # 5. Non-standard PCE releases
     if "pce" in t_lower:
         if "q/q" in t_lower or "y/y" in t_lower or (t_lower.endswith("index m/m") and "core" not in t_lower):
             return True
 
-    # 6. EIA Natural Gas Stocks Change (ForexFactory uses Natural Gas Storage)
-    if "natural gas stocks change" in t_lower:
+    # 6. EIA Natural Gas Stocks Change & Rig counts
+    if "natural gas stocks change" in t_lower or "rig count" in t_lower or "baker hughes" in t_lower:
         return True
 
-    # 7. Generic Consumer Confidence (ForexFactory uses CB Consumer Confidence or UMich Consumer Sentiment)
+    # 7. Generic Consumer Confidence
     if t_lower == "consumer confidence" or t_lower.endswith(" consumer confidence"):
         return True
 
@@ -100,20 +151,24 @@ def is_event_blacklisted(title: str, currency: Optional[str] = None) -> bool:
     if t_lower == "ppi m/m" or ("ppi m/m" in t_lower and curr != "USD"):
         return True
 
-    # 9. Generic CPI y/y / CPI m/m (keep US / UK / German / French CPI)
-    if t_lower in ("cpi y/y", "cpi m/m") or (t_lower in ("cpi y/y", "cpi m/m") and curr == "EUR"):
+    # 9. Generic CPI y/y / CPI m/m / Prelim CPI y/y / Prelim CPI m/m
+    if t_lower in ("cpi y/y", "cpi m/m", "prelim cpi y/y", "prelim cpi m/m"):
         return True
 
     # 10. Retail Sales m/m for EUR / non-US
     if "retail sales m/m" in t_lower and (curr == "EUR" or t_lower == "retail sales m/m"):
         return True
 
-    # 11. Italian Unemployment Rate (ForexFactory uses Italian Monthly Unemployment Rate)
-    if t_lower == "italian unemployment rate":
+    # 11. Italian Unemployment Rate / German Unemployment Rate / Unemployed Persons
+    if t_lower in ("italian unemployment rate", "german unemployment rate", "unemployed persons"):
         return True
 
-    # 12. BOE Gov Bailey Speaks for this period
+    # 12. BOE Gov Bailey Speaks
     if "bailey speaks" in t_lower:
+        return True
+
+    # 13. Sub-breakdown employment costs
+    if "employment cost -" in t_lower or "housing credit" in t_lower:
         return True
 
     return False
