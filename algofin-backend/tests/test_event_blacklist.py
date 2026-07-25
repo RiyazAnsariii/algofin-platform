@@ -21,8 +21,8 @@ def test_blacklisted_events_matching():
     assert is_event_blacklisted("Spanish Prelim Core CPI y/y") is True
     assert is_event_blacklisted("Spanish Flash GDP y/y") is True
 
-    # 4. EUR PPI m/m & Consumer Confidence & Retail Sales m/m
-    assert is_event_blacklisted("PPI m/m", "EUR") is True
+    # 4. Consumer Confidence & Retail Sales m/m
+    assert is_event_blacklisted("PPI m/m", "GBP") is True
     assert is_event_blacklisted("Consumer Confidence", "EUR") is True
     assert is_event_blacklisted("Retail Sales m/m", "EUR") is True
 

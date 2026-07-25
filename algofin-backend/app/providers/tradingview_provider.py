@@ -345,6 +345,11 @@ _EXACT_TITLE_MAP: dict[str, str] = {
     "MPC Rate Votes": "MPC Official Bank Rate Votes",
     "BoE Interest Rate Decision": "Official Bank Rate",
     "Initial Jobless Claims": "Unemployment Claims",
+    "ADP Employment Change": "ADP Non-Farm Employment Change",
+    "ADP Nonfarm Employment Change": "ADP Non-Farm Employment Change",
+    "Labour Costs Index q/q": "Labor Cost Index q/q",
+    "Labor Cost Index": "Labor Cost Index q/q",
+    "BoJ Monetary Policy Meeting Minutes": "Monetary Policy Meeting Minutes",
     "Personal Income": "Personal Income m/m",
     "Personal Income MoM": "Personal Income m/m",
     "Personal Spending": "Personal Spending m/m",
@@ -438,6 +443,18 @@ def _format_title_forex_factory_style(title: str, country: str = "") -> str:
             return "Italian Manufacturing PMI"
         if country in ("Switzerland", "CH"):
             return "Manufacturing PMI"
+    if "services pmi" in t_lower and "ism" not in t_lower and "ratingdog" not in t_lower and "caixin" not in t_lower:
+        is_final = "final" in t_lower
+        if country in ("Eurozone", "EU", "United Kingdom", "GB", "United States", "US"):
+            return "Final Services PMI" if is_final else "Services PMI"
+        if country in ("France", "FR"):
+            return "French Final Services PMI" if is_final else "French Services PMI"
+        if country in ("Germany", "DE"):
+            return "German Final Services PMI" if is_final else "German Services PMI"
+        if country in ("Spain", "ES"):
+            return "Spanish Services PMI"
+        if country in ("Italy", "IT"):
+            return "Italian Services PMI"
 
     t = title
     adj = _COUNTRY_ADJECTIVES.get(country, "")
@@ -539,7 +556,7 @@ def _determine_impact_level(formatted_title: str, default_impact: str) -> str:
         "cb consumer confidence", "conference board consumer confidence",
         "german prelim cpi", "german prelim gdp",
         "advance gdp price index", "unemployment claims",
-        "initial jobless claims", "producer price index", "ppi m/m", "retail sales",
+        "initial jobless claims", "producer price index", "retail sales",
         "tokyo core cpi", "core cpi flash estimate", "cpi flash estimate",
         "employment cost index",
     )):

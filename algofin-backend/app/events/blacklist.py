@@ -72,12 +72,14 @@ EXCLUDED_EXACT_TITLES = {
     "Ai Group Industry Index",
     "Ai Group Manufacturing Index",
     "Ai Group Construction Index",
-    "Average Cash Earnings y/y",
-    "Overtime Pay y/y",
-    "API Weekly Statistical Bulletin",
-    "S&P Global Composite PMI Final",
-    "S&P Global Services PMI Final",
-    "BoJ Monetary Policy Meeting Minutes",
+
+    # ── Aug 05 ForexFactory Cleanups ─────────────────────────────────────────
+    "RatingDog Composite PMI",
+    "ISM Services Prices",
+    "ISM Services Business Activity",
+    "ISM Services Employment",
+    "ISM Services New Orders",
+    "S&P Global Composite PMI",
 }
 
 FORCED_HIGH_IMPACT_PATTERNS = [
@@ -99,6 +101,8 @@ FORCED_HIGH_IMPACT_PATTERNS = [
     "monetary policy statement",
     "gdp m/m",
     "ism manufacturing pmi",
+    "nz unemployment rate",
+    "employment change q/q",
 ]
 
 FORCED_MEDIUM_IMPACT_PATTERNS = [
@@ -109,6 +113,9 @@ FORCED_MEDIUM_IMPACT_PATTERNS = [
     "chicago pmi",
     "ism manufacturing prices",
     "jolts job openings",
+    "adp non-farm employment change",
+    "adp employment change",
+    "ism services pmi",
 ]
 
 
@@ -153,6 +160,14 @@ def is_event_blacklisted(title: str, currency: Optional[str] = None) -> bool:
     if curr == "CHF" and ("cpi y/y" in t_lower or "swiss cpi y/y" in t_lower):
         return True
 
+    # Allow authentic NZD employment releases
+    if curr == "NZD" and any(k in t_lower for k in ("unemployment rate", "employment change", "labor cost index", "labour costs index")):
+        return False
+
+    # Allow EUR & USD PPI m/m
+    if t_lower == "ppi m/m" and curr in ("USD", "EUR"):
+        return False
+
     # 1. Any GDP y/y release (ForexFactory only lists GDP q/q or Flash GDP q/q or GDP m/m)
     if "gdp y/y" in t_lower:
         return True
@@ -175,15 +190,15 @@ def is_event_blacklisted(title: str, currency: Optional[str] = None) -> bool:
             return True
 
     # 6. EIA Natural Gas Stocks Change & Rig counts
-    if "natural gas stocks change" in t_lower or "rig count" in t_lower or "baker hughes" in t_lower or "api weekly statistical" in t_lower:
+    if "natural gas stocks change" in t_lower or "rig count" in t_lower or "baker hughes" in t_lower:
         return True
 
     # 7. Generic Consumer Confidence
     if t_lower == "consumer confidence" or t_lower.endswith(" consumer confidence"):
         return True
 
-    # 8. Generic PPI m/m (keep only US PPI / Core PPI)
-    if t_lower == "ppi m/m" or ("ppi m/m" in t_lower and curr != "USD"):
+    # 8. PPI m/m (allow EUR & USD PPI m/m)
+    if t_lower == "ppi m/m" and curr not in ("USD", "EUR"):
         return True
 
     # 9. Generic CPI y/y / CPI m/m / Prelim CPI y/y / Prelim CPI m/m
@@ -205,15 +220,19 @@ def is_event_blacklisted(title: str, currency: Optional[str] = None) -> bool:
         return True
 
     # 13. Sub-breakdown employment costs & sub-ISM indicators
-    if "employment cost -" in t_lower or "housing credit" in t_lower or "ism manufacturing new orders" in t_lower or "ism manufacturing employment" in t_lower:
+    if "employment cost -" in t_lower or "housing credit" in t_lower or "ism manufacturing new orders" in t_lower or "ism manufacturing employment" in t_lower or "ism services new orders" in t_lower or "ism services employment" in t_lower or "ism services business activity" in t_lower or "ism services prices" in t_lower:
         return True
 
-    # 14. Car registrations & Treasury refunding estimates & BOJ Meeting Minutes
-    if "new car" in t_lower or "treasury refunding" in t_lower or "meeting minutes" in t_lower:
+    # 14. Car registrations & Treasury refunding estimates
+    if "new car" in t_lower or "treasury refunding" in t_lower:
         return True
 
     # 15. Minor bond auctions & PMI noise
-    if any(k in t_lower for k in ("letras auction", "schatz auction", "ragb auction", "gilt 2032", "tc auction", "logistics managers", "jolts job quits", "total household debt", "composite pmi final", "services pmi final")):
+    if any(k in t_lower for k in ("letras auction", "schatz auction", "ragb auction", "gilt 2032", "tc auction", "logistics managers", "jolts job quits", "total household debt", "composite pmi")):
+        return True
+
+    # 16. Drop JPY Services PMI
+    if "services pmi" in t_lower and curr == "JPY":
         return True
 
     return False
