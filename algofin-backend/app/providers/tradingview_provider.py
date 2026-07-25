@@ -168,7 +168,8 @@ _NOISE_KEYWORDS: tuple[str, ...] = (
     "harmonised inflation", "harmonized inflation", "hicp",
     "ppi yoy", "ppi y/y",
     "non defense goods orders", "ex defense",
-    "m3 money supply", "money supply", "private loans",
+    "m3 money supply", "money supply",
+    "market participants survey",
 
     # Miscellaneous low-value & China clutter
     "tourist arrivals", "car production", "vehicle production",
@@ -189,7 +190,7 @@ _NOISE_EXACT_TITLES: frozenset[str] = frozenset({
     "balance of trade",
     "continuing jobless claims",
     "m3 money supply",
-    "private loans",
+    "boc market participants survey",
 })
 
 
@@ -233,9 +234,18 @@ _EXACT_TITLE_MAP: dict[str, str] = {
     "SNB Chairman Schlegel Speech": "SNB Chairman Schlegel Speaks",
     "ECB Pres Lagarde Speech": "ECB Pres Lagarde Speaks",
     "Durable Goods Orders Ex Transport": "Core Durable Goods Orders m/m",
+    "Durable Goods Orders Ex Transp m/m": "Core Durable Goods Orders m/m",
+    "Durable Goods Orders Ex Transp": "Core Durable Goods Orders m/m",
     "Durable Goods Orders Ex Transportation": "Core Durable Goods Orders m/m",
     "Durable Goods Orders MoM": "Durable Goods Orders m/m",
+    "CBI Distributive Trades": "CBI Realized Sales",
+    "CBI Distributive Trades Survey": "CBI Realized Sales",
+    "Loans to Households y/y": "Private Loans y/y",
+    "Loans to Households MoM": "Private Loans m/m",
+    "Loans to Companies y/y": "Corporate Loans y/y",
+    "Loans to Companies MoM": "Corporate Loans m/m",
 }
+
 
 
 
