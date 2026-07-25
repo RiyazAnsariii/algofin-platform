@@ -176,6 +176,55 @@ def _is_noise_event(title: str) -> bool:
     return t in _NOISE_EXACT_TITLES
 
 
+# ── Forex Factory Title Normalizer ──────────────────────────────────────────
+import re
+
+_EXACT_TITLE_MAP: dict[str, str] = {
+    "Fed Press Conference": "FOMC Press Conference",
+    "BoE Gov Bailey Speech": "BOE Gov Bailey Speaks",
+    "RBA Hunter Speech": "RBA Official Speaks",
+    "RBA Gov Bullock Speech": "RBA Gov Bullock Speaks",
+    "RBNZ Gov Orr Speech": "RBNZ Gov Orr Speaks",
+    "BOC Gov Macklem Speech": "BOC Gov Macklem Speaks",
+    "SNB Chairman Schlegel Speech": "SNB Chairman Schlegel Speaks",
+    "ECB Pres Lagarde Speech": "ECB Pres Lagarde Speaks",
+    "GDP Growth Rate QoQ Adv": "GDP q/q (Advance)",
+    "GDP Growth Rate QoQ Flash": "GDP q/q (Flash)",
+    "GDP Growth Rate YoY Flash": "GDP y/y (Flash)",
+    "GDP Growth Rate QoQ Final": "GDP q/q (Final)",
+    "GDP Growth Rate YoY Final": "GDP y/y (Final)",
+    "GDP Growth Rate QoQ": "GDP q/q",
+    "GDP Growth Rate YoY": "GDP y/y",
+    "GDP Growth Rate MoM": "GDP m/m",
+}
+
+
+def _format_title_forex_factory_style(title: str) -> str:
+    """Transform TradingView raw titles into standard Forex Factory style names."""
+    if title in _EXACT_TITLE_MAP:
+        return _EXACT_TITLE_MAP[title]
+
+    t = title
+
+    # 1. Simplify GDP titles
+    t = re.sub(r"\bGDP Growth Rate\b", "GDP", t)
+
+    # 2. Convert period notations: MoM -> m/m, YoY -> y/y, QoQ -> q/q
+    t = re.sub(r"\bMoM\b", "m/m", t)
+    t = re.sub(r"\bYoY\b", "y/y", t)
+    t = re.sub(r"\bQoQ\b", "q/q", t)
+
+    # 3. Speech -> Speaks (Forex Factory convention)
+    t = re.sub(r"\bSpeech\b", "Speaks", t)
+
+    # 4. Format Adv/Flash descriptors cleanly
+    t = re.sub(r"\bAdv\b", "(Advance)", t)
+    t = re.sub(r"\bFlash\b(?!\))", "(Flash)", t)
+
+    # Clean up whitespace
+    return re.sub(r"\s+", " ", t).strip()
+
+
 _TV_CALENDAR_URL = "https://economic-calendar.tradingview.com/events"
 
 _HEADERS = {
@@ -312,12 +361,14 @@ class TradingViewProvider(BaseEconomicCalendarProvider):
                 hash_input = f"TV|{provider_event_id}|{event_dt.isoformat()}".encode("utf-8")
                 event_hash = hashlib.sha256(hash_input).hexdigest()
 
-                title: str = item.get("title") or item.get("indicator") or "Unknown Event"
+                raw_title: str = item.get("title") or item.get("indicator") or "Unknown Event"
                 source: str = item.get("source") or "TradingView"
 
                 # Drop noisy / low-value events (regional CPI, bond auctions, etc.)
-                if _is_noise_event(title):
+                if _is_noise_event(raw_title):
                     continue
+
+                title: str = _format_title_forex_factory_style(raw_title)
 
                 dto = NormalizedEventDTO(
                     provider_event_id=provider_event_id,
