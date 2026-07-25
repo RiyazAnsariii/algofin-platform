@@ -321,6 +321,24 @@ _EXACT_TITLE_MAP: dict[str, str] = {
     "Ecofin Meeting": "ECOFIN Meetings",
     "Ecofin Meetings": "ECOFIN Meetings",
     "Durable Goods Orders": "Durable Goods Orders m/m",
+    "Conference Board Consumer Confidence": "CB Consumer Confidence",
+    "RBA Gov Bullock Speech": "RBA Gov Bullock Speaks",
+    "BoJ Core CPI": "BOJ Core CPI y/y",
+    "BoJ Core CPI y/y": "BOJ Core CPI y/y",
+    "BOJ Core CPI": "BOJ Core CPI y/y",
+    "Spanish Unemployment": "Spanish Unemployment Rate",
+    "Bundesbank Monthly Report": "German Buba Monthly Report",
+    "German Buba Report": "German Buba Monthly Report",
+    "ADP Employment Change Weekly": "ADP Weekly Employment Change",
+    "Goods Trade Balance Advance": "Goods Trade Balance",
+    "Advance Goods Trade Balance": "Goods Trade Balance",
+    "Wholesale Inventories m/m Advance": "Prelim Wholesale Inventories m/m",
+    "Advance Wholesale Inventories m/m": "Prelim Wholesale Inventories m/m",
+    "FHFA House Price Index m/m": "HPI m/m",
+    "House Price Index m/m": "HPI m/m",
+    "Case-Shiller Home Price Index": "S&P/CS Composite-20 HPI y/y",
+    "S&P/CS Composite-20 HPI YoY": "S&P/CS Composite-20 HPI y/y",
+    "Richmond Fed Manufacturing Index": "Richmond Manufacturing Index",
 }
 
 
@@ -408,6 +426,7 @@ def _determine_impact_level(formatted_title: str, default_impact: str) -> str:
 
     # 1. High Impact 🔴 (Strict Red folder events per Forex Factory screenshots)
     if any(k in t for k in (
+        "rba gov bullock speaks", "rba gov bullock speech",
         "fomc press conference", "fomc statement",
         "boe monetary policy report", "monetary policy summary",
         "mpc official bank rate votes", "official bank rate", "federal funds rate",
@@ -418,6 +437,7 @@ def _determine_impact_level(formatted_title: str, default_impact: str) -> str:
 
     # 2. Medium Impact 🟠 (Strict Orange folder events per Forex Factory screenshots)
     if any(k in t for k in (
+        "cb consumer confidence", "conference board consumer confidence",
         "german prelim cpi", "german prelim gdp",
         "advance gdp price index", "unemployment claims",
         "initial jobless claims", "producer price index", "ppi m/m", "retail sales",
@@ -426,6 +446,10 @@ def _determine_impact_level(formatted_title: str, default_impact: str) -> str:
 
     # 3. Force Low Impact 🟡 (All Low events matching Forex Factory screenshots)
     if any(k in t for k in (
+        "brc shop price index", "boj core cpi", "spanish unemployment rate",
+        "german buba monthly report", "adp weekly employment change",
+        "goods trade balance", "prelim wholesale inventories", "hpi m/m",
+        "s&p/cs composite-20", "richmond manufacturing index",
         "sppi", "ifo business climate", "m3 money supply", "private loans",
         "ecofin meetings", "cbi realized sales", "durable goods orders",
         "rba assist gov hunter", "hunter speaks",
@@ -447,6 +471,7 @@ def _determine_impact_level(formatted_title: str, default_impact: str) -> str:
         return "Low"
 
     return "Low"
+
 
 
 
