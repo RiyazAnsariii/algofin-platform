@@ -58,7 +58,7 @@ EXCLUDED_EXACT_TITLES = {
     "ISM Manufacturing New Orders",
     "ISM Manufacturing Employment",
     "Treasury Refunding Financing Estimates",
-    "S&P Global Manufacturing PMI",
+    "Cotality Dwelling Prices m/m",
 
     # ── Aug 04 ForexFactory Cleanups ─────────────────────────────────────────
     "Household Spending y/y",
@@ -131,6 +131,7 @@ FORCED_MEDIUM_IMPACT_PATTERNS = [
     "revised uom inflation expectations",
     "michigan consumer sentiment",
     "michigan 5 year inflation expectations",
+    "cpi m/m",
 ]
 
 
@@ -183,8 +184,8 @@ def is_event_blacklisted(title: str, currency: Optional[str] = None) -> bool:
     if "gdp y/y" in t_lower:
         return True
 
-    # 2. Export prices & Private Sector Credit y/y & Household Spending y/y
-    if "export prices" in t_lower or "private sector credit y/y" in t_lower or "household spending y/y" in t_lower:
+    # 2. Export prices & Private Sector Credit y/y & Household Spending y/y & Cotality
+    if "export prices" in t_lower or "private sector credit y/y" in t_lower or "household spending y/y" in t_lower or "cotality" in t_lower:
         return True
 
     # 3. Spanish Prelim CPI m/m / Core CPI y/y / Flash GDP y/y
@@ -224,8 +225,10 @@ def is_event_blacklisted(title: str, currency: Optional[str] = None) -> bool:
     if "retail sales m/m" in t_lower and (curr == "EUR" or t_lower == "retail sales m/m") and "italian" not in t_lower:
         return True
 
-    # 11. Italian Unemployment Rate / German Unemployment Rate / Unemployed Persons / Generic Unemployment Rate
-    if t_lower in ("italian unemployment rate", "german unemployment rate", "unemployed persons"):
+    # 11. Italian Unemployment Rate / German Unemployment Rate / Unemployed Persons / Generic Unemployment Rate for EUR
+    if (t_lower in ("italian unemployment rate", "german unemployment rate", "unemployed persons", "unemployment rate") and curr == "EUR") or t_lower == "unemployment rate":
+        if curr == "JPY":
+            return False
         return True
 
     # 12. BOE Gov Bailey Speaks
