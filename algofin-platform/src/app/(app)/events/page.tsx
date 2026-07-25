@@ -324,11 +324,12 @@ export default function EventsPage() {
       if (selectedCurrency && selectedCurrency !== "ALL") params.set("currency", selectedCurrency);
       if (searchQuery.trim()) params.set("search", searchQuery.trim());
 
+      // NOTE: api baseURL is already /api/v1 — do NOT repeat it here
       const res = await api.get<{
         events: EconomicEvent[];
         summary: { high: number; medium: number; low: number; total: number };
         metadata: { provider: string; cached: boolean; data_age_minutes: number; total_results: number };
-      }>(`/api/v1/economic-calendar?${params}`);
+      }>(`/economic-calendar?${params}`);
 
       const data = res.data;
       if (data && data.events) {
@@ -336,16 +337,20 @@ export default function EventsPage() {
         if (data.summary) setSummaryData(data.summary);
         if (data.metadata) setDataAgeMinutes(data.metadata.data_age_minutes || 0);
       } else {
-        setEvents(generateFallbackEvents());
+        setError("No events data returned from server.");
+        setEvents([]);
       }
       setLastUpdated(new Date());
-    } catch {
-      setEvents(generateFallbackEvents());
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      setError(`Failed to load events: ${message}`);
+      setEvents([]);
       setLastUpdated(new Date());
     } finally {
       setLoading(false);
     }
   }, [daysAhead, selectedImpact, selectedCurrency, searchQuery]);
+
 
   useEffect(() => {
     fetchEvents();
