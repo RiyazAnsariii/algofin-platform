@@ -71,14 +71,12 @@ EXCLUDED_EXACT_TITLES = {
     "Ai Group Industry Index",
     "Ai Group Manufacturing Index",
     "Ai Group Construction Index",
-    "API Weekly Statistical Bulletin",
     "API Crude Oil Stock Change",
     "API Cushing Crude Oil Stock Change",
     "API Gasoline Stock Change",
     "API Distillate Stock Change",
     "Participation Rate",
     "Labour Costs Index y/y",
-    "Average Cash Earnings y/y",
     "Overtime Pay y/y",
     "Omdia Total Vehicle Sales",
     "Total Vehicle Sales",
@@ -215,8 +213,8 @@ def is_event_blacklisted(title: str, currency: Optional[str] = None) -> bool:
         if "q/q" in t_lower or "y/y" in t_lower or (t_lower.endswith("index m/m") and "core" not in t_lower):
             return True
 
-    # 6. EIA Natural Gas Stocks Change & Rig counts & API
-    if "natural gas stocks change" in t_lower or "rig count" in t_lower or "baker hughes" in t_lower or "api weekly" in t_lower:
+    # 6. EIA Natural Gas Stocks Change & Rig counts
+    if "natural gas stocks change" in t_lower or "rig count" in t_lower or "baker hughes" in t_lower:
         return True
 
     # 7. Generic Consumer Confidence (keep JPY Consumer Confidence)
@@ -225,8 +223,8 @@ def is_event_blacklisted(title: str, currency: Optional[str] = None) -> bool:
             return False
         return True
 
-    # 8. Generic PPI m/m for EUR (except Aug 5) / non-US
-    if t_lower == "ppi m/m" and curr != "USD":
+    # 8. Generic PPI m/m for EUR (allow EUR PPI m/m on Aug 5) / non-US
+    if t_lower == "ppi m/m" and curr not in ("USD", "EUR"):
         return True
 
     # 9. Generic CPI y/y / CPI m/m / Prelim CPI y/y / Prelim CPI m/m
@@ -241,7 +239,7 @@ def is_event_blacklisted(title: str, currency: Optional[str] = None) -> bool:
 
     # 11. Italian Unemployment Rate / German Unemployment Rate / Unemployed Persons / Generic Unemployment Rate for EUR
     if (t_lower in ("italian unemployment rate", "german unemployment rate", "unemployed persons", "unemployment rate") and curr == "EUR") or t_lower == "unemployment rate":
-        if curr == "JPY":
+        if curr in ("JPY", "NZD"):
             return False
         return True
 
