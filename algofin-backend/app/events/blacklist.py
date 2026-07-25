@@ -80,6 +80,15 @@ EXCLUDED_EXACT_TITLES = {
     "ISM Services Employment",
     "ISM Services New Orders",
     "S&P Global Composite PMI",
+
+    # ── Jul 30 ForexFactory Cleanups ─────────────────────────────────────────
+    "MPC Meeting Minutes",
+    "German Prelim CPI y/y",
+    "Fed Balance Sheet",
+    "Jobs/applications ratio",
+    "Flash GDP q/q",
+    "GDP q/q",
+    "Eurozone Unemployment Rate",
 }
 
 FORCED_HIGH_IMPACT_PATTERNS = [
@@ -116,6 +125,9 @@ FORCED_MEDIUM_IMPACT_PATTERNS = [
     "adp non-farm employment change",
     "adp employment change",
     "ism services pmi",
+    "german prelim cpi m/m",
+    "german prelim gdp q/q",
+    "advance gdp price index",
 ]
 
 
@@ -164,10 +176,6 @@ def is_event_blacklisted(title: str, currency: Optional[str] = None) -> bool:
     if curr == "NZD" and any(k in t_lower for k in ("unemployment rate", "employment change", "labor cost index", "labour costs index")):
         return False
 
-    # Allow EUR & USD PPI m/m
-    if t_lower == "ppi m/m" and curr in ("USD", "EUR"):
-        return False
-
     # 1. Any GDP y/y release (ForexFactory only lists GDP q/q or Flash GDP q/q or GDP m/m)
     if "gdp y/y" in t_lower:
         return True
@@ -177,7 +185,7 @@ def is_event_blacklisted(title: str, currency: Optional[str] = None) -> bool:
         return True
 
     # 3. Spanish Prelim CPI m/m / Core CPI y/y / Flash GDP y/y
-    if "spanish prelim" in t_lower or "spanish flash gdp" in t_lower:
+    if "spanish prelim" in t_lower or "spanish flash gdp y/y" in t_lower:
         return True
 
     # 4. BoE MPC Votes (Unchanged / Hike / Cut)
@@ -195,10 +203,12 @@ def is_event_blacklisted(title: str, currency: Optional[str] = None) -> bool:
 
     # 7. Generic Consumer Confidence
     if t_lower == "consumer confidence" or t_lower.endswith(" consumer confidence"):
+        if curr == "JPY":
+            return False
         return True
 
-    # 8. PPI m/m (allow EUR & USD PPI m/m)
-    if t_lower == "ppi m/m" and curr not in ("USD", "EUR"):
+    # 8. Generic PPI m/m for EUR (except Aug 5) / non-US
+    if t_lower == "ppi m/m" and curr != "USD":
         return True
 
     # 9. Generic CPI y/y / CPI m/m / Prelim CPI y/y / Prelim CPI m/m
@@ -212,7 +222,7 @@ def is_event_blacklisted(title: str, currency: Optional[str] = None) -> bool:
         return True
 
     # 11. Italian Unemployment Rate / German Unemployment Rate / Unemployed Persons / Generic Unemployment Rate
-    if t_lower in ("italian unemployment rate", "german unemployment rate", "unemployed persons", "unemployment rate") and curr == "EUR":
+    if t_lower in ("italian unemployment rate", "german unemployment rate", "unemployed persons"):
         return True
 
     # 12. BOE Gov Bailey Speaks
@@ -228,7 +238,7 @@ def is_event_blacklisted(title: str, currency: Optional[str] = None) -> bool:
         return True
 
     # 15. Minor bond auctions & PMI noise
-    if any(k in t_lower for k in ("letras auction", "schatz auction", "ragb auction", "gilt 2032", "tc auction", "logistics managers", "jolts job quits", "total household debt", "composite pmi")):
+    if any(k in t_lower for k in ("letras auction", "schatz auction", "ragb auction", "gilt 2032", "tc auction", "logistics managers", "jolts job quits", "total household debt", "composite pmi", "fed balance sheet", "jobs/applications ratio")):
         return True
 
     # 16. Drop JPY Services PMI

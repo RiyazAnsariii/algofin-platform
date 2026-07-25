@@ -358,6 +358,9 @@ _EXACT_TITLE_MAP: dict[str, str] = {
     "Natural Gas Storage Change": "Natural Gas Storage",
     "French Non-Farm Payrolls": "French Prelim Private Payrolls q/q",
     "French Private Payrolls": "French Prelim Private Payrolls q/q",
+    "German Flash GDP q/q": "German Prelim GDP q/q",
+    "Italian Advance GDP q/q": "Italian Prelim GDP q/q",
+    "Eurozone Unemployment Rate": "Unemployment Rate",
     "Eurozone Prelim GDP": "Prelim Flash GDP q/q",
     "Eurozone Flash GDP q/q": "Prelim Flash GDP q/q",
     "Italian 10-Yr Bond Auction": "Italian 10-y Bond Auction",
@@ -472,24 +475,23 @@ def _format_title_forex_factory_style(title: str, country: str = "") -> str:
             return "Consumer Confidence"
         return f"{adj} Consumer Confidence".strip() if adj else "Consumer Confidence"
 
-    # 3. Country-specific GDP: French Flash GDP q/q, Advance GDP q/q (US), Eurozone Flash GDP q/q, etc.
-    if "GDP" in t:
-        period = "q/q" if ("QoQ" in t or "q/q" in t) else ("y/y" if ("YoY" in t or "y/y" in t) else ("m/m" if ("MoM" in t or "m/m" in t) else ""))
-        tag = ""
-        if "Flash" in t:
-            tag = "Flash "
-        elif "Adv" in t or "Advance" in t:
-            tag = "Advance "
-        elif "Prel" in t or "Preliminary" in t:
-            tag = "Prelim "
-
-        if country in ("United States", "US"):
-            if tag == "Advance ":
-                return f"Advance GDP {period}".strip()
-            return f"{tag}GDP {period}".strip() if tag else f"GDP {period}".strip()
-
+    # 3. Country-specific GDP: French Flash GDP q/q, German Prelim GDP q/q, Italian Prelim GDP q/q, Prelim Flash GDP q/q
+    if "gdp" in t_lower and "price index" not in t_lower:
+        period = "q/q" if ("qoq" in t_lower or "q/q" in t_lower) else ("y/y" if ("yoy" in t_lower or "y/y" in t_lower) else ("m/m" if ("mom" in t_lower or "m/m" in t_lower) else "q/q"))
+        if country in ("Germany", "DE"):
+            return f"German Prelim GDP {period}"
+        if country in ("Italy", "IT"):
+            return f"Italian Prelim GDP {period}"
+        if country in ("Spain", "ES"):
+            return f"Spanish Flash GDP {period}"
+        if country in ("France", "FR"):
+            return f"French Flash GDP {period}"
+        if country in ("Eurozone", "EU"):
+            return f"Prelim Flash GDP {period}"
+        if country in ("United States", "US") and ("advance" in t_lower or "adv" in t_lower):
+            return f"Advance GDP {period}"
         prefix = f"{adj} " if adj else ""
-        return f"{prefix}{tag}GDP {period}".strip()
+        return f"{prefix}GDP {period}".strip()
 
     # 4. Country-specific CPI: German Prelim CPI y/y, French Flash CPI m/m, CPI m/m (Australia/AUD), etc.
     if "Inflation Rate" in t or "CPI" in t:
