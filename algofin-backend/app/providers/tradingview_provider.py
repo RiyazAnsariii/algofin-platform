@@ -212,6 +212,7 @@ _NOISE_KEYWORDS: tuple[str, ...] = (
 
 # Exact lowercase title matches to drop
 _NOISE_EXACT_TITLES: frozenset[str] = frozenset({
+    "s&p global manufacturing pmi",
     "building permits",
     "import prices",
     "export prices",
@@ -241,9 +242,10 @@ _NOISE_EXACT_TITLES: frozenset[str] = frozenset({
 })
 
 
-def _is_noise_event(title: str) -> bool:
+def _is_noise_event(title: str, country: str = "") -> bool:
     """Return True if this event is noise and should be discarded."""
     t = title.lower()
+    c_lower = country.lower()
     # Permanently drop Advance GDP y/y
     if "advance gdp" in t and ("y/y" in t or "yoy" in t):
         return True
@@ -259,6 +261,8 @@ def _is_noise_event(title: str) -> bool:
     # Permanently drop regional European Retail Sales (Spanish, Italian, Austrian, Portuguese, Dutch, Greek)
     if "retail sales" in t and any(c in t for c in ("spanish", "italian", "austrian", "portuguese", "dutch", "greek", "belgian", "irish")):
         return True
+    if t == "s&p global manufacturing pmi" and c_lower in ("spain", "es", "italy", "it"):
+        return False
     for kw in _NOISE_KEYWORDS:
         if kw in t:
             return True
@@ -331,7 +335,9 @@ _EXACT_TITLE_MAP: dict[str, str] = {
     "Eurozone Flash CPI y/y": "CPI Flash Estimate y/y",
     "Canadian GDP m/m": "GDP m/m",
     "Michigan Consumer Sentiment Final": "Revised UoM Consumer Sentiment",
-    "Michigan 5 Year Inflation Expectations Final": "Revised UoM Inflation Expectations",
+    "TD-MI Inflation Gauge m/m": "MI Inflation Gauge m/m",
+    "Swiss CPI m/m": "CPI m/m",
+    "procure.ch Manufacturing PMI": "Manufacturing PMI",
     "Unemployment Change": "German Unemployment Change",
     "BoE Monetary Policy Summary": "Monetary Policy Summary",
     "Monetary Policy Summary": "Monetary Policy Summary",
@@ -403,6 +409,25 @@ def _format_title_forex_factory_style(title: str, country: str = "") -> str:
         return "CPI Flash Estimate y/y"
     if country in ("Canada", "CA") and "gdp" in t_lower:
         return "GDP m/m"
+    if "inflation gauge" in t_lower:
+        return "MI Inflation Gauge m/m"
+    if country in ("Switzerland", "CH") and ("cpi" in t_lower or "inflation" in t_lower):
+        period = "m/m" if ("mom" in t_lower or "m/m" in t_lower) else ("y/y" if ("yoy" in t_lower or "y/y" in t_lower) else "m/m")
+        return f"CPI {period}"
+    if "manufacturing pmi" in t_lower and "ism" not in t_lower and "ratingdog" not in t_lower and "caixin" not in t_lower:
+        is_final = "final" in t_lower
+        if country in ("Japan", "JP", "Eurozone", "EU", "United Kingdom", "GB", "United States", "US"):
+            return "Final Manufacturing PMI" if is_final else "Manufacturing PMI"
+        if country in ("France", "FR"):
+            return "French Final Manufacturing PMI" if is_final else "French Manufacturing PMI"
+        if country in ("Germany", "DE"):
+            return "German Final Manufacturing PMI" if is_final else "German Manufacturing PMI"
+        if country in ("Spain", "ES"):
+            return "Spanish Manufacturing PMI"
+        if country in ("Italy", "IT"):
+            return "Italian Manufacturing PMI"
+        if country in ("Switzerland", "CH"):
+            return "Manufacturing PMI"
 
     t = title
     adj = _COUNTRY_ADJECTIVES.get(country, "")
@@ -688,7 +713,7 @@ class TradingViewProvider(BaseEconomicCalendarProvider):
                 source: str = item.get("source") or "TradingView"
 
                 # Drop noisy / low-value events & holidays (Swiss National Day, Bank Holidays, etc.)
-                if "holiday" in category or _is_noise_event(raw_title) or is_event_blacklisted(raw_title, currency):
+                if "holiday" in category or _is_noise_event(raw_title, country=country) or is_event_blacklisted(raw_title, currency):
                     continue
 
                 title: str = _format_title_forex_factory_style(raw_title, country=country)

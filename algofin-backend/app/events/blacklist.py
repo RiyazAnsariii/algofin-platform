@@ -50,6 +50,16 @@ EXCLUDED_EXACT_TITLES = {
     "Baker Hughes Oil Rig Count",
     "Prelim CPI y/y",
     "Prelim CPI m/m",
+
+    # ── Aug 03 ForexFactory Cleanups ─────────────────────────────────────────
+    "NEVI Manufacturing PMI",
+    "Swiss CPI y/y",
+    "New Car Sales y/y",
+    "New Car Registrations y/y",
+    "ISM Manufacturing New Orders",
+    "ISM Manufacturing Employment",
+    "Treasury Refunding Financing Estimates",
+    "Monetary Base y/y",
 }
 
 FORCED_HIGH_IMPACT_PATTERNS = [
@@ -70,6 +80,7 @@ FORCED_HIGH_IMPACT_PATTERNS = [
     "boj gov ueda speaks",
     "monetary policy statement",
     "gdp m/m",
+    "ism manufacturing pmi",
 ]
 
 FORCED_MEDIUM_IMPACT_PATTERNS = [
@@ -78,6 +89,8 @@ FORCED_MEDIUM_IMPACT_PATTERNS = [
     "cpi flash estimate",
     "employment cost index",
     "chicago pmi",
+    "ism manufacturing prices",
+    "cpi m/m",
 ]
 
 
@@ -118,6 +131,10 @@ def is_event_blacklisted(title: str, currency: Optional[str] = None) -> bool:
     if t_clean in EXCLUDED_EXACT_TITLES:
         return True
 
+    # Special case: CHF CPI y/y is blacklisted, but CHF CPI m/m is kept
+    if curr == "CHF" and ("cpi y/y" in t_lower or "swiss cpi y/y" in t_lower):
+        return True
+
     # 1. Any GDP y/y release (ForexFactory only lists GDP q/q or Flash GDP q/q or GDP m/m)
     if "gdp y/y" in t_lower:
         return True
@@ -153,22 +170,28 @@ def is_event_blacklisted(title: str, currency: Optional[str] = None) -> bool:
 
     # 9. Generic CPI y/y / CPI m/m / Prelim CPI y/y / Prelim CPI m/m
     if t_lower in ("cpi y/y", "cpi m/m", "prelim cpi y/y", "prelim cpi m/m"):
+        if curr == "CHF" and t_lower == "cpi m/m":
+            return False
         return True
 
     # 10. Retail Sales m/m for EUR / non-US
     if "retail sales m/m" in t_lower and (curr == "EUR" or t_lower == "retail sales m/m"):
         return True
 
-    # 11. Italian Unemployment Rate / German Unemployment Rate / Unemployed Persons
-    if t_lower in ("italian unemployment rate", "german unemployment rate", "unemployed persons"):
+    # 11. Italian Unemployment Rate / German Unemployment Rate / Unemployed Persons / Generic Unemployment Rate
+    if t_lower in ("italian unemployment rate", "german unemployment rate", "unemployed persons", "unemployment rate") and curr == "EUR":
         return True
 
     # 12. BOE Gov Bailey Speaks
     if "bailey speaks" in t_lower:
         return True
 
-    # 13. Sub-breakdown employment costs
-    if "employment cost -" in t_lower or "housing credit" in t_lower:
+    # 13. Sub-breakdown employment costs & sub-ISM indicators
+    if "employment cost -" in t_lower or "housing credit" in t_lower or "ism manufacturing new orders" in t_lower or "ism manufacturing employment" in t_lower:
+        return True
+
+    # 14. Car registrations & Treasury refunding estimates
+    if "new car" in t_lower or "treasury refunding" in t_lower or "monetary base" in t_lower:
         return True
 
     return False
