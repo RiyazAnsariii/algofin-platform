@@ -163,13 +163,19 @@ _NOISE_KEYWORDS: tuple[str, ...] = (
     "core pce prices q/q", "pce prices q/q",
     "average weekly earnings",
     "industrial production",
+    "industrial sales",
     "balance of trade",
     "retail sales yoy", "retail sales y/y",
     "harmonised inflation", "harmonized inflation", "hicp",
     "ppi yoy", "ppi y/y",
     "non defense goods orders", "ex defense",
-    "m3 money supply", "money supply",
     "market participants survey",
+    "jgb purchase", "unicredit", "bot auction", "frn auction",
+    "mba ", "mba purchase", "mba mortgage",
+
+    # Niche EIA Oil Sub-Reports (Keep headline Crude Oil Inventories)
+    "eia gasoline", "eia distillate", "eia refinery", "eia cushing",
+    "eia heating oil", "eia crude oil imports", "eia crude oil exports",
 
     # Miscellaneous low-value & China clutter
     "tourist arrivals", "car production", "vehicle production",
@@ -189,8 +195,8 @@ _NOISE_EXACT_TITLES: frozenset[str] = frozenset({
     "car production yoy",
     "balance of trade",
     "continuing jobless claims",
-    "m3 money supply",
     "boc market participants survey",
+    "australian cpi",
 })
 
 
@@ -223,6 +229,8 @@ _COUNTRY_ADJECTIVES: dict[str, str] = {
 
 _EXACT_TITLE_MAP: dict[str, str] = {
     "Fed Press Conference": "FOMC Press Conference",
+    "Fed Interest Rate Decision": "Federal Funds Rate",
+    "Federal Reserve Interest Rate Decision": "Federal Funds Rate",
     "BoE Gov Bailey Speech": "BOE Gov Bailey Speaks",
     "BoE Gov Bailey Speaks": "BOE Gov Bailey Speaks",
     "RBA Hunter Speech": "RBA Assist Gov Hunter Speaks",
@@ -244,7 +252,13 @@ _EXACT_TITLE_MAP: dict[str, str] = {
     "Loans to Households MoM": "Private Loans m/m",
     "Loans to Companies y/y": "Corporate Loans y/y",
     "Loans to Companies MoM": "Corporate Loans m/m",
+    "API Crude Oil Stock Change": "API Weekly Crude Oil Stock",
+    "API Crude Oil Stock": "API Weekly Crude Oil Stock",
+    "EIA Crude Oil Stocks Change": "Crude Oil Inventories",
+    "EIA Crude Oil Stock Change": "Crude Oil Inventories",
+    "EIA Crude Oil Stocks": "Crude Oil Inventories",
 }
+
 
 
 
