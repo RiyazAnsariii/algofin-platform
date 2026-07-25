@@ -334,11 +334,11 @@ _EXACT_TITLE_MAP: dict[str, str] = {
     "Eurozone Flash Core CPI y/y": "Core CPI Flash Estimate y/y",
     "Eurozone Flash CPI y/y": "CPI Flash Estimate y/y",
     "Canadian GDP m/m": "GDP m/m",
-    "Michigan Consumer Sentiment Final": "Revised UoM Consumer Sentiment",
-    "TD-MI Inflation Gauge m/m": "MI Inflation Gauge m/m",
-    "Swiss CPI m/m": "CPI m/m",
-    "procure.ch Manufacturing PMI": "Manufacturing PMI",
-    "Unemployment Change": "German Unemployment Change",
+    "ANZ-Indeed Job Ads m/m": "ANZ Job Advertisements m/m",
+    "Global Dairy Trade Price Index": "GDT Price Index",
+    "RCM/TIPP Economic Optimism Index": "RCM/TIPP Economic Optimism",
+    "Total Vehicle Sales": "Omdia Total Vehicle Sales",
+    "JOLTs Job Openings": "JOLTS Job Openings",
     "BoE Monetary Policy Summary": "Monetary Policy Summary",
     "Monetary Policy Summary": "Monetary Policy Summary",
     "BoE MPC Rate Votes": "MPC Official Bank Rate Votes",
@@ -409,6 +409,16 @@ def _format_title_forex_factory_style(title: str, country: str = "") -> str:
         return "CPI Flash Estimate y/y"
     if country in ("Canada", "CA") and "gdp" in t_lower:
         return "GDP m/m"
+    if "unemployment change" in t_lower:
+        if country in ("Spain", "ES"):
+            return "Spanish Unemployment Change"
+        if country in ("Germany", "DE"):
+            return "German Unemployment Change"
+    if "job ad" in t_lower:
+        return "ANZ Job Advertisements m/m"
+    if title in ("Imports", "Exports", "Trade Balance") or "trade balance" in t_lower:
+        if country in ("United States", "US", "Canada", "CA"):
+            return "Trade Balance"
     if "inflation gauge" in t_lower:
         return "MI Inflation Gauge m/m"
     if country in ("Switzerland", "CH") and ("cpi" in t_lower or "inflation" in t_lower):

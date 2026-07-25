@@ -59,7 +59,25 @@ EXCLUDED_EXACT_TITLES = {
     "ISM Manufacturing New Orders",
     "ISM Manufacturing Employment",
     "Treasury Refunding Financing Estimates",
-    "Monetary Base y/y",
+    "S&P Global Manufacturing PMI",
+
+    # ── Aug 04 ForexFactory Cleanups ─────────────────────────────────────────
+    "Household Spending y/y",
+    "AIB Manufacturing PMI",
+    "LMI Logistics Managers Index",
+    "Logistics Managers Index",
+    "JOLTs Job Quits",
+    "Factory Orders ex Transportation",
+    "Total Household Debt",
+    "Ai Group Industry Index",
+    "Ai Group Manufacturing Index",
+    "Ai Group Construction Index",
+    "Average Cash Earnings y/y",
+    "Overtime Pay y/y",
+    "API Weekly Statistical Bulletin",
+    "S&P Global Composite PMI Final",
+    "S&P Global Services PMI Final",
+    "BoJ Monetary Policy Meeting Minutes",
 }
 
 FORCED_HIGH_IMPACT_PATTERNS = [
@@ -90,7 +108,7 @@ FORCED_MEDIUM_IMPACT_PATTERNS = [
     "employment cost index",
     "chicago pmi",
     "ism manufacturing prices",
-    "cpi m/m",
+    "jolts job openings",
 ]
 
 
@@ -139,8 +157,8 @@ def is_event_blacklisted(title: str, currency: Optional[str] = None) -> bool:
     if "gdp y/y" in t_lower:
         return True
 
-    # 2. Export prices & Private Sector Credit y/y
-    if "export prices" in t_lower or "private sector credit y/y" in t_lower:
+    # 2. Export prices & Private Sector Credit y/y & Household Spending y/y
+    if "export prices" in t_lower or "private sector credit y/y" in t_lower or "household spending y/y" in t_lower:
         return True
 
     # 3. Spanish Prelim CPI m/m / Core CPI y/y / Flash GDP y/y
@@ -157,7 +175,7 @@ def is_event_blacklisted(title: str, currency: Optional[str] = None) -> bool:
             return True
 
     # 6. EIA Natural Gas Stocks Change & Rig counts
-    if "natural gas stocks change" in t_lower or "rig count" in t_lower or "baker hughes" in t_lower:
+    if "natural gas stocks change" in t_lower or "rig count" in t_lower or "baker hughes" in t_lower or "api weekly statistical" in t_lower:
         return True
 
     # 7. Generic Consumer Confidence
@@ -175,7 +193,7 @@ def is_event_blacklisted(title: str, currency: Optional[str] = None) -> bool:
         return True
 
     # 10. Retail Sales m/m for EUR / non-US
-    if "retail sales m/m" in t_lower and (curr == "EUR" or t_lower == "retail sales m/m"):
+    if "retail sales m/m" in t_lower and (curr == "EUR" or t_lower == "retail sales m/m") and "italian" not in t_lower:
         return True
 
     # 11. Italian Unemployment Rate / German Unemployment Rate / Unemployed Persons / Generic Unemployment Rate
@@ -190,8 +208,12 @@ def is_event_blacklisted(title: str, currency: Optional[str] = None) -> bool:
     if "employment cost -" in t_lower or "housing credit" in t_lower or "ism manufacturing new orders" in t_lower or "ism manufacturing employment" in t_lower:
         return True
 
-    # 14. Car registrations & Treasury refunding estimates
-    if "new car" in t_lower or "treasury refunding" in t_lower or "monetary base" in t_lower:
+    # 14. Car registrations & Treasury refunding estimates & BOJ Meeting Minutes
+    if "new car" in t_lower or "treasury refunding" in t_lower or "meeting minutes" in t_lower:
+        return True
+
+    # 15. Minor bond auctions & PMI noise
+    if any(k in t_lower for k in ("letras auction", "schatz auction", "ragb auction", "gilt 2032", "tc auction", "logistics managers", "jolts job quits", "total household debt", "composite pmi final", "services pmi final")):
         return True
 
     return False
