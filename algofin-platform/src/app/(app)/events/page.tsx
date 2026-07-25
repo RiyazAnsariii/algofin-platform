@@ -131,6 +131,23 @@ function isBlacklistedFrontend(title: string, currency?: string): boolean {
   return false;
 }
 
+function isForcedHighImpactFrontend(title: string): boolean {
+  if (!title) return false;
+  const tLower = title.trim().toLowerCase();
+  const highImpactKeywords = [
+    "boe monetary policy report",
+    "monetary policy summary",
+    "mpc official bank rate votes",
+    "official bank rate",
+    "advance gdp q/q",
+    "core pce price index m/m",
+    "fomc press conference",
+    "fomc statement",
+    "federal funds rate",
+  ];
+  return highImpactKeywords.some((kw) => tLower.includes(kw));
+}
+
 // ── Exact ForexFactory Events Generator ───────────────────────────
 function generateFallbackEvents(): EconomicEvent[] {
   const now = new Date();
@@ -382,9 +399,13 @@ export default function EventsPage() {
 
       const data = res.data;
       if (data && data.events) {
-        const cleanEvents = data.events.filter(
-          (e) => !isBlacklistedFrontend(e.title, e.currency)
-        );
+        const cleanEvents = data.events
+          .filter((e) => !isBlacklistedFrontend(e.title, e.currency))
+          .map((e) =>
+            isForcedHighImpactFrontend(e.title)
+              ? { ...e, impact: "High" as ImpactLevel }
+              : e
+          );
         setEvents(cleanEvents);
         if (data.summary) setSummaryData(data.summary);
         if (data.metadata) setDataAgeMinutes(data.metadata.data_age_minutes || 0);

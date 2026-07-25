@@ -1,5 +1,5 @@
 # app/events/blacklist.py
-# AlgoFin — Excluded / Blacklisted Economic Events
+# AlgoFin — Excluded / Blacklisted & Impact Classifier Rules
 # Events permanently filtered out to match exact Forex Factory specifications across all dates.
 
 from typing import Optional
@@ -25,6 +25,31 @@ EXCLUDED_EXACT_TITLES = {
     "BoE Gov Bailey Speaks",
     "EIA Natural Gas Stocks Change",
 }
+
+FORCED_HIGH_IMPACT_PATTERNS = [
+    "boe monetary policy report",
+    "monetary policy summary",
+    "mpc official bank rate votes",
+    "official bank rate",
+    "advance gdp q/q",
+    "core pce price index m/m",
+    "fomc press conference",
+    "fomc statement",
+    "federal funds rate",
+]
+
+
+def is_forced_high_impact(title: str) -> bool:
+    """
+    Check if an economic event title is explicitly classified as High Impact (🔴).
+    """
+    if not title:
+        return False
+    t_lower = title.strip().lower()
+    for pattern in FORCED_HIGH_IMPACT_PATTERNS:
+        if pattern in t_lower:
+            return True
+    return False
 
 
 def is_event_blacklisted(title: str, currency: Optional[str] = None) -> bool:
