@@ -26,75 +26,56 @@ def upgrade() -> None:
         # 1. Enable pg_trgm extension (idempotent)
         op.execute("CREATE EXTENSION IF NOT EXISTS pg_trgm;")
 
-        # 2. Wipe old seed/fake data so we start fresh with real TradingView data.
-        #    economic_events is a pure cache table — it is repopulated automatically
-        #    on every startup and every 30-minute sync cycle.
-        op.execute("TRUNCATE TABLE economic_events;")
+        # 2. Drop and recreate economic_events cleanly.
+        #    This is a pure cache table — it holds no user data.
+        #    TradingView provider re-populates it automatically on startup.
+        op.execute("DROP TABLE IF EXISTS economic_events CASCADE;")
 
-        # 3. Add missing columns (idempotent — ADD COLUMN IF NOT EXISTS)
-        op.execute("ALTER TABLE economic_events ADD COLUMN IF NOT EXISTS source VARCHAR(100) NOT NULL DEFAULT 'FMP';")
-        op.execute("ALTER TABLE economic_events ADD COLUMN IF NOT EXISTS provider_event_id VARCHAR(100);")
-        op.execute("ALTER TABLE economic_events ADD COLUMN IF NOT EXISTS event_hash VARCHAR(64) NOT NULL DEFAULT '';")
-        op.execute("ALTER TABLE economic_events ADD COLUMN IF NOT EXISTS title VARCHAR(500) NOT NULL DEFAULT '';")
-        op.execute("ALTER TABLE economic_events ADD COLUMN IF NOT EXISTS country VARCHAR(100) NOT NULL DEFAULT '';")
-        op.execute("ALTER TABLE economic_events ADD COLUMN IF NOT EXISTS currency VARCHAR(10) NOT NULL DEFAULT '';")
-        op.execute("ALTER TABLE economic_events ADD COLUMN IF NOT EXISTS impact VARCHAR(10) NOT NULL DEFAULT '';")
-        op.execute("ALTER TABLE economic_events ADD COLUMN IF NOT EXISTS event_time_utc TIMESTAMP WITH TIME ZONE;")
-        op.execute("ALTER TABLE economic_events ADD COLUMN IF NOT EXISTS actual VARCHAR(100);")
-        op.execute("ALTER TABLE economic_events ADD COLUMN IF NOT EXISTS forecast VARCHAR(100);")
-        op.execute("ALTER TABLE economic_events ADD COLUMN IF NOT EXISTS previous VARCHAR(100);")
-        op.execute("ALTER TABLE economic_events ADD COLUMN IF NOT EXISTS raw_payload JSON;")
-        op.execute("ALTER TABLE economic_events ADD COLUMN IF NOT EXISTS revision_count INTEGER NOT NULL DEFAULT 0;")
-        op.execute("ALTER TABLE economic_events ADD COLUMN IF NOT EXISTS last_updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now();")
-        op.execute("ALTER TABLE economic_events ADD COLUMN IF NOT EXISTS created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now();")
-
-        # 4. Add unique constraints (now safe because table is empty after TRUNCATE)
         op.execute("""
-            DO $$
-            BEGIN
-                IF NOT EXISTS (
-                    SELECT 1 FROM pg_constraint
-                    WHERE conname = 'uq_economic_events_source_provider_id'
-                ) THEN
-                    ALTER TABLE economic_events
-                    ADD CONSTRAINT uq_economic_events_source_provider_id
-                    UNIQUE (source, provider_event_id);
-                END IF;
-            END $$;
-        """)
-        op.execute("""
-            DO $$
-            BEGIN
-                IF NOT EXISTS (
-                    SELECT 1 FROM pg_constraint
-                    WHERE conname = 'uq_economic_events_source_hash'
-                ) THEN
-                    ALTER TABLE economic_events
-                    ADD CONSTRAINT uq_economic_events_source_hash
-                    UNIQUE (source, event_hash);
-                END IF;
-            END $$;
+            CREATE TABLE economic_events (
+                id UUID NOT NULL DEFAULT gen_random_uuid(),
+                source VARCHAR(100) NOT NULL DEFAULT 'TradingView',
+                provider_event_id VARCHAR(100),
+                event_hash VARCHAR(64) NOT NULL DEFAULT '',
+                title VARCHAR(500) NOT NULL DEFAULT '',
+                country VARCHAR(100) NOT NULL DEFAULT '',
+                currency VARCHAR(10) NOT NULL DEFAULT '',
+                impact VARCHAR(10) NOT NULL DEFAULT '',
+                event_time_utc TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+                actual VARCHAR(100),
+                forecast VARCHAR(100),
+                previous VARCHAR(100),
+                raw_payload JSON,
+                revision_count INTEGER NOT NULL DEFAULT 0,
+                last_updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+                created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+                PRIMARY KEY (id),
+                CONSTRAINT uq_economic_events_source_provider_id UNIQUE (source, provider_event_id),
+                CONSTRAINT uq_economic_events_source_hash UNIQUE (source, event_hash)
+            );
         """)
 
-        # 5. Create all indexes (IF NOT EXISTS — idempotent)
-        op.execute("CREATE INDEX IF NOT EXISTS ix_economic_events_source ON economic_events (source);")
-        op.execute("CREATE INDEX IF NOT EXISTS ix_economic_events_provider_event_id ON economic_events (provider_event_id);")
-        op.execute("CREATE INDEX IF NOT EXISTS ix_economic_events_event_hash ON economic_events (event_hash);")
-        op.execute("CREATE INDEX IF NOT EXISTS ix_economic_events_title ON economic_events (title);")
-        op.execute("CREATE INDEX IF NOT EXISTS ix_economic_events_country ON economic_events (country);")
-        op.execute("CREATE INDEX IF NOT EXISTS ix_economic_events_currency ON economic_events (currency);")
-        op.execute("CREATE INDEX IF NOT EXISTS ix_economic_events_impact ON economic_events (impact);")
-        op.execute("CREATE INDEX IF NOT EXISTS ix_economic_events_event_time_utc ON economic_events (event_time_utc);")
-        op.execute("CREATE INDEX IF NOT EXISTS idx_econ_events_time_impact_curr ON economic_events (event_time_utc, impact, currency);")
-        op.execute("CREATE INDEX IF NOT EXISTS idx_economic_events_trgm_title ON economic_events USING gin (title gin_trgm_ops);")
-        op.execute("CREATE INDEX IF NOT EXISTS idx_economic_events_trgm_country ON economic_events USING gin (country gin_trgm_ops);")
+        # 3. Create standard indexes
+        op.execute("CREATE INDEX ix_economic_events_source ON economic_events (source);")
+        op.execute("CREATE INDEX ix_economic_events_provider_event_id ON economic_events (provider_event_id);")
+        op.execute("CREATE INDEX ix_economic_events_event_hash ON economic_events (event_hash);")
+        op.execute("CREATE INDEX ix_economic_events_title ON economic_events (title);")
+        op.execute("CREATE INDEX ix_economic_events_country ON economic_events (country);")
+        op.execute("CREATE INDEX ix_economic_events_currency ON economic_events (currency);")
+        op.execute("CREATE INDEX ix_economic_events_impact ON economic_events (impact);")
+        op.execute("CREATE INDEX ix_economic_events_event_time_utc ON economic_events (event_time_utc);")
+        op.execute("CREATE INDEX idx_econ_events_time_impact_curr ON economic_events (event_time_utc, impact, currency);")
+
+        # 4. Create trigram GIN indexes for fast text search
+        op.execute("CREATE INDEX idx_economic_events_trgm_title ON economic_events USING gin (title gin_trgm_ops);")
+        op.execute("CREATE INDEX idx_economic_events_trgm_country ON economic_events USING gin (country gin_trgm_ops);")
 
     else:
-        # SQLite fallback (local dev only)
+        # SQLite fallback (local dev only) — aiosqlite doesn't support UUID natively
         op.create_table(
             'economic_events',
             sa.Column('id', sa.String(36), primary_key=True),
-            sa.Column('source', sa.String(length=100), nullable=False, server_default='FMP'),
+            sa.Column('source', sa.String(length=100), nullable=False, server_default='TradingView'),
             sa.Column('provider_event_id', sa.String(length=100), nullable=True),
             sa.Column('event_hash', sa.String(length=64), nullable=False),
             sa.Column('title', sa.String(length=500), nullable=False),
