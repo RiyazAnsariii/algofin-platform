@@ -454,6 +454,19 @@ export default function EventsPage() {
               : e
           );
         setEvents(cleanEvents);
+        if (cleanEvents.length > 0) {
+          // If current viewDate has 0 events (e.g. weekend), auto-jump to first date with active events
+          const targetY = viewDate.getFullYear();
+          const targetM = viewDate.getMonth();
+          const targetD = viewDate.getDate();
+          const hasEvents = cleanEvents.some((e) => {
+            const dt = new Date(e.event_time);
+            return dt.getFullYear() === targetY && dt.getMonth() === targetM && dt.getDate() === targetD;
+          });
+          if (!hasEvents) {
+            setViewDate(new Date(cleanEvents[0].event_time));
+          }
+        }
         if (data.summary) setSummaryData(data.summary);
         if (data.metadata) setDataAgeMinutes(data.metadata.data_age_minutes || 0);
       } else {
@@ -851,13 +864,25 @@ export default function EventsPage() {
                 </tr>
               ) : singleDayEvents.length === 0 ? (
                 <tr>
-                  <td colSpan={11} className="py-12 text-center text-muted-foreground">
+                  <td colSpan={11} className="py-12 text-center text-muted-foreground space-y-3">
                     <p className="text-sm font-semibold text-foreground mb-1">
                       No scheduled events for {viewDate.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric" })}
                     </p>
-                    <p className="text-xs text-muted-foreground/70">
-                      Use the ◀ and ▶ buttons above to navigate dates.
+                    <p className="text-xs text-muted-foreground/70 mb-3">
+                      Market releases resume on active trading days. Use ◀ ▶ or click the date pill to pick a date.
                     </p>
+                    {events.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const firstDate = new Date(events[0].event_time);
+                          setViewDate(firstDate);
+                        }}
+                        className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-cyan-500/10 text-cyan-400 hover:bg-cyan-500/20 border border-cyan-500/30 text-xs font-bold transition-all cursor-pointer shadow-sm"
+                      >
+                        <span>▶ Jump to Next Event Date ({new Date(events[0].event_time).toLocaleDateString("en-US", { month: "short", day: "numeric" })})</span>
+                      </button>
+                    )}
                   </td>
                 </tr>
               ) : (
@@ -881,12 +906,13 @@ export default function EventsPage() {
                     </td>
                   </tr>
                   {/* Event Rows for Selected Single Day */}
-                      const effectiveImpact = isForcedHighImpactFrontend(evt.title)
-                        ? "high"
-                        : (isForcedMediumImpactFrontend(evt.title, evt.currency)
-                            ? "medium"
-                            : ((evt.impact || "low").toLowerCase() as ImpactLevel));
-                      const impactCfg = IMPACT_CONFIG[effectiveImpact] || IMPACT_CONFIG.low;
+                  {singleDayEvents.map((evt) => {
+                    const effectiveImpact = isForcedHighImpactFrontend(evt.title)
+                      ? "high"
+                      : (isForcedMediumImpactFrontend(evt.title, evt.currency)
+                          ? "medium"
+                          : ((evt.impact || "low").toLowerCase() as ImpactLevel));
+                    const impactCfg = IMPACT_CONFIG[effectiveImpact] || IMPACT_CONFIG.low;
                       const isAlertOn = alertMap[evt.id];
                       const isActualBetter =
                         evt.actual && evt.forecast && parseFloat(evt.actual) > parseFloat(evt.forecast);
