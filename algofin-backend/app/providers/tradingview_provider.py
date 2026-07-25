@@ -309,6 +309,18 @@ _EXACT_TITLE_MAP: dict[str, str] = {
     "Building Approvals": "Building Approvals m/m",
     "Building Approvals MoM": "Building Approvals m/m",
     "Import Prices QoQ": "Import Prices q/q",
+    "Services Producer Price Index y/y": "SPPI y/y",
+    "Services Producer Price Index YoY": "SPPI y/y",
+    "SPPI YoY": "SPPI y/y",
+    "Ifo Business Climate": "German ifo Business Climate",
+    "German Ifo Business Climate": "German ifo Business Climate",
+    "M3 Money Supply": "M3 Money Supply y/y",
+    "M3 Money Supply YoY": "M3 Money Supply y/y",
+    "Loans to Households y/y": "Private Loans y/y",
+    "Private Loans YoY": "Private Loans y/y",
+    "Ecofin Meeting": "ECOFIN Meetings",
+    "Ecofin Meetings": "ECOFIN Meetings",
+    "Durable Goods Orders": "Durable Goods Orders m/m",
 }
 
 
@@ -394,7 +406,7 @@ def _determine_impact_level(formatted_title: str, default_impact: str) -> str:
     """Classify event impact as High (🔴), Medium (🟠), or Low (🟡) matching Forex Factory screenshots 1:1."""
     t = formatted_title.lower()
 
-    # 1. High Impact 🔴 (Strict Red folder events per Jul 29 & Jul 30 Forex Factory screenshots)
+    # 1. High Impact 🔴 (Strict Red folder events per Forex Factory screenshots)
     if any(k in t for k in (
         "fomc press conference", "fomc statement",
         "boe monetary policy report", "monetary policy summary",
@@ -404,7 +416,7 @@ def _determine_impact_level(formatted_title: str, default_impact: str) -> str:
     )) or (t in ("cpi m/m", "cpi y/y", "cpi q/q") or t.startswith("cpi ")):
         return "High"
 
-    # 2. Medium Impact 🟠 (Strict Orange folder events per Jul 29 & Jul 30 Forex Factory screenshots)
+    # 2. Medium Impact 🟠 (Strict Orange folder events per Forex Factory screenshots)
     if any(k in t for k in (
         "german prelim cpi", "german prelim gdp",
         "advance gdp price index", "unemployment claims",
@@ -412,8 +424,10 @@ def _determine_impact_level(formatted_title: str, default_impact: str) -> str:
     )):
         return "Medium"
 
-    # 3. Force Low Impact 🟡 (All Low events matching Forex Factory Jul 29 & Jul 30 screenshots)
+    # 3. Force Low Impact 🟡 (All Low events matching Forex Factory screenshots)
     if any(k in t for k in (
+        "sppi", "ifo business climate", "m3 money supply", "private loans",
+        "ecofin meetings", "cbi realized sales", "durable goods orders",
         "rba assist gov hunter", "hunter speaks",
         "anz business confidence", "building approvals",
         "import prices", "export prices", "consumer confidence",
@@ -433,6 +447,7 @@ def _determine_impact_level(formatted_title: str, default_impact: str) -> str:
         return "Low"
 
     return "Low"
+
 
 
 
