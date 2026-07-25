@@ -12,6 +12,7 @@ import redis.asyncio as aioredis
 
 from app.config import settings
 from app.models.economic_event import EconomicEvent
+from app.events.blacklist import is_event_blacklisted
 from app.providers import get_economic_calendar_provider
 from app.repositories.economic_calendar_repository import EconomicCalendarRepository
 from app.services.economic_calendar_cache import EconomicCalendarCache
@@ -208,6 +209,8 @@ class EconomicCalendarService:
         # 4. Format events with dynamic status calculation
         formatted_events = []
         for e in db_events:
+            if is_event_blacklisted(e.title, e.currency):
+                continue
             status = self.calculate_status(e.event_time_utc, e.actual)
             formatted_events.append(
                 {

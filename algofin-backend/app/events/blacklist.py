@@ -37,13 +37,12 @@ def is_event_blacklisted(title: str, currency: Optional[str] = None) -> bool:
 
     t_clean = title.strip()
     curr = (currency or "").strip().upper()
+    t_lower = t_clean.lower()
 
     if t_clean in EXCLUDED_EXACT_TITLES:
         return True
 
-    t_lower = t_clean.lower()
-
-    # 1. Any GDP y/y release (ForexFactory only lists GDP q/q)
+    # 1. Any GDP y/y release (ForexFactory only lists GDP q/q or Flash GDP q/q)
     if "gdp y/y" in t_lower:
         return True
 
@@ -68,22 +67,27 @@ def is_event_blacklisted(title: str, currency: Optional[str] = None) -> bool:
     if "natural gas stocks change" in t_lower:
         return True
 
-    # 7. Specific EUR events not listed separately on ForexFactory
-    if curr == "EUR":
-        if "ppi m/m" in t_lower:
-            return True
-        if "consumer confidence" in t_lower:
-            return True
-        if "retail sales m/m" in t_lower:
-            return True
-        if t_lower in ("cpi y/y", "cpi m/m", "flash gdp y/y"):
-            return True
+    # 7. Generic Consumer Confidence (ForexFactory uses CB Consumer Confidence or UMich Consumer Sentiment)
+    if t_lower == "consumer confidence" or t_lower.endswith(" consumer confidence"):
+        return True
 
-    # 8. Italian Unemployment Rate (ForexFactory uses Italian Monthly Unemployment Rate)
+    # 8. Generic PPI m/m (keep only US PPI / Core PPI)
+    if t_lower == "ppi m/m" or ("ppi m/m" in t_lower and curr != "USD"):
+        return True
+
+    # 9. Generic CPI y/y / CPI m/m (keep US / UK / German / French CPI)
+    if t_lower in ("cpi y/y", "cpi m/m") or (t_lower in ("cpi y/y", "cpi m/m") and curr == "EUR"):
+        return True
+
+    # 10. Retail Sales m/m for EUR / non-US
+    if "retail sales m/m" in t_lower and (curr == "EUR" or t_lower == "retail sales m/m"):
+        return True
+
+    # 11. Italian Unemployment Rate (ForexFactory uses Italian Monthly Unemployment Rate)
     if t_lower == "italian unemployment rate":
         return True
 
-    # 9. BOE Gov Bailey Speaks for this period
+    # 12. BOE Gov Bailey Speaks for this period
     if "bailey speaks" in t_lower:
         return True
 

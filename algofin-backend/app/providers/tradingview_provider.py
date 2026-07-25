@@ -17,6 +17,7 @@ from typing import List, Optional, Tuple
 import httpx
 
 from app.providers.base import BaseEconomicCalendarProvider, NormalizedEventDTO
+from app.events.blacklist import is_event_blacklisted
 
 logger = logging.getLogger(__name__)
 
@@ -651,10 +652,12 @@ class TradingViewProvider(BaseEconomicCalendarProvider):
                 source: str = item.get("source") or "TradingView"
 
                 # Drop noisy / low-value events & holidays (Swiss National Day, Bank Holidays, etc.)
-                if "holiday" in category or _is_noise_event(raw_title):
+                if "holiday" in category or _is_noise_event(raw_title) or is_event_blacklisted(raw_title, currency):
                     continue
 
                 title: str = _format_title_forex_factory_style(raw_title, country=country)
+                if is_event_blacklisted(title, currency):
+                    continue
                 impact = _determine_impact_level(title, default_impact=impact)
 
                 # Batch deduplication: keep only one headline release per (title, currency, time)

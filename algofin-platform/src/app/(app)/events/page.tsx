@@ -82,6 +82,55 @@ const IMPACT_CONFIG: Record<
   },
 };
 
+// ── Non-ForexFactory Event Blacklist ──────────────────────────────────────────
+function isBlacklistedFrontend(title: string, currency?: string): boolean {
+  if (!title) return false;
+  const tClean = title.trim();
+  const tLower = tClean.toLowerCase();
+  const curr = (currency || "").trim().toUpperCase();
+
+  const exactMatches = [
+    "export prices q/q",
+    "spanish prelim cpi m/m",
+    "spanish prelim core cpi y/y",
+    "spanish flash gdp y/y",
+    "german flash gdp y/y",
+    "italian advance gdp y/y",
+    "eurozone flash gdp y/y",
+    "italian unemployment rate",
+    "boe mpc vote unchanged",
+    "boe mpc vote hike",
+    "boe mpc vote cut",
+    "core pce prices q/q advance",
+    "core pce price index y/y",
+    "pce prices q/q advance",
+    "pce price index m/m",
+    "pce price index y/y",
+    "boe gov bailey speaks",
+    "eia natural gas stocks change",
+  ];
+
+  if (exactMatches.includes(tLower)) return true;
+  if (tLower.includes("gdp y/y")) return true;
+  if (tLower.includes("export prices")) return true;
+  if (tLower.includes("spanish prelim") || tLower.includes("spanish flash gdp")) return true;
+  if (tLower.includes("mpc vote")) return true;
+  if (tLower.includes("pce")) {
+    if (tLower.includes("q/q") || tLower.includes("y/y") || (tLower.endsWith("index m/m") && !tLower.includes("core"))) {
+      return true;
+    }
+  }
+  if (tLower.includes("natural gas stocks change")) return true;
+  if (tLower === "consumer confidence" || tLower.endsWith(" consumer confidence")) return true;
+  if (tLower === "ppi m/m" || (tLower.includes("ppi m/m") && curr !== "USD")) return true;
+  if (tLower === "cpi y/y" || tLower === "cpi m/m" || (["cpi y/y", "cpi m/m"].includes(tLower) && curr === "EUR")) return true;
+  if (tLower.includes("retail sales m/m") && (curr === "EUR" || tLower === "retail sales m/m")) return true;
+  if (tLower === "italian unemployment rate") return true;
+  if (tLower.includes("bailey speaks")) return true;
+
+  return false;
+}
+
 // ── Exact ForexFactory Events Generator ───────────────────────────
 function generateFallbackEvents(): EconomicEvent[] {
   const now = new Date();
@@ -333,7 +382,10 @@ export default function EventsPage() {
 
       const data = res.data;
       if (data && data.events) {
-        setEvents(data.events);
+        const cleanEvents = data.events.filter(
+          (e) => !isBlacklistedFrontend(e.title, e.currency)
+        );
+        setEvents(cleanEvents);
         if (data.summary) setSummaryData(data.summary);
         if (data.metadata) setDataAgeMinutes(data.metadata.data_age_minutes || 0);
       } else {
