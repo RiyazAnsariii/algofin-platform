@@ -167,6 +167,8 @@ _NOISE_KEYWORDS: tuple[str, ...] = (
     "retail sales yoy", "retail sales y/y",
     "harmonised inflation", "harmonized inflation", "hicp",
     "ppi yoy", "ppi y/y",
+    "non defense goods orders", "ex defense",
+    "m3 money supply", "money supply", "private loans",
 
     # Miscellaneous low-value & China clutter
     "tourist arrivals", "car production", "vehicle production",
@@ -186,6 +188,8 @@ _NOISE_EXACT_TITLES: frozenset[str] = frozenset({
     "car production yoy",
     "balance of trade",
     "continuing jobless claims",
+    "m3 money supply",
+    "private loans",
 })
 
 
@@ -228,7 +232,11 @@ _EXACT_TITLE_MAP: dict[str, str] = {
     "BOC Gov Macklem Speech": "BOC Gov Macklem Speaks",
     "SNB Chairman Schlegel Speech": "SNB Chairman Schlegel Speaks",
     "ECB Pres Lagarde Speech": "ECB Pres Lagarde Speaks",
+    "Durable Goods Orders Ex Transport": "Core Durable Goods Orders m/m",
+    "Durable Goods Orders Ex Transportation": "Core Durable Goods Orders m/m",
+    "Durable Goods Orders MoM": "Durable Goods Orders m/m",
 }
+
 
 
 def _format_title_forex_factory_style(title: str, country: str = "") -> str:
