@@ -70,7 +70,7 @@ export default function BillingPage() {
   const progressPct = Math.min(Math.round((currentDay / totalDays) * 100), 100);
 
   return (
-    <div className="space-y-6 max-w-6xl">
+    <div className="page-content space-y-6">
       {/* ── Top Header ────────────────────────────────────────────── */}
       <div className="flex items-start justify-between gap-4">
         <div>

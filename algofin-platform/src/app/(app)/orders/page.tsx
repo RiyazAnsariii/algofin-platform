@@ -107,7 +107,7 @@ export default function OrdersPage() {
   const cancelledTodayCount = orders.filter((o) => o.status === "CANCELLED").length;
 
   return (
-    <div className="space-y-6 max-w-6xl">
+    <div className="page-content space-y-6">
       {/* ── Top Header ────────────────────────────────────────────── */}
       <div className="flex items-start justify-between gap-4">
         <div>

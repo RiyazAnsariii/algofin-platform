@@ -340,9 +340,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       {/* Main area: offset by sidebar width, scrolls independently */}
       <div className="flex-1 flex flex-col min-w-0 lg:ml-60">
         <MobileTopBar onLogout={handleLogout} />
-        <main className="flex-1 overflow-y-auto p-6">
+        <main className="flex-1 overflow-y-auto px-5 py-6 sm:px-8">
           {checking ? (
-            <div className="space-y-6 max-w-5xl animate-fade-in">
+            <div className="page-content space-y-6 animate-fade-in">
               <div className="skeleton h-8 w-48 rounded-lg" />
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 {[1, 2, 3, 4].map((i) => (

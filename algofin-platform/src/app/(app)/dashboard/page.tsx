@@ -429,7 +429,7 @@ export default function DashboardPage() {
   const estFee = pnlMtd > 0 ? pnlMtd * 0.2 : 0;
 
   return (
-    <div className="min-h-[calc(100vh-3rem)] flex flex-col justify-between space-y-4 max-w-6xl">
+    <div className="page-content space-y-6">
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
         <div>

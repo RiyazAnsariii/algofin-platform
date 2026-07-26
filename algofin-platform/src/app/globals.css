@@ -441,6 +441,15 @@
   border-radius: 0.5rem;
 }
 
+/* ─── Page-level layout utility ─── */
+@utility page-content {
+  width: 100%;
+  max-width: 1440px;
+  margin-left: auto;
+  margin-right: auto;
+  padding-bottom: 2rem;
+}
+
 @utility delay-100 { animation-delay: 100ms; }
 @utility delay-200 { animation-delay: 200ms; }
 @utility delay-300 { animation-delay: 300ms; }

@@ -187,7 +187,7 @@ export default function AlertsPage() {
   ] as const;
 
   return (
-    <div className="space-y-6">
+    <div className="page-content space-y-6">
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold text-foreground">Alerts</h1>

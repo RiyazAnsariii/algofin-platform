@@ -757,7 +757,7 @@ export default function JournalPage() {
   const lossRatePct = a ? ((1 - a.win_rate) * 100).toFixed(2) : "0.00";
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto pb-10">
+    <div className="page-content space-y-6">
       {/* ── Top Header Row ───────────────────────────────────────────────── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>

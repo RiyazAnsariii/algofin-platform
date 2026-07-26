@@ -590,7 +590,7 @@ export default function ExchangesPage() {
   }, {});
 
   return (
-    <div className="max-w-4xl space-y-8">
+    <div className="page-content space-y-6">
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold text-foreground">Exchange Accounts</h1>
