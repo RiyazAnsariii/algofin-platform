@@ -898,60 +898,173 @@ export default function ExchangesPage() {
 
         {/* ── RIGHT COLUMN: SIDEBAR INFO PANEL (4 COLS) ───────────────── */}
         <div className="lg:col-span-4 flex flex-col gap-3 min-h-0 h-full">
-          {/* Card 1: How it works (Timeline) */}
-          <div className="bg-[#0b101b]/90 border border-white/8 rounded-2xl p-4 sm:p-5 flex flex-col flex-1 min-h-0 justify-between overflow-hidden">
-            <h2 className="text-xs font-bold text-foreground tracking-wide uppercase text-muted-foreground/80 shrink-0">How it works</h2>
+          {/* Card 1: How it works (Timeline matching Image 1 1:1) */}
+          <div className="bg-[#0b101b]/95 border border-white/10 rounded-2xl p-4 sm:p-5 flex flex-col flex-1 min-h-0 justify-between overflow-hidden shadow-xl">
+            {/* Header with Sparkle Badge */}
+            <div className="flex items-start gap-3 shrink-0">
+              <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-purple-500/20 via-indigo-500/20 to-cyan-500/20 border border-purple-500/35 flex items-center justify-center text-purple-300 shrink-0 shadow-sm">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M12 3v3m0 12v3M3 12h3m12 0h3m-3.5-6.5l-2 2m-7 7l-2 2m11 0l-2-2m-7-7l-2-2" strokeLinecap="round"/>
+                </svg>
+              </div>
+              <div>
+                <h2 className="text-xs font-extrabold text-foreground tracking-wider uppercase">HOW IT WORKS</h2>
+                <p className="text-[11px] text-muted-foreground leading-tight mt-0.5">
+                  Get started in 4 simple steps and unlock powerful insights.
+                </p>
+              </div>
+            </div>
 
-            <div className="relative pl-6 flex flex-col justify-around flex-1 my-2 before:absolute before:left-[11px] before:top-3 before:bottom-3 before:w-[2px] before:bg-white/10">
+            {/* Timeline Steps */}
+            <div className="relative pl-7 flex flex-col justify-around flex-1 my-3 before:absolute before:left-[13px] before:top-4 before:bottom-4 before:w-[2px] before:bg-white/12">
               {/* Step 1 */}
-              <div className="relative">
-                <div className="absolute -left-6 top-0.5 w-6 h-6 rounded-full bg-purple-500/20 border border-purple-500/40 text-purple-400 text-xs font-bold flex items-center justify-center shrink-0">
+              <div className="relative flex items-center gap-3">
+                {/* Timeline node */}
+                <div className="absolute -left-7 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-[#0a0714] border-2 border-purple-500 text-purple-300 text-xs font-bold flex items-center justify-center shrink-0 z-10 shadow-sm">
                   1
                 </div>
-                <div className="pl-2 space-y-1">
-                  <h3 className="text-xs font-semibold text-foreground">1. Connect Exchange</h3>
-                  <p className="text-[11px] text-muted-foreground leading-relaxed">
-                    Securely link read-only API keys from your exchange account.
-                  </p>
+                {/* Horizontal connector line with dot */}
+                <div className="absolute -left-2 top-1/2 -translate-y-1/2 w-2 h-[2px] bg-purple-500/50 flex items-center justify-end">
+                  <div className="w-1.5 h-1.5 rounded-full bg-purple-400" />
+                </div>
+
+                {/* Card Container */}
+                <div className="flex-1 bg-[#080d1a]/80 border border-white/8 hover:border-white/15 rounded-xl p-2.5 px-3 flex items-center justify-between gap-2.5 transition-all shadow-sm">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="w-8 h-8 rounded-full bg-purple-500/12 border border-purple-500/30 flex items-center justify-center text-purple-400 shrink-0">
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/>
+                        <path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/>
+                      </svg>
+                    </div>
+                    <div className="min-w-0">
+                      <h3 className="text-xs font-bold text-foreground leading-tight truncate">Connect Exchange</h3>
+                      <p className="text-[10px] text-muted-foreground leading-snug truncate mt-0.5">
+                        Securely link read-only API keys from your exchange account.
+                      </p>
+                    </div>
+                  </div>
+
+                  <span className="px-2 py-0.5 rounded-lg bg-purple-500/10 border border-purple-500/25 text-purple-300 text-[10px] font-semibold flex items-center gap-1 shrink-0">
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                    </svg>
+                    100% Secure
+                  </span>
                 </div>
               </div>
 
               {/* Step 2 */}
-              <div className="relative">
-                <div className="absolute -left-6 top-0.5 w-6 h-6 rounded-full bg-purple-500/20 border border-purple-500/40 text-purple-400 text-xs font-bold flex items-center justify-center shrink-0">
+              <div className="relative flex items-center gap-3">
+                {/* Timeline node */}
+                <div className="absolute -left-7 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-[#0a0714] border-2 border-purple-500 text-purple-300 text-xs font-bold flex items-center justify-center shrink-0 z-10 shadow-sm">
                   2
                 </div>
-                <div className="pl-2 space-y-1">
-                  <h3 className="text-xs font-semibold text-foreground">2. Sync Portfolio</h3>
-                  <p className="text-[11px] text-muted-foreground leading-relaxed">
-                    Automatically import balances, open positions &amp; trade history.
-                  </p>
+                {/* Horizontal connector line with dot */}
+                <div className="absolute -left-2 top-1/2 -translate-y-1/2 w-2 h-[2px] bg-purple-500/50 flex items-center justify-end">
+                  <div className="w-1.5 h-1.5 rounded-full bg-purple-400" />
+                </div>
+
+                {/* Card Container */}
+                <div className="flex-1 bg-[#080d1a]/80 border border-white/8 hover:border-white/15 rounded-xl p-2.5 px-3 flex items-center justify-between gap-2.5 transition-all shadow-sm">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="w-8 h-8 rounded-full bg-purple-500/12 border border-purple-500/30 flex items-center justify-center text-purple-400 shrink-0">
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 11-.57-8.38l5.67-5.67"/>
+                      </svg>
+                    </div>
+                    <div className="min-w-0">
+                      <h3 className="text-xs font-bold text-foreground leading-tight truncate">Sync Portfolio</h3>
+                      <p className="text-[10px] text-muted-foreground leading-snug truncate mt-0.5">
+                        Automatically import balances, open positions &amp; trade history.
+                      </p>
+                    </div>
+                  </div>
+
+                  <span className="px-2 py-0.5 rounded-lg bg-purple-500/10 border border-purple-500/25 text-purple-300 text-[10px] font-semibold flex items-center gap-1 shrink-0">
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <rect x="2" y="3" width="20" height="14" rx="2"/>
+                      <line x1="8" y1="21" x2="16" y2="21"/>
+                      <line x1="12" y1="17" x2="12" y2="21"/>
+                    </svg>
+                    Auto Sync
+                  </span>
                 </div>
               </div>
 
               {/* Step 3 */}
-              <div className="relative">
-                <div className="absolute -left-6 top-0.5 w-6 h-6 rounded-full bg-cyan-500/20 border border-cyan-500/40 text-cyan-400 text-xs font-bold flex items-center justify-center shrink-0">
+              <div className="relative flex items-center gap-3">
+                {/* Timeline node */}
+                <div className="absolute -left-7 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-[#071114] border-2 border-cyan-500 text-cyan-300 text-xs font-bold flex items-center justify-center shrink-0 z-10 shadow-sm">
                   3
                 </div>
-                <div className="pl-2 space-y-1">
-                  <h3 className="text-xs font-semibold text-foreground">3. View Analytics</h3>
-                  <p className="text-[11px] text-muted-foreground leading-relaxed">
-                    Track performance metrics &amp; get real-time AI trading insights.
-                  </p>
+                {/* Horizontal connector line with dot */}
+                <div className="absolute -left-2 top-1/2 -translate-y-1/2 w-2 h-[2px] bg-cyan-500/50 flex items-center justify-end">
+                  <div className="w-1.5 h-1.5 rounded-full bg-cyan-400" />
+                </div>
+
+                {/* Card Container */}
+                <div className="flex-1 bg-[#080d1a]/80 border border-white/8 hover:border-white/15 rounded-xl p-2.5 px-3 flex items-center justify-between gap-2.5 transition-all shadow-sm">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="w-8 h-8 rounded-full bg-cyan-500/12 border border-cyan-500/30 flex items-center justify-center text-cyan-400 shrink-0">
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <line x1="18" y1="20" x2="18" y2="10"/>
+                        <line x1="12" y1="20" x2="12" y2="4"/>
+                        <line x1="6" y1="20" x2="6" y2="14"/>
+                      </svg>
+                    </div>
+                    <div className="min-w-0">
+                      <h3 className="text-xs font-bold text-foreground leading-tight truncate">View Analytics</h3>
+                      <p className="text-[10px] text-muted-foreground leading-snug truncate mt-0.5">
+                        Track performance metrics &amp; get real-time AI trading insights.
+                      </p>
+                    </div>
+                  </div>
+
+                  <span className="px-2 py-0.5 rounded-lg bg-cyan-500/10 border border-cyan-500/25 text-cyan-300 text-[10px] font-semibold flex items-center gap-1 shrink-0">
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/>
+                      <polyline points="17 6 23 6 23 12"/>
+                    </svg>
+                    AI Insights
+                  </span>
                 </div>
               </div>
 
               {/* Step 4 */}
-              <div className="relative">
-                <div className="absolute -left-6 top-0.5 w-6 h-6 rounded-full bg-blue-500/20 border border-blue-500/40 text-blue-400 text-xs font-bold flex items-center justify-center shrink-0">
+              <div className="relative flex items-center gap-3">
+                {/* Timeline node */}
+                <div className="absolute -left-7 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-[#070b14] border-2 border-blue-500 text-blue-300 text-xs font-bold flex items-center justify-center shrink-0 z-10 shadow-sm">
                   4
                 </div>
-                <div className="pl-2 space-y-1">
-                  <h3 className="text-xs font-semibold text-foreground">4. Stay Updated</h3>
-                  <p className="text-[11px] text-muted-foreground leading-relaxed">
-                    Real-time market feeds keep your dashboard data always fresh.
-                  </p>
+                {/* Horizontal connector line with dot */}
+                <div className="absolute -left-2 top-1/2 -translate-y-1/2 w-2 h-[2px] bg-blue-500/50 flex items-center justify-end">
+                  <div className="w-1.5 h-1.5 rounded-full bg-blue-400" />
+                </div>
+
+                {/* Card Container */}
+                <div className="flex-1 bg-[#080d1a]/80 border border-white/8 hover:border-white/15 rounded-xl p-2.5 px-3 flex items-center justify-between gap-2.5 transition-all shadow-sm">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="w-8 h-8 rounded-full bg-blue-500/12 border border-blue-500/30 flex items-center justify-center text-blue-400 shrink-0">
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                        <path d="M13.73 21a2 2 0 01-3.46 0"/>
+                      </svg>
+                    </div>
+                    <div className="min-w-0">
+                      <h3 className="text-xs font-bold text-foreground leading-tight truncate">Stay Updated</h3>
+                      <p className="text-[10px] text-muted-foreground leading-snug truncate mt-0.5">
+                        Real-time market feeds keep your dashboard data always fresh.
+                      </p>
+                    </div>
+                  </div>
+
+                  <span className="px-2 py-0.5 rounded-lg bg-blue-500/10 border border-blue-500/25 text-blue-300 text-[10px] font-semibold flex items-center gap-1 shrink-0">
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+                    </svg>
+                    Real-time
+                  </span>
                 </div>
               </div>
             </div>
