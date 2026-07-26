@@ -701,12 +701,12 @@ export default function ExchangesPage() {
       {/* ── MAIN CONTENT GRID ────────────────────────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-3.5 flex-1 min-h-0 items-stretch">
         {/* ── LEFT COLUMN: 2x2 EXCHANGE CARDS GRID (8 COLS) ──────────── */}
-        <div className="lg:col-span-8 flex flex-col gap-3 min-h-0">
+        <div className="lg:col-span-8 flex flex-col gap-3 min-h-0 h-full justify-between">
           {/* Skeletons */}
           {loading && showSkeleton && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {[1, 2, 3, 4].map(i => (
-                <div key={i} className="bg-[#0b101b] border border-white/8 rounded-2xl p-4 space-y-3">
+                <div key={i} className="bg-[#0b101b] border border-white/8 rounded-2xl p-3.5 space-y-2.5">
                   <div className="flex items-center gap-3">
                     <div className="skeleton h-9 w-9 rounded-xl"/>
                     <div className="space-y-1.5">
@@ -730,13 +730,13 @@ export default function ExchangesPage() {
                 if (isConnected) {
                   // ── CONNECTED CARD ────────────────────────────────
                   return (
-                    <div key={ex.id} className="relative bg-[#071918]/80 border-2 border-emerald-500/40 rounded-2xl p-4 flex flex-col gap-3.5 shadow-lg shadow-emerald-950/10">
+                    <div key={ex.id} className="relative bg-[#071918]/80 border-2 border-emerald-500/40 rounded-2xl p-3.5 flex flex-col justify-between gap-2.5 shadow-lg shadow-emerald-950/10">
                       {/* Header */}
                       <div className="flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-2.5">
                           <ExchangeLogo id={ex.id} name={ex.name} />
                           <div>
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-1.5">
                               <h3 className="font-bold text-foreground text-sm tracking-wide">{ex.name}</h3>
                               <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/25">
                                 LIVE
@@ -745,14 +745,14 @@ export default function ExchangesPage() {
                             <p className="text-[11px] text-muted-foreground mt-0.5">{ex.display_name.replace(ex.name, "").trim() || ex.markets.join(" · ")}</p>
                           </div>
                         </div>
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                        <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
                           <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"/>
                           Connected
                         </span>
                       </div>
 
                       {/* Stats Grid */}
-                      <div className="grid grid-cols-4 gap-1.5 py-2 border-y border-emerald-500/15 text-center">
+                      <div className="grid grid-cols-4 gap-1 py-1.5 border-y border-emerald-500/15 text-center">
                         <div>
                           <p className="text-[10px] text-muted-foreground">Balance</p>
                           <p className="text-xs font-bold text-foreground mt-0.5">$4,520.21</p>
@@ -774,7 +774,7 @@ export default function ExchangesPage() {
                       </div>
 
                       {/* Feature checkmarks list */}
-                      <div className="grid grid-cols-2 gap-y-1.5 gap-x-2 text-[11px] text-muted-foreground">
+                      <div className="grid grid-cols-2 gap-y-1 gap-x-2 text-[11px] text-muted-foreground">
                         <span className="flex items-center gap-1.5 text-emerald-400/90 font-medium">
                           <span className="text-emerald-400 font-bold">✓</span> Balance Sync
                         </span>
@@ -786,12 +786,6 @@ export default function ExchangesPage() {
                         </span>
                         <span className="flex items-center gap-1.5 text-emerald-400/90 font-medium">
                           <span className="text-emerald-400 font-bold">✓</span> Funding Fees
-                        </span>
-                        <span className="flex items-center gap-1.5 text-emerald-400/90 font-medium">
-                          <span className="text-emerald-400 font-bold">✓</span> Orders
-                        </span>
-                        <span className="flex items-center gap-1.5 text-emerald-400/90 font-medium">
-                          <span className="text-emerald-400 font-bold">✓</span> Real-time Updates
                         </span>
                       </div>
 
@@ -831,16 +825,16 @@ export default function ExchangesPage() {
                 const isLive = ex.status === "live";
 
                 return (
-                  <div key={ex.id} className={`bg-[#0b101b]/80 border rounded-2xl p-4 space-y-3.5 flex flex-col justify-between transition-all ${
+                  <div key={ex.id} className={`bg-[#0b101b]/80 border rounded-2xl p-3.5 flex flex-col justify-between transition-all ${
                     isLive ? "border-white/8 hover:border-white/16" : "border-white/5 opacity-60"
                   }`}>
-                    <div className="space-y-3">
+                    <div className="space-y-2.5">
                       {/* Header */}
                       <div className="flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-2.5">
                           <ExchangeLogo id={ex.id} name={ex.name} />
                           <div>
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-1.5">
                               <h3 className="font-bold text-foreground text-sm tracking-wide">{ex.name}</h3>
                               <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
                                 isLive ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/25" : "bg-amber-500/15 text-amber-400 border border-amber-500/25"
@@ -851,7 +845,7 @@ export default function ExchangesPage() {
                             <p className="text-[11px] text-muted-foreground mt-0.5">{ex.display_name.replace(ex.name, "").trim() || ex.markets.join(" · ")}</p>
                           </div>
                         </div>
-                        <span className="text-[11px] font-medium px-2.5 py-0.5 rounded-full bg-white/5 text-muted-foreground border border-white/8">
+                        <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-white/5 text-muted-foreground border border-white/8">
                           Not Connected
                         </span>
                       </div>
@@ -864,22 +858,22 @@ export default function ExchangesPage() {
                       </div>
 
                       {/* Description */}
-                      <p className="text-xs text-muted-foreground/90 leading-relaxed">
+                      <p className="text-[11px] text-muted-foreground/90 leading-relaxed line-clamp-2">
                         {ex.description}
                       </p>
                     </div>
 
                     {/* Action Button */}
-                    <div className="pt-0.5">
+                    <div className="pt-1">
                       {isLive ? (
                         <button
                           onClick={() => setConnecting(ex)}
-                          className="w-full py-2.5 rounded-xl bg-cyan-950/40 border border-cyan-500/30 text-cyan-400 text-xs font-semibold hover:bg-cyan-500/20 hover:border-cyan-500/50 transition-all flex items-center justify-center gap-1.5"
+                          className="w-full py-2 rounded-xl bg-cyan-950/40 border border-cyan-500/30 text-cyan-400 text-xs font-semibold hover:bg-cyan-500/20 hover:border-cyan-500/50 transition-all flex items-center justify-center gap-1.5"
                         >
                           Connect Account →
                         </button>
                       ) : (
-                        <button disabled className="w-full py-2.5 rounded-xl bg-white/3 border border-white/6 text-xs text-muted-foreground/60 text-center cursor-not-allowed">
+                        <button disabled className="w-full py-2 rounded-xl bg-white/3 border border-white/6 text-xs text-muted-foreground/60 text-center cursor-not-allowed">
                           Integration Coming Soon
                         </button>
                       )}
@@ -891,7 +885,7 @@ export default function ExchangesPage() {
           )}
 
           {/* Bottom Info Strip */}
-          <div className="shrink-0 bg-[#0a0f19]/60 border border-white/6 rounded-2xl px-4 py-2.5 flex items-center justify-between gap-2 text-xs text-muted-foreground">
+          <div className="shrink-0 bg-[#0a0f19]/80 border border-white/8 rounded-2xl px-4 py-2.5 flex items-center justify-between gap-2 text-xs text-muted-foreground shadow-sm">
             <div className="flex items-center gap-2">
               <span className="text-cyan-400 font-bold">ℹ</span>
               <span>We currently support 4 exchanges. More coming soon!</span>
