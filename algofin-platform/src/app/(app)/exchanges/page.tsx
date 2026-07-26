@@ -552,7 +552,7 @@ export default function ExchangesPage() {
   const lastSyncTimestamp = accounts.find(a => a.last_sync_at)?.last_sync_at || null;
 
   return (
-    <div className="w-full max-w-[1440px] mx-auto h-full flex flex-col text-foreground font-sans gap-3.5">
+    <div className="w-full max-w-[1440px] mx-auto h-[calc(100vh-3rem)] flex flex-col text-foreground font-sans gap-3.5">
       {/* ── TOP AREA ────────────────────────────────────────────────────── */}
       <div className="space-y-3.5 shrink-0">
         {/* Header */}

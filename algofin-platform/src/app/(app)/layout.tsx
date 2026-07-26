@@ -333,14 +333,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   }, [logout, router]);
 
   return (
-    <div className="flex h-screen bg-background overflow-hidden">
+    <div className="flex min-h-screen bg-background">
       {/* Fixed sidebar — renders instantly with no unmounting or flickering */}
       <Sidebar user={user} onLogout={handleLogout} />
 
       {/* Main area: offset by sidebar width, scrolls independently */}
-      <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden lg:ml-60">
+      <div className="flex-1 flex flex-col min-w-0 lg:ml-60">
         <MobileTopBar onLogout={handleLogout} />
-        <main className="flex-1 overflow-y-auto px-5 py-6 sm:px-8 h-full">
+        <main className="flex-1 overflow-y-auto px-5 py-6 sm:px-8">
           {checking ? (
             <div className="page-content space-y-6 animate-fade-in">
               <div className="skeleton h-8 w-48 rounded-lg" />
