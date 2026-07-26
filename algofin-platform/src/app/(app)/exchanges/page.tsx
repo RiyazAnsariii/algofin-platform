@@ -552,7 +552,7 @@ export default function ExchangesPage() {
   const lastSyncTimestamp = accounts.find(a => a.last_sync_at)?.last_sync_at || null;
 
   return (
-    <div className="w-full max-w-[1440px] mx-auto space-y-3.5 text-foreground font-sans">
+    <div className="w-full max-w-[1440px] mx-auto h-full flex flex-col text-foreground font-sans gap-3.5">
       {/* ── TOP AREA ────────────────────────────────────────────────────── */}
       <div className="space-y-3.5 shrink-0">
         {/* Header */}
@@ -699,9 +699,9 @@ export default function ExchangesPage() {
       </div>
 
       {/* ── MAIN CONTENT GRID ────────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-3.5 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-3.5 flex-1 min-h-0 items-stretch">
         {/* ── LEFT COLUMN: 2x2 EXCHANGE CARDS GRID (8 COLS) ──────────── */}
-        <div className="lg:col-span-8 space-y-3">
+        <div className="lg:col-span-8 flex flex-col gap-3 min-h-0">
           {/* Skeletons */}
           {loading && showSkeleton && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -722,7 +722,7 @@ export default function ExchangesPage() {
 
           {/* Cards Grid */}
           {!loading && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 flex-1 min-h-0">
               {filteredExchanges.map(ex => {
                 const account = accountByExchange[ex.id];
                 const isConnected = !!account;
@@ -730,7 +730,7 @@ export default function ExchangesPage() {
                 if (isConnected) {
                   // ── CONNECTED CARD ────────────────────────────────
                   return (
-                    <div key={ex.id} className="relative bg-[#071918]/80 border-2 border-emerald-500/40 rounded-2xl p-4 space-y-3.5 shadow-lg shadow-emerald-950/10">
+                    <div key={ex.id} className="relative bg-[#071918]/80 border-2 border-emerald-500/40 rounded-2xl p-4 flex flex-col gap-3.5 shadow-lg shadow-emerald-950/10">
                       {/* Header */}
                       <div className="flex items-center justify-between gap-2">
                         <div className="flex items-center gap-3">
@@ -891,7 +891,7 @@ export default function ExchangesPage() {
           )}
 
           {/* Bottom Info Strip */}
-          <div className="bg-[#0a0f19]/60 border border-white/6 rounded-2xl px-4 py-2.5 flex items-center justify-between gap-2 text-xs text-muted-foreground">
+          <div className="shrink-0 bg-[#0a0f19]/60 border border-white/6 rounded-2xl px-4 py-2.5 flex items-center justify-between gap-2 text-xs text-muted-foreground">
             <div className="flex items-center gap-2">
               <span className="text-cyan-400 font-bold">ℹ</span>
               <span>We currently support 4 exchanges. More coming soon!</span>
@@ -903,12 +903,12 @@ export default function ExchangesPage() {
         </div>
 
         {/* ── RIGHT COLUMN: SIDEBAR INFO PANEL (4 COLS) ───────────────── */}
-        <div className="lg:col-span-4 space-y-3">
+        <div className="lg:col-span-4 flex flex-col gap-3 min-h-0">
           {/* Card 1: How it works (Timeline) */}
-          <div className="bg-[#0b101b]/90 border border-white/8 rounded-2xl p-4 space-y-3">
+          <div className="bg-[#0b101b]/90 border border-white/8 rounded-2xl p-4 flex flex-col gap-3 flex-1 min-h-0">
             <h2 className="text-xs font-bold text-foreground tracking-wide uppercase text-muted-foreground/80">How it works</h2>
 
-            <div className="relative pl-6 space-y-3.5 before:absolute before:left-[11px] before:top-2.5 before:bottom-2.5 before:w-[2px] before:bg-white/10">
+            <div className="relative pl-6 flex flex-col justify-between flex-1 before:absolute before:left-[11px] before:top-2.5 before:bottom-2.5 before:w-[2px] before:bg-white/10">
               {/* Step 1 */}
               <div className="relative">
                 <div className="absolute -left-6 top-0 w-6 h-6 rounded-full bg-purple-500/20 border border-purple-500/40 text-purple-400 text-xs font-bold flex items-center justify-center shrink-0">
