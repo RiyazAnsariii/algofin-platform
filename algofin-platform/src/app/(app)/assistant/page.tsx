@@ -459,26 +459,32 @@ export default function AssistantPage() {
 
             {/* Quick Suggestion Chips when no history */}
             {messages.length === 0 && !loadingHistory && (
-              <div className="flex flex-col items-center justify-center py-10 text-center space-y-3 opacity-80">
+              <div className="flex flex-col items-center justify-center py-8 text-center space-y-3 opacity-90">
                 <p className="text-xs text-muted-foreground">Start a conversation by typing below or picking a quick topic:</p>
-                <div className="flex flex-wrap justify-center gap-2 max-w-md">
+                <div className="flex flex-wrap justify-center gap-2 max-w-lg">
                   <button
                     onClick={() => sendMessage("Show me my open positions")}
-                    className="px-3 py-1.5 rounded-xl surface-card border border-white/10 hover:border-cyan-500/30 text-xs text-muted-foreground hover:text-foreground transition-all"
+                    className="px-3 py-1.5 rounded-xl surface-card border border-white/10 hover:border-cyan-500/40 text-xs text-muted-foreground hover:text-cyan-300 transition-all"
                   >
                     💼 Show me my open positions
                   </button>
                   <button
-                    onClick={() => sendMessage("What's my realized PnL this month?")}
-                    className="px-3 py-1.5 rounded-xl surface-card border border-white/10 hover:border-cyan-500/30 text-xs text-muted-foreground hover:text-foreground transition-all"
+                    onClick={() => sendMessage("What is my realized PnL and estimated monthly fee?")}
+                    className="px-3 py-1.5 rounded-xl surface-card border border-white/10 hover:border-cyan-500/40 text-xs text-muted-foreground hover:text-cyan-300 transition-all"
                   >
-                    📊 What's my realized PnL this month?
+                    📊 What is my realized PnL &amp; estimated fee?
                   </button>
                   <button
-                    onClick={() => sendMessage("Any high-impact events today?")}
-                    className="px-3 py-1.5 rounded-xl surface-card border border-white/10 hover:border-cyan-500/30 text-xs text-muted-foreground hover:text-foreground transition-all"
+                    onClick={() => sendMessage("How do I connect my exchange with read-only API keys?")}
+                    className="px-3 py-1.5 rounded-xl surface-card border border-white/10 hover:border-cyan-500/40 text-xs text-muted-foreground hover:text-cyan-300 transition-all"
                   >
-                    📅 Any high-impact events today?
+                    🔑 How do I connect read-only API keys?
+                  </button>
+                  <button
+                    onClick={() => sendMessage("How do TradingView webhooks and risk controls work?")}
+                    className="px-3 py-1.5 rounded-xl surface-card border border-white/10 hover:border-cyan-500/40 text-xs text-muted-foreground hover:text-cyan-300 transition-all"
+                  >
+                    ⚡ How do TradingView webhooks work?
                   </button>
                 </div>
               </div>
