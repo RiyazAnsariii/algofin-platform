@@ -903,93 +903,71 @@ export default function ExchangesPage() {
         </div>
 
         {/* ── RIGHT COLUMN: SIDEBAR INFO PANEL (4 COLS) ───────────────── */}
-        <div className="lg:col-span-4 flex flex-col gap-3 min-h-0">
+        <div className="lg:col-span-4 flex flex-col gap-3 min-h-0 h-full">
           {/* Card 1: How it works (Timeline) */}
-          <div className="bg-[#0b101b]/90 border border-white/8 rounded-2xl p-4 flex flex-col gap-3 flex-1 min-h-0">
-            <h2 className="text-xs font-bold text-foreground tracking-wide uppercase text-muted-foreground/80">How it works</h2>
+          <div className="bg-[#0b101b]/90 border border-white/8 rounded-2xl p-4 sm:p-5 flex flex-col flex-1 min-h-0 justify-between overflow-hidden">
+            <h2 className="text-xs font-bold text-foreground tracking-wide uppercase text-muted-foreground/80 shrink-0">How it works</h2>
 
-            <div className="relative pl-6 flex flex-col justify-between flex-1 before:absolute before:left-[11px] before:top-2.5 before:bottom-2.5 before:w-[2px] before:bg-white/10">
+            <div className="relative pl-6 flex flex-col justify-around flex-1 my-2 before:absolute before:left-[11px] before:top-3 before:bottom-3 before:w-[2px] before:bg-white/10">
               {/* Step 1 */}
               <div className="relative">
-                <div className="absolute -left-6 top-0 w-6 h-6 rounded-full bg-purple-500/20 border border-purple-500/40 text-purple-400 text-xs font-bold flex items-center justify-center shrink-0">
+                <div className="absolute -left-6 top-0.5 w-6 h-6 rounded-full bg-purple-500/20 border border-purple-500/40 text-purple-400 text-xs font-bold flex items-center justify-center shrink-0">
                   1
                 </div>
-                <div className="pl-2 space-y-0.5">
-                  <h3 className="text-xs font-semibold text-foreground">1 Connect Exchange</h3>
-                  <p className="text-[11px] text-muted-foreground leading-snug">
-                    Securely link read-only API keys.
+                <div className="pl-2 space-y-1">
+                  <h3 className="text-xs font-semibold text-foreground">1. Connect Exchange</h3>
+                  <p className="text-[11px] text-muted-foreground leading-relaxed">
+                    Securely link read-only API keys from your exchange account.
                   </p>
                 </div>
               </div>
 
               {/* Step 2 */}
               <div className="relative">
-                <div className="absolute -left-6 top-0 w-6 h-6 rounded-full bg-purple-500/20 border border-purple-500/40 text-purple-400 text-xs font-bold flex items-center justify-center shrink-0">
+                <div className="absolute -left-6 top-0.5 w-6 h-6 rounded-full bg-purple-500/20 border border-purple-500/40 text-purple-400 text-xs font-bold flex items-center justify-center shrink-0">
                   2
                 </div>
-                <div className="pl-2 space-y-0.5">
-                  <h3 className="text-xs font-semibold text-foreground">2 Sync Portfolio</h3>
-                  <p className="text-[11px] text-muted-foreground leading-snug">
-                    Import balances &amp; trading history.
+                <div className="pl-2 space-y-1">
+                  <h3 className="text-xs font-semibold text-foreground">2. Sync Portfolio</h3>
+                  <p className="text-[11px] text-muted-foreground leading-relaxed">
+                    Automatically import balances, open positions &amp; trade history.
                   </p>
                 </div>
               </div>
 
               {/* Step 3 */}
               <div className="relative">
-                <div className="absolute -left-6 top-0 w-6 h-6 rounded-full bg-cyan-500/20 border border-cyan-500/40 text-cyan-400 text-xs font-bold flex items-center justify-center shrink-0">
+                <div className="absolute -left-6 top-0.5 w-6 h-6 rounded-full bg-cyan-500/20 border border-cyan-500/40 text-cyan-400 text-xs font-bold flex items-center justify-center shrink-0">
                   3
                 </div>
-                <div className="pl-2 space-y-0.5">
-                  <h3 className="text-xs font-semibold text-foreground">3 View Analytics</h3>
-                  <p className="text-[11px] text-muted-foreground leading-snug">
-                    Track performance &amp; AI insights.
+                <div className="pl-2 space-y-1">
+                  <h3 className="text-xs font-semibold text-foreground">3. View Analytics</h3>
+                  <p className="text-[11px] text-muted-foreground leading-relaxed">
+                    Track performance metrics &amp; get real-time AI trading insights.
                   </p>
                 </div>
               </div>
 
               {/* Step 4 */}
               <div className="relative">
-                <div className="absolute -left-6 top-0 w-6 h-6 rounded-full bg-blue-500/20 border border-blue-500/40 text-blue-400 text-xs font-bold flex items-center justify-center shrink-0">
+                <div className="absolute -left-6 top-0.5 w-6 h-6 rounded-full bg-blue-500/20 border border-blue-500/40 text-blue-400 text-xs font-bold flex items-center justify-center shrink-0">
                   4
                 </div>
-                <div className="pl-2 space-y-0.5">
-                  <h3 className="text-xs font-semibold text-foreground">4 Stay Updated</h3>
-                  <p className="text-[11px] text-muted-foreground leading-snug">
-                    Real-time data stays always fresh.
+                <div className="pl-2 space-y-1">
+                  <h3 className="text-xs font-semibold text-foreground">4. Stay Updated</h3>
+                  <p className="text-[11px] text-muted-foreground leading-relaxed">
+                    Real-time market feeds keep your dashboard data always fresh.
                   </p>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Card 2: Why Connect Your Exchange? */}
-          <div className="bg-[#0b101b]/90 border border-white/8 rounded-2xl p-4 space-y-2.5">
-            <h2 className="text-xs font-bold text-foreground tracking-wide uppercase text-muted-foreground/80">Why Connect Your Exchange?</h2>
-
-            <ul className="space-y-2 text-xs">
-              {[
-                "Read-only access",
-                "No withdrawal permission",
-                "Bank-level encryption",
-                "Real-time data sync",
-                "Disconnect anytime",
-              ].map(benefit => (
-                <li key={benefit} className="flex items-center gap-2.5 text-muted-foreground">
-                  <span className="w-4 h-4 rounded-full bg-emerald-500/15 text-emerald-400 flex items-center justify-center text-[10px] font-bold shrink-0">
-                    ✓
-                  </span>
-                  <span>{benefit}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          {/* Card 3: Need Help? */}
-          <div className="bg-[#0b101b]/90 border border-white/8 rounded-2xl p-4 space-y-2.5">
+          {/* Card 2: Need Help? */}
+          <div className="bg-[#0b101b]/90 border border-white/8 rounded-2xl p-4 space-y-2.5 shrink-0">
             <h2 className="text-xs font-bold text-foreground tracking-wide uppercase text-muted-foreground/80">Need Help?</h2>
             <p className="text-xs text-muted-foreground leading-snug">
-              Learn how to generate API keys securely.
+              Learn how to generate API keys securely for each exchange.
             </p>
             <button
               onClick={() => setShowDocModal(true)}
