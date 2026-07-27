@@ -728,94 +728,96 @@ export default function ExchangesPage() {
                 const isConnected = !!account;
 
                 if (isConnected) {
-                  // ── CONNECTED CARD ────────────────────────────────
+                  // ── CONNECTED CARD (Image 2 Design) ────────────────
+                  const formattedDate = account.created_at
+                    ? new Date(account.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+                    : "May 24, 2025";
+
                   return (
-                    <div key={ex.id} className="relative bg-[#071918]/80 border-2 border-emerald-500/40 rounded-2xl p-3.5 flex flex-col justify-between gap-2.5 shadow-lg shadow-emerald-950/10">
-                      {/* Header */}
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-2.5">
+                    <div key={ex.id} className="relative bg-[#070c16]/95 border border-[#0d2238] rounded-2xl p-4 flex flex-col justify-between gap-3.5 shadow-xl transition-all hover:border-[#133252]">
+                      {/* Top Header Row */}
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-center gap-3">
                           <ExchangeLogo id={ex.id} name={ex.name} />
                           <div>
-                            <div className="flex items-center gap-1.5">
-                              <h3 className="font-bold text-foreground text-sm tracking-wide">{ex.name}</h3>
-                              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/25">
-                                LIVE
+                            <div className="flex items-center gap-2">
+                              <h3 className="font-bold text-foreground text-base tracking-wide">{ex.name}</h3>
+                              <span className="px-2.5 py-0.5 rounded-md bg-emerald-950/80 text-emerald-400 border border-emerald-500/30 text-[10px] font-extrabold tracking-wider">
+                                CONNECTED
                               </span>
                             </div>
-                            <p className="text-[11px] text-muted-foreground mt-0.5">{ex.display_name.replace(ex.name, "").trim() || ex.markets.join(" · ")}</p>
+                            <p className="text-xs text-muted-foreground mt-0.5 font-medium">
+                              {ex.display_name.replace(ex.name, "").trim() || ex.markets.join(" · ")}
+                            </p>
                           </div>
                         </div>
-                        <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"/>
-                          Connected
+
+                        {/* Connected Date & Options Menu */}
+                        <div className="flex items-center gap-2">
+                          <div className="text-right hidden sm:block">
+                            <p className="text-[10px] text-muted-foreground/70 leading-none">Connected on</p>
+                            <p className="text-xs text-muted-foreground font-medium mt-0.5">{formattedDate}</p>
+                          </div>
+                          <div className="relative">
+                            <button
+                              onClick={() => setActiveMenuId(activeMenuId === account.id ? null : account.id)}
+                              className="w-8 h-8 rounded-xl border border-white/10 flex items-center justify-center text-muted-foreground hover:text-foreground text-sm font-bold transition-all hover:bg-white/5"
+                            >
+                              ⋮
+                            </button>
+                            {activeMenuId === account.id && (
+                              <div className="absolute right-0 top-full mt-1 w-36 bg-[#0c121e] border border-white/12 rounded-xl p-1 shadow-2xl z-30 text-xs">
+                                <button onClick={() => handleSync(account.id)} className="w-full text-left px-3 py-1.5 rounded-lg text-foreground hover:bg-white/5 flex items-center gap-2">
+                                  <span>🔄</span> Force sync
+                                </button>
+                                <button onClick={() => handleRevoke(account.id)} className="w-full text-left px-3 py-1.5 rounded-lg text-rose-400 hover:bg-rose-500/10 flex items-center gap-2">
+                                  <span>🗑</span> Revoke
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Middle Feature Pills */}
+                      <div className="flex flex-wrap items-center gap-1.5 text-[10px] text-muted-foreground">
+                        <span className="px-2.5 py-1 rounded-lg bg-[#071828] border border-cyan-500/20 text-cyan-400 font-medium flex items-center gap-1.5">
+                          🔒 Read-only API
+                        </span>
+                        <span className="px-2.5 py-1 rounded-lg bg-[#071828] border border-cyan-500/20 text-cyan-400 font-medium flex items-center gap-1.5">
+                          🔄 Portfolio Sync
+                        </span>
+                        <span className="px-2.5 py-1 rounded-lg bg-[#071828] border border-cyan-500/20 text-cyan-400 font-medium flex items-center gap-1.5">
+                          ⏱ Trade History
                         </span>
                       </div>
 
-                      {/* Stats Grid */}
-                      <div className="grid grid-cols-4 gap-1 py-1.5 border-y border-emerald-500/15 text-center">
-                        <div>
-                          <p className="text-[10px] text-muted-foreground">Balance</p>
-                          <p className="text-xs font-bold text-foreground mt-0.5">$4,520.21</p>
+                      {/* Bottom Stats & Action Row */}
+                      <div className="flex items-end justify-between pt-2 border-t border-white/6 gap-3">
+                        <div className="flex items-baseline gap-5 sm:gap-7">
+                          <div>
+                            <p className="text-base sm:text-lg font-extrabold text-foreground tracking-tight">
+                              $8,742.31
+                            </p>
+                            <p className="text-[11px] text-muted-foreground/80 mt-0.5">Balance</p>
+                          </div>
+                          <div>
+                            <p className="text-base sm:text-lg font-extrabold text-foreground tracking-tight">5</p>
+                            <p className="text-[11px] text-muted-foreground/80 mt-0.5">Positions</p>
+                          </div>
+                          <div>
+                            <p className="text-base sm:text-lg font-extrabold text-foreground tracking-tight">3</p>
+                            <p className="text-[11px] text-muted-foreground/80 mt-0.5">Open Orders</p>
+                          </div>
                         </div>
-                        <div>
-                          <p className="text-[10px] text-muted-foreground">Positions</p>
-                          <p className="text-xs font-bold text-foreground mt-0.5">3</p>
-                        </div>
-                        <div>
-                          <p className="text-[10px] text-muted-foreground">Orders</p>
-                          <p className="text-xs font-bold text-foreground mt-0.5">2</p>
-                        </div>
-                        <div>
-                          <p className="text-[10px] text-muted-foreground">Last Sync</p>
-                          <p className="text-xs font-semibold text-emerald-400 mt-0.5">
-                            {account.last_sync_at ? relativeTime(account.last_sync_at) : "8 sec ago"}
-                          </p>
-                        </div>
-                      </div>
 
-                      {/* Feature checkmarks list */}
-                      <div className="grid grid-cols-2 gap-y-1 gap-x-2 text-[11px] text-muted-foreground">
-                        <span className="flex items-center gap-1.5 text-emerald-400/90 font-medium">
-                          <span className="text-emerald-400 font-bold">✓</span> Balance Sync
-                        </span>
-                        <span className="flex items-center gap-1.5 text-emerald-400/90 font-medium">
-                          <span className="text-emerald-400 font-bold">✓</span> Trade History
-                        </span>
-                        <span className="flex items-center gap-1.5 text-emerald-400/90 font-medium">
-                          <span className="text-emerald-400 font-bold">✓</span> Positions
-                        </span>
-                        <span className="flex items-center gap-1.5 text-emerald-400/90 font-medium">
-                          <span className="text-emerald-400 font-bold">✓</span> Funding Fees
-                        </span>
-                      </div>
-
-                      {/* Action Button */}
-                      <div className="flex items-center gap-2 pt-0.5">
                         <button
                           onClick={() => handleSync(account.id)}
                           disabled={actionLoading}
-                          className="flex-1 py-2 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/25 text-xs font-semibold transition-all flex items-center justify-center gap-1.5"
+                          className="px-4 py-2 rounded-xl bg-[#061e30] border border-cyan-500/40 text-cyan-400 text-xs font-semibold hover:bg-cyan-500/20 hover:border-cyan-500/60 transition-all flex items-center gap-1.5 shrink-0"
                         >
-                          ⚙ Manage Account
+                          View Details →
                         </button>
-                        <div className="relative">
-                          <button
-                            onClick={() => setActiveMenuId(activeMenuId === account.id ? null : account.id)}
-                            className="w-8 h-8 rounded-xl border border-white/10 flex items-center justify-center text-muted-foreground hover:text-foreground text-xs font-bold"
-                          >
-                            ⋮
-                          </button>
-                          {activeMenuId === account.id && (
-                            <div className="absolute right-0 bottom-full mb-1 w-36 bg-[#0c121e] border border-white/12 rounded-xl p-1 shadow-2xl z-30 text-xs">
-                              <button onClick={() => handleSync(account.id)} className="w-full text-left px-3 py-1.5 rounded-lg text-foreground hover:bg-white/5">
-                                🔄 Force sync
-                              </button>
-                              <button onClick={() => handleRevoke(account.id)} className="w-full text-left px-3 py-1.5 rounded-lg text-rose-400 hover:bg-rose-500/10">
-                                🗑 Revoke
-                              </button>
-                            </div>
-                          )}
-                        </div>
                       </div>
                     </div>
                   );
