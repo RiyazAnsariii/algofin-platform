@@ -34,8 +34,8 @@ EXCHANGE_REGISTRY: dict[str, ExchangeDefinition] = {
         markets=["USDT-M Futures"],
         logo_letter="B",
         description=(
-            "The world's largest crypto exchange. "
-            "Connect your USDT-M Futures account with read-only API keys."
+            "The world's largest cryptocurrency exchange by trading volume. "
+            "Trusted by millions for secure, fast, and reliable digital asset trading."
         ),
         api_docs_url="https://www.binance.com/en/support/faq/how-to-create-api-keys-on-binance-360002502072",
     ),

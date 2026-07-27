@@ -561,7 +561,7 @@ export default function ExchangesPage() {
       markets: ["USDT-M Futures"],
       requires_passphrase: false,
       logo_letter: "B",
-      description: "The world's largest crypto exchange. Connect your USDT-M Futures account with read-only API keys.",
+      description: "The world's largest cryptocurrency exchange by trading volume. Trusted by millions for secure, fast, and reliable digital asset trading.",
       api_docs_url: ""
     },
     {
