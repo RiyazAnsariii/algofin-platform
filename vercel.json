@@ -1,0 +1,7 @@
+{
+  "buildCommand": "cd algofin-platform && npm run build",
+  "outputDirectory": "algofin-platform/.next",
+  "framework": "nextjs",
+  "installCommand": "cd algofin-platform && npm install",
+  "devCommand": "cd algofin-platform && npm run dev"
+}
