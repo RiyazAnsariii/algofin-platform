@@ -47,8 +47,8 @@ EXCHANGE_REGISTRY: dict[str, ExchangeDefinition] = {
         markets=["USDT Perpetuals"],
         logo_letter="Y",
         description=(
-            "Bybit Linear Perpetuals. USDT-settled perpetual contracts. "
-            "Connect with read-only API keys for balance, positions and trade sync."
+            "A leading cryptocurrency exchange built for fast and professional trading. "
+            "Renowned for its derivatives platform, intuitive interface, and high performance."
         ),
         api_docs_url="https://www.bybit.com/en/help-center/article/How-to-create-API-Keys",
     ),
