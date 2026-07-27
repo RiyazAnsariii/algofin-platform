@@ -1,6 +1,6 @@
 // src/lib/apiCache.ts
 // AlgoFin — Production-grade SWR cache with sessionStorage persistence,
-// in-flight deduplication, LRU eviction, and background revalidation.
+// in-flight deduplication, O(1) LRU eviction, and background revalidation.
 //
 // API surface is unchanged — all pages continue using:
 //   cachedGet<T>(url, ttlMs?)
@@ -21,6 +21,7 @@ interface CacheEntry<T = unknown> {
 
 interface InFlightEntry<T = unknown> {
   promise: Promise<T>;
+  version: number;     // snapshot of cacheVersion when request started
 }
 
 // ── Config ───────────────────────────────────────────────────────────────────
@@ -34,9 +35,22 @@ const SWR_MULTIPLIER = 3;
 
 // ── In-memory store ──────────────────────────────────────────────────────────
 
+// Use Map<url, CacheEntry> as the primary store.
+// Map preserves insertion order, so the first key is the LRU (oldest).
+// On access we delete + re-insert to move to end (most-recent).
+// This gives O(1) LRU insert, O(1) delete, and O(1) evict.
 const memStore = new Map<string, CacheEntry>();
 const inFlight = new Map<string, InFlightEntry>();
-const accessOrder: string[] = []; // LRU tracking
+
+// Cache version — incremented on clearCache() to guard against in-flight
+// writes re-populating the store after logout/tenant-switch.
+let cacheVersion = 0;
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function isExpired(entry: CacheEntry, now: number): boolean {
+  return now - entry.fetchedAt >= entry.ttlMs + entry.swrMs;
+}
 
 // ── SessionStorage persistence ───────────────────────────────────────────────
 
@@ -48,11 +62,11 @@ function hydrateFromStorage(): void {
     const parsed = JSON.parse(raw) as Record<string, CacheEntry>;
     const now = Date.now();
     for (const [url, entry] of Object.entries(parsed)) {
-      // Only restore entries that are still within SWR window
+      // Only restore entries still within SWR window AND not already loaded
       const maxAge = entry.fetchedAt + entry.ttlMs + entry.swrMs;
-      if (now < maxAge) {
+      if (now < maxAge && !memStore.has(url)) {
         memStore.set(url, entry);
-        accessOrder.push(url);
+        // No LRU re-order needed — hydrate in storage order (good enough)
       }
     }
   } catch {
@@ -63,9 +77,13 @@ function hydrateFromStorage(): void {
 function persistToStorage(): void {
   if (typeof window === "undefined") return;
   try {
+    const now = Date.now();
     const obj: Record<string, CacheEntry> = {};
     for (const [url, entry] of memStore) {
-      obj[url] = entry;
+      // BUG FIX: only persist non-expired entries to avoid bloating sessionStorage
+      if (!isExpired(entry, now)) {
+        obj[url] = entry;
+      }
     }
     sessionStorage.setItem(STORAGE_KEY, JSON.stringify(obj));
   } catch {
@@ -76,18 +94,23 @@ function persistToStorage(): void {
 // Hydrate once on module load
 hydrateFromStorage();
 
-// ── LRU eviction ─────────────────────────────────────────────────────────────
+// ── O(1) LRU via Map insertion-order ─────────────────────────────────────────
 
 function touchLRU(url: string): void {
-  const idx = accessOrder.indexOf(url);
-  if (idx > -1) accessOrder.splice(idx, 1);
-  accessOrder.push(url);
+  const entry = memStore.get(url);
+  if (entry !== undefined) {
+    // Delete and re-insert → moves key to the end (most-recently-used)
+    memStore.delete(url);
+    memStore.set(url, entry);
+  }
 }
 
 function evictLRU(): void {
-  while (memStore.size > MAX_ENTRIES && accessOrder.length > 0) {
-    const oldest = accessOrder.shift()!;
-    memStore.delete(oldest);
+  // Map.keys() iterates insertion order → first key is LRU
+  while (memStore.size > MAX_ENTRIES) {
+    const oldest = memStore.keys().next().value;
+    if (oldest !== undefined) memStore.delete(oldest);
+    else break;
   }
 }
 
@@ -95,6 +118,7 @@ function evictLRU(): void {
 
 function fetchAndStore<T>(url: string, ttlMs: number): Promise<T> {
   const swrMs = ttlMs * SWR_MULTIPLIER;
+  const capturedVersion = cacheVersion;
 
   const promise = api
     .get(url)
@@ -104,6 +128,12 @@ function fetchAndStore<T>(url: string, ttlMs: number): Promise<T> {
         res.data && typeof res.data === "object" && "data" in res.data
           ? (res.data as { data: T }).data
           : (res.data as T);
+
+      // BUG FIX: don't write to store if clearCache() was called while in-flight
+      if (cacheVersion !== capturedVersion) {
+        inFlight.delete(url);
+        return payload;
+      }
 
       const entry: CacheEntry<T> = {
         data: payload,
@@ -129,7 +159,7 @@ function fetchAndStore<T>(url: string, ttlMs: number): Promise<T> {
     });
 
   // Register in-flight for deduplication
-  inFlight.set(url, { promise: promise as Promise<unknown> });
+  inFlight.set(url, { promise: promise as Promise<unknown>, version: capturedVersion });
 
   return promise;
 }
@@ -198,8 +228,6 @@ export async function cachedGet<T>(url: string, ttlMs = 45_000): Promise<T> {
  */
 export function invalidateCache(url: string): void {
   memStore.delete(url);
-  const idx = accessOrder.indexOf(url);
-  if (idx > -1) accessOrder.splice(idx, 1);
   persistToStorage();
 }
 
@@ -210,8 +238,6 @@ export function invalidateCachePrefix(prefix: string): void {
   for (const key of [...memStore.keys()]) {
     if (key.startsWith(prefix)) {
       memStore.delete(key);
-      const idx = accessOrder.indexOf(key);
-      if (idx > -1) accessOrder.splice(idx, 1);
     }
   }
   persistToStorage();
@@ -219,10 +245,12 @@ export function invalidateCachePrefix(prefix: string): void {
 
 /**
  * Clear the entire cache (e.g. on logout or tenant switch).
+ * Increments cacheVersion to guard against in-flight writes
+ * re-populating the store after the clear.
  */
 export function clearCache(): void {
+  cacheVersion++;          // invalidates any in-flight fetchAndStore writes
   memStore.clear();
-  accessOrder.length = 0;
   inFlight.clear();
   if (typeof window !== "undefined") {
     try {

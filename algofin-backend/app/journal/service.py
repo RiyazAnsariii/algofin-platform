@@ -9,6 +9,7 @@ from decimal import Decimal
 from sqlalchemy import and_, case, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.common.redis_cache import redis_cache
 from app.journal.schemas import (
     CumulativePnLPoint,
     DailyPnL,
@@ -108,6 +109,11 @@ async def get_user_account_ids(db: AsyncSession, user_id: str) -> list[str]:
     return [str(r) for r in result.scalars().all()]
 
 
+@redis_cache(
+    prefix="journal:analytics",
+    ttl=120,
+    key_args=["user_id", "period", "start_date", "end_date", "days"],
+)
 async def get_journal_analytics(
     db: AsyncSession,
     user_id: str,

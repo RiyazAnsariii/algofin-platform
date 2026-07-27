@@ -138,6 +138,10 @@ class CacheHeaderMiddleware:
                         headers.append(
                             (b"cache-control", cache_value.encode())
                         )
+                        # Vary: Authorization ensures private responses are
+                        # never served across user boundaries by any proxy
+                        if not any(h[0] == b"vary" for h in headers):
+                            headers.append((b"vary", b"Authorization"))
                         message = {**message, "headers": headers}
                 else:
                     # Non-2xx: no-store
@@ -148,3 +152,4 @@ class CacheHeaderMiddleware:
             await send(message)
 
         await self.app(scope, receive, send_with_cache)
+

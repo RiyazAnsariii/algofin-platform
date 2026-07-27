@@ -213,38 +213,42 @@ function NoExchangeSection() {
   return (
     <div className="flex-1 flex flex-col justify-between space-y-4 animate-fade-in pt-1">
       {/* Hero Card */}
-      <div className="relative surface-card flex-1 min-h-[170px] py-6 px-6 text-center flex flex-col justify-center items-center overflow-hidden border border-white/8 rounded-2xl bg-gradient-to-b from-cyan-500/[0.02] via-transparent to-transparent">
-        {/* Concentric rings pattern background */}
-        <div className="absolute inset-0 pointer-events-none opacity-25 flex items-center justify-center">
-          <div className="w-[300px] h-[300px] rounded-full border border-cyan-500/20 flex items-center justify-center">
-            <div className="w-[210px] h-[210px] rounded-full border border-cyan-500/15 flex items-center justify-center">
-              <div className="w-[130px] h-[130px] rounded-full border border-cyan-500/10" />
-            </div>
-          </div>
-        </div>
-
-        <div className="relative z-10 space-y-3 max-w-md mx-auto">
-          <div className="w-12 h-12 rounded-full bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center mx-auto text-cyan-400 shadow-glow-cyan-sm">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-              <rect x="2" y="3" width="20" height="14" rx="2" />
-              <path d="M8 21h8M12 17v4" />
+      <div className="relative surface-card flex-1 min-h-[220px] py-8 px-6 text-center flex flex-col justify-center items-center overflow-hidden border border-white/8 rounded-2xl bg-[#0f1117]/80">
+        <div className="relative z-10 space-y-4 max-w-md mx-auto flex flex-col items-center">
+          {/* Plug Icon Badge */}
+          <div className="w-13 h-13 rounded-full bg-[#0b2246] border border-blue-500/20 flex items-center justify-center text-blue-500 shadow-lg shadow-blue-900/20">
+            <svg
+              width="22"
+              height="22"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="#2563eb"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="-rotate-45"
+            >
+              <path d="M12 22v-5" />
+              <path d="M9 8V2" />
+              <path d="M15 8V2" />
+              <path d="M18 8v5a6 6 0 0 1-12 0V8z" />
             </svg>
           </div>
 
-          <div>
-            <h2 className="text-xl font-bold text-foreground tracking-tight">Connect your account</h2>
-            <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
-              Connect your exchange account to unlock your dashboard and start tracking.
+          <div className="space-y-1.5">
+            <h2 className="text-2xl font-bold text-foreground tracking-tight">Connect your exchange account</h2>
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              Unlock live tracking, positions, and PnL insights.
             </p>
           </div>
 
-          <div className="pt-1">
+          <div className="pt-2">
             <Link
               href="/exchanges"
-              className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-cyan-400 hover:bg-cyan-300 text-black
-                text-xs font-semibold transition-all shadow-glow-cyan transform hover:-translate-y-0.5"
+              className="inline-flex items-center justify-center px-7 py-3 rounded-2xl bg-[#2563eb] hover:bg-[#1d4ed8] text-white
+                text-sm font-semibold transition-all shadow-md hover:shadow-blue-500/25 transform hover:-translate-y-0.5"
             >
-              Connect account →
+              Connect account
             </Link>
           </div>
         </div>
