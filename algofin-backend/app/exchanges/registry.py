@@ -60,8 +60,8 @@ EXCHANGE_REGISTRY: dict[str, ExchangeDefinition] = {
         markets=["Spot"],
         logo_letter="C",
         description=(
-            "Coinbase Advanced Trade (formerly Coinbase Pro). Spot trading. "
-            "Connect with read-only API keys for balance and trade sync."
+            "A trusted cryptocurrency exchange known for its simplicity and security. "
+            "Popular among millions for buying, selling, and managing digital assets."
         ),
         api_docs_url="https://docs.cdp.coinbase.com/advanced-trade/docs/rest-api-auth",
     ),
@@ -73,8 +73,8 @@ EXCHANGE_REGISTRY: dict[str, ExchangeDefinition] = {
         markets=["USDT Perpetuals", "Futures", "Options"],
         logo_letter="D",
         description=(
-            "Delta Exchange (India & Global). USDT-settled futures, perpetuals, and options. "
-            "Connect with read-only API keys for balance, positions and trade sync."
+            "A derivatives-focused cryptocurrency exchange built for active traders. "
+            "Known for advanced futures and options trading with powerful risk management tools."
         ),
         api_docs_url="https://docs.delta.exchange/#authentication",
     ),
