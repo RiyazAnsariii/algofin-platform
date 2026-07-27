@@ -552,112 +552,112 @@ export default function ExchangesPage() {
   const lastSyncTimestamp = accounts.find(a => a.last_sync_at)?.last_sync_at || null;
 
   return (
-    <div className="w-full max-w-[1440px] mx-auto min-h-[calc(100vh-3rem)] flex flex-col text-foreground font-sans gap-3.5 pb-4">
+    <div className="w-full max-w-[1440px] mx-auto h-[calc(100vh-3.25rem)] flex flex-col justify-between text-foreground font-sans gap-2 overflow-hidden">
       {/* ── TOP AREA ────────────────────────────────────────────────────── */}
-      <div className="space-y-3.5 shrink-0">
+      <div className="space-y-2 shrink-0">
         {/* Header with View Documentation button */}
-        <div className="flex items-start justify-between gap-4">
+        <div className="flex items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-foreground tracking-tight">Exchange Accounts</h1>
-            <p className="text-xs text-muted-foreground mt-1">
+            <h1 className="text-xl font-bold text-foreground tracking-tight">Exchange Accounts</h1>
+            <p className="text-[11px] text-muted-foreground mt-0.5">
               Connect your exchange accounts securely using read-only API keys.
             </p>
           </div>
           <button
             onClick={() => setShowDocModal(true)}
-            className="px-3.5 py-1.5 rounded-xl border border-white/10 text-muted-foreground hover:text-foreground text-xs font-medium bg-white/5 hover:bg-white/10 transition-all flex items-center gap-1.5 shrink-0"
+            className="px-3 py-1 rounded-xl border border-white/10 text-muted-foreground hover:text-foreground text-[11px] font-medium bg-white/5 hover:bg-white/10 transition-all flex items-center gap-1.5 shrink-0"
           >
             View Documentation ↗
           </button>
         </div>
 
         {/* Security Alert Banner */}
-        <div className="bg-[#081b22]/90 border border-cyan-500/25 rounded-2xl p-3.5 px-4 flex items-center gap-3 shadow-sm">
-          <div className="w-8 h-8 rounded-xl bg-cyan-500/15 border border-cyan-500/30 flex items-center justify-center shrink-0 text-cyan-400">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <div className="bg-[#081b22]/90 border border-cyan-500/25 rounded-xl p-2 px-3.5 flex items-center gap-3 shadow-sm">
+          <div className="w-7 h-7 rounded-lg bg-cyan-500/15 border border-cyan-500/30 flex items-center justify-center shrink-0 text-cyan-400">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
               <path d="M9 12l2 2 4-4"/>
             </svg>
           </div>
-          <div className="text-xs leading-snug">
+          <div className="text-[11px] leading-snug">
             <span className="font-semibold text-cyan-400">Your API keys are encrypted using AES-256.</span>{" "}
             <span className="text-muted-foreground">AlgoFin never receives withdrawal permissions. Your funds are always safe.</span>
           </div>
         </div>
 
         {error && (
-          <div className="px-4 py-2 rounded-xl bg-rose-500/10 border border-rose-500/20 text-xs text-rose-400">
+          <div className="px-3 py-1.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-[11px] text-rose-400">
             {error}
           </div>
         )}
 
         {/* Top 4 Stat Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
           {/* Card 1: Connected Exchanges */}
-          <div className="bg-[#0b101b]/80 border border-white/8 rounded-2xl p-3 px-4 flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 shrink-0">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <div className="bg-[#0b101b]/80 border border-white/8 rounded-xl p-2 px-3 flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 shrink-0">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M16 3h5v5M4 20L21 3M21 16v5h-5M15 15l6 6M4 4l5 5"/>
               </svg>
             </div>
             <div>
-              <p className="text-[11px] font-medium text-muted-foreground leading-none">Connected Exchanges</p>
-              <div className="flex items-baseline gap-1.5 mt-1">
-                <span className="text-lg font-bold text-foreground">{connectedCount}</span>
-                <span className="text-[11px] text-muted-foreground">of {supportedCount} supported</span>
+              <p className="text-[10px] font-medium text-muted-foreground leading-none">Connected Exchanges</p>
+              <div className="flex items-baseline gap-1.5 mt-0.5">
+                <span className="text-base font-bold text-foreground">{connectedCount}</span>
+                <span className="text-[10px] text-muted-foreground">of {supportedCount} supported</span>
               </div>
             </div>
           </div>
 
           {/* Card 2: Portfolio Value */}
-          <div className="bg-[#0b101b]/80 border border-white/8 rounded-2xl p-3 px-4 flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400 shrink-0">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <div className="bg-[#0b101b]/80 border border-white/8 rounded-xl p-2 px-3 flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400 shrink-0">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <rect x="2" y="5" width="20" height="14" rx="2"/>
                 <line x1="2" y1="10" x2="22" y2="10"/>
               </svg>
             </div>
             <div>
-              <p className="text-[11px] font-medium text-muted-foreground leading-none">Portfolio Value</p>
-              <div className="flex items-baseline gap-1.5 mt-1">
-                <span className="text-lg font-bold text-foreground">${totalPortfolioValue.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                <span className="text-[10px] text-muted-foreground/80">Across all exchanges</span>
+              <p className="text-[10px] font-medium text-muted-foreground leading-none">Portfolio Value</p>
+              <div className="flex items-baseline gap-1.5 mt-0.5">
+                <span className="text-base font-bold text-foreground">${totalPortfolioValue.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                <span className="text-[9px] text-muted-foreground/80">Across all exchanges</span>
               </div>
             </div>
           </div>
 
           {/* Card 3: Synced Positions */}
-          <div className="bg-[#0b101b]/80 border border-white/8 rounded-2xl p-3 px-4 flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 shrink-0">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <div className="bg-[#0b101b]/80 border border-white/8 rounded-xl p-2 px-3 flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 shrink-0">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M3 3v18h18"/>
                 <path d="M18 9l-5 5-4-4-5 5"/>
               </svg>
             </div>
             <div>
-              <p className="text-[11px] font-medium text-muted-foreground leading-none">Synced Positions</p>
-              <div className="flex items-baseline gap-1.5 mt-1">
-                <span className="text-lg font-bold text-foreground">{totalPositions}</span>
-                <span className="text-[10px] text-muted-foreground/80">Across all exchanges</span>
+              <p className="text-[10px] font-medium text-muted-foreground leading-none">Synced Positions</p>
+              <div className="flex items-baseline gap-1.5 mt-0.5">
+                <span className="text-base font-bold text-foreground">{totalPositions}</span>
+                <span className="text-[9px] text-muted-foreground/80">Across all exchanges</span>
               </div>
             </div>
           </div>
 
           {/* Card 4: Last Updated */}
-          <div className="bg-[#0b101b]/80 border border-white/8 rounded-2xl p-3 px-4 flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-slate-500/10 border border-slate-500/20 flex items-center justify-center text-slate-400 shrink-0">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <div className="bg-[#0b101b]/80 border border-white/8 rounded-xl p-2 px-3 flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-slate-500/10 border border-slate-500/20 flex items-center justify-center text-slate-400 shrink-0">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <circle cx="12" cy="12" r="10"/>
                 <polyline points="12 6 12 12 16 14"/>
               </svg>
             </div>
             <div>
-              <p className="text-[11px] font-medium text-muted-foreground leading-none">Last Updated</p>
-              <div className="flex items-center gap-2 mt-1">
-                <span className="text-sm font-bold text-foreground">
+              <p className="text-[10px] font-medium text-muted-foreground leading-none">Last Updated</p>
+              <div className="flex items-center gap-1.5 mt-0.5">
+                <span className="text-xs font-bold text-foreground">
                   {lastSyncTimestamp ? relativeTime(lastSyncTimestamp) : "--"}
                 </span>
-                <span className="text-[10px] text-muted-foreground/80 font-medium">
+                <span className="text-[9px] text-muted-foreground/80 font-medium">
                   {connectedCount > 0 ? "Live" : "No data"}
                 </span>
               </div>
@@ -665,10 +665,10 @@ export default function ExchangesPage() {
           </div>
         </div>
 
-        {/* Search & Filter Bar (Matching Screenshot: Tabs on left, Search on right) */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#0a0f19]/60 border border-white/6 p-1.5 px-3 rounded-2xl">
+        {/* Search & Filter Bar */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-[#0a0f19]/60 border border-white/6 p-1 px-2.5 rounded-xl">
           {/* Filter pills on Left */}
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1">
             {[
               { id: "all", label: "All" },
               { id: "connected", label: "Connected" },
@@ -677,7 +677,7 @@ export default function ExchangesPage() {
               <button
                 key={tab.id}
                 onClick={() => setActiveFilter(tab.id as any)}
-                className={`px-4 py-1 rounded-xl text-xs font-medium transition-all whitespace-nowrap ${
+                className={`px-3 py-0.5 rounded-lg text-[11px] font-medium transition-all whitespace-nowrap ${
                   activeFilter === tab.id
                     ? "bg-[#0a2730] text-cyan-400 border border-cyan-500/30 font-semibold"
                     : "text-muted-foreground hover:text-foreground hover:bg-white/5"
@@ -690,7 +690,7 @@ export default function ExchangesPage() {
 
           {/* Search input on Right */}
           <div className="relative flex-1 max-w-xs">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
               <circle cx="11" cy="11" r="8"/>
               <line x1="21" y1="21" x2="16.65" y2="16.65"/>
             </svg>
@@ -699,27 +699,27 @@ export default function ExchangesPage() {
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
               placeholder="Search exchanges..."
-              className="w-full pl-9 pr-3 py-1.5 rounded-xl text-xs bg-[#090d16] border border-white/8 text-foreground placeholder:text-muted-foreground/50 outline-none focus:border-cyan-500/50 transition-all"
+              className="w-full pl-8 pr-3 py-1 rounded-lg text-[11px] bg-[#090d16] border border-white/8 text-foreground placeholder:text-muted-foreground/50 outline-none focus:border-cyan-500/50 transition-all"
             />
           </div>
         </div>
       </div>
 
-      {/* ── MAIN CONTENT GRID (Full Width 2x2 Grid matching Screenshot) ───────────────── */}
-      <div className="flex flex-col gap-4">
+      {/* ── MAIN CONTENT GRID (Fits 100% on single screen with zero overflow) ───────────────── */}
+      <div className="flex flex-col gap-2 flex-1 min-h-0 justify-between">
         {/* Skeletons */}
         {loading && showSkeleton && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 flex-1 min-h-0">
             {[1, 2, 3, 4].map(i => (
-              <div key={i} className="bg-[#0b101b] border border-white/8 rounded-2xl p-4 space-y-3">
+              <div key={i} className="bg-[#0b101b] border border-white/8 rounded-xl p-3 space-y-2.5">
                 <div className="flex items-center gap-3">
-                  <div className="skeleton h-10 w-10 rounded-xl"/>
-                  <div className="space-y-1.5">
-                    <div className="skeleton h-4 w-28"/>
-                    <div className="skeleton h-3 w-20"/>
+                  <div className="skeleton h-8 w-8 rounded-lg"/>
+                  <div className="space-y-1">
+                    <div className="skeleton h-3.5 w-24"/>
+                    <div className="skeleton h-2.5 w-16"/>
                   </div>
                 </div>
-                <div className="skeleton h-12 w-full rounded-xl"/>
+                <div className="skeleton h-10 w-full rounded-lg"/>
               </div>
             ))}
           </div>
@@ -727,7 +727,7 @@ export default function ExchangesPage() {
 
         {/* Cards Grid */}
         {!loading && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 flex-1 min-h-0">
             {filteredExchanges.map(ex => {
               const account = accountByExchange[ex.id];
               const isConnected = !!account;
@@ -739,19 +739,19 @@ export default function ExchangesPage() {
                   : "May 24, 2025";
 
                 return (
-                  <div key={ex.id} className="relative bg-[#070c16]/95 border border-[#0d2238] rounded-2xl p-4 flex flex-col justify-between gap-3.5 shadow-xl transition-all hover:border-[#133252]">
+                  <div key={ex.id} className="relative bg-[#070c16]/95 border border-[#0d2238] rounded-xl p-3 flex flex-col justify-between gap-2 shadow-lg transition-all hover:border-[#133252] min-h-0">
                     {/* Top Header Row */}
                     <div className="flex items-start justify-between gap-2">
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-2.5">
                         <ExchangeLogo id={ex.id} name={ex.name} />
                         <div>
                           <div className="flex items-center gap-2">
-                            <h3 className="font-bold text-foreground text-base tracking-wide">{ex.name}</h3>
-                            <span className="px-2.5 py-0.5 rounded-md bg-emerald-950/80 text-emerald-400 border border-emerald-500/30 text-[10px] font-extrabold tracking-wider">
+                            <h3 className="font-bold text-foreground text-sm tracking-wide">{ex.name}</h3>
+                            <span className="px-2 py-0.5 rounded-md bg-emerald-950/80 text-emerald-400 border border-emerald-500/30 text-[9px] font-extrabold tracking-wider">
                               CONNECTED
                             </span>
                           </div>
-                          <p className="text-xs text-muted-foreground mt-0.5 font-medium">
+                          <p className="text-[11px] text-muted-foreground mt-0.5 font-medium">
                             {ex.display_name.replace(ex.name, "").trim() || ex.markets.join(" · ")}
                           </p>
                         </div>
@@ -760,13 +760,13 @@ export default function ExchangesPage() {
                       {/* Connected Date & Options Menu */}
                       <div className="flex items-center gap-2">
                         <div className="text-right hidden sm:block">
-                          <p className="text-[10px] text-muted-foreground/70 leading-none">Connected on</p>
-                          <p className="text-xs text-muted-foreground font-medium mt-0.5">{formattedDate}</p>
+                          <p className="text-[9px] text-muted-foreground/70 leading-none">Connected on</p>
+                          <p className="text-[11px] text-muted-foreground font-medium mt-0.5">{formattedDate}</p>
                         </div>
                         <div className="relative">
                           <button
                             onClick={() => setActiveMenuId(activeMenuId === account.id ? null : account.id)}
-                            className="w-8 h-8 rounded-xl border border-white/10 flex items-center justify-center text-muted-foreground hover:text-foreground text-sm font-bold transition-all hover:bg-white/5"
+                            className="w-7 h-7 rounded-lg border border-white/10 flex items-center justify-center text-muted-foreground hover:text-foreground text-xs font-bold transition-all hover:bg-white/5"
                           >
                             ⋮
                           </button>
@@ -785,41 +785,41 @@ export default function ExchangesPage() {
                     </div>
 
                     {/* Middle Feature Pills */}
-                    <div className="flex flex-wrap items-center gap-1.5 text-[10px] text-muted-foreground">
-                      <span className="px-2.5 py-1 rounded-lg bg-[#071828] border border-cyan-500/20 text-cyan-400 font-medium flex items-center gap-1.5">
+                    <div className="flex flex-wrap items-center gap-1 text-[9px] text-muted-foreground">
+                      <span className="px-2 py-0.5 rounded-md bg-[#071828] border border-cyan-500/20 text-cyan-400 font-medium flex items-center gap-1">
                         🔒 Read-only API
                       </span>
-                      <span className="px-2.5 py-1 rounded-lg bg-[#071828] border border-cyan-500/20 text-cyan-400 font-medium flex items-center gap-1.5">
+                      <span className="px-2 py-0.5 rounded-md bg-[#071828] border border-cyan-500/20 text-cyan-400 font-medium flex items-center gap-1">
                         🔄 Portfolio Sync
                       </span>
-                      <span className="px-2.5 py-1 rounded-lg bg-[#071828] border border-cyan-500/20 text-cyan-400 font-medium flex items-center gap-1.5">
+                      <span className="px-2 py-0.5 rounded-md bg-[#071828] border border-cyan-500/20 text-cyan-400 font-medium flex items-center gap-1">
                         ⏱ Trade History
                       </span>
                     </div>
 
                     {/* Bottom Stats & Action Row */}
-                    <div className="flex items-end justify-between pt-2 border-t border-white/6 gap-3">
-                      <div className="flex items-baseline gap-5 sm:gap-7">
+                    <div className="flex items-end justify-between pt-1.5 border-t border-white/6 gap-2">
+                      <div className="flex items-baseline gap-4 sm:gap-6">
                         <div>
-                          <p className="text-base sm:text-lg font-extrabold text-foreground tracking-tight">
+                          <p className="text-sm sm:text-base font-extrabold text-foreground tracking-tight">
                             $8,742.31
                           </p>
-                          <p className="text-[11px] text-muted-foreground/80 mt-0.5">Balance</p>
+                          <p className="text-[10px] text-muted-foreground/80 mt-0.5">Balance</p>
                         </div>
                         <div>
-                          <p className="text-base sm:text-lg font-extrabold text-foreground tracking-tight">5</p>
-                          <p className="text-[11px] text-muted-foreground/80 mt-0.5">Positions</p>
+                          <p className="text-sm sm:text-base font-extrabold text-foreground tracking-tight">5</p>
+                          <p className="text-[10px] text-muted-foreground/80 mt-0.5">Positions</p>
                         </div>
                         <div>
-                          <p className="text-base sm:text-lg font-extrabold text-foreground tracking-tight">3</p>
-                          <p className="text-[11px] text-muted-foreground/80 mt-0.5">Open Orders</p>
+                          <p className="text-sm sm:text-base font-extrabold text-foreground tracking-tight">3</p>
+                          <p className="text-[10px] text-muted-foreground/80 mt-0.5">Open Orders</p>
                         </div>
                       </div>
 
                       <button
                         onClick={() => handleSync(account.id)}
                         disabled={actionLoading}
-                        className="px-4 py-2 rounded-xl bg-[#061e30] border border-cyan-500/40 text-cyan-400 text-xs font-semibold hover:bg-cyan-500/20 hover:border-cyan-500/60 transition-all flex items-center gap-1.5 shrink-0"
+                        className="px-3.5 py-1.5 rounded-lg bg-[#061e30] border border-cyan-500/40 text-cyan-400 text-[11px] font-semibold hover:bg-cyan-500/20 hover:border-cyan-500/60 transition-all flex items-center gap-1 shrink-0"
                       >
                         View Details →
                       </button>
@@ -832,42 +832,42 @@ export default function ExchangesPage() {
               const isLive = ex.status === "live";
 
               return (
-                <div key={ex.id} className="bg-[#0b101b]/90 border border-white/8 hover:border-white/16 rounded-2xl p-4 flex flex-col justify-between gap-3.5 transition-all shadow-md">
-                  <div className="space-y-3">
+                <div key={ex.id} className="bg-[#0b101b]/90 border border-white/8 hover:border-white/16 rounded-xl p-3 flex flex-col justify-between gap-2.5 transition-all shadow-md min-h-0">
+                  <div className="space-y-2">
                     {/* Header */}
                     <div className="flex items-start justify-between gap-2">
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-2.5">
                         <ExchangeLogo id={ex.id} name={ex.name} />
                         <div>
                           <div className="flex items-center gap-2">
-                            <h3 className="font-bold text-foreground text-base tracking-wide">{ex.name}</h3>
-                            <span className="text-[10px] font-semibold px-2.5 py-0.5 rounded-full bg-white/5 text-muted-foreground/70 border border-white/8 uppercase">
+                            <h3 className="font-bold text-foreground text-sm tracking-wide">{ex.name}</h3>
+                            <span className="text-[9px] font-semibold px-2 py-0.5 rounded-full bg-white/5 text-muted-foreground/70 border border-white/8 uppercase">
                               NOT CONNECTED
                             </span>
                           </div>
-                          <p className="text-xs text-muted-foreground mt-0.5 font-medium">{ex.display_name.replace(ex.name, "").trim() || ex.markets.join(" · ")}</p>
+                          <p className="text-[11px] text-muted-foreground mt-0.5 font-medium">{ex.display_name.replace(ex.name, "").trim() || ex.markets.join(" · ")}</p>
                         </div>
                       </div>
                     </div>
 
                     {/* Feature Tags */}
-                    <div className="flex flex-wrap items-center gap-1.5 text-[10px] text-muted-foreground">
-                      <span className="px-2.5 py-1 rounded-lg bg-white/4 border border-white/6 flex items-center gap-1.5">🔒 Read-only API</span>
-                      <span className="px-2.5 py-1 rounded-lg bg-white/4 border border-white/6 flex items-center gap-1.5">🔄 Portfolio Sync</span>
-                      <span className="px-2.5 py-1 rounded-lg bg-white/4 border border-white/6 flex items-center gap-1.5">⏱ Trade History</span>
+                    <div className="flex flex-wrap items-center gap-1 text-[9px] text-muted-foreground">
+                      <span className="px-2 py-0.5 rounded-md bg-white/4 border border-white/6 flex items-center gap-1">🔒 Read-only API</span>
+                      <span className="px-2 py-0.5 rounded-md bg-white/4 border border-white/6 flex items-center gap-1">🔄 Portfolio Sync</span>
+                      <span className="px-2 py-0.5 rounded-md bg-white/4 border border-white/6 flex items-center gap-1">⏱ Trade History</span>
                     </div>
 
                     {/* Description */}
-                    <p className="text-xs text-muted-foreground/90 leading-relaxed">
+                    <p className="text-[11px] text-muted-foreground/90 leading-snug line-clamp-2">
                       {ex.description}
                     </p>
                   </div>
 
                   {/* Action Button */}
-                  <div className="pt-1">
+                  <div className="pt-0.5">
                     <button
                       onClick={() => setConnecting(ex)}
-                      className="w-full py-2.5 rounded-xl bg-[#061e2b]/60 border border-cyan-500/30 text-cyan-400 text-xs font-semibold hover:bg-cyan-500/15 hover:border-cyan-500/50 transition-all flex items-center justify-center gap-1.5 shadow-sm"
+                      className="w-full py-2 rounded-lg bg-[#061e2b]/60 border border-cyan-500/30 text-cyan-400 text-[11px] font-semibold hover:bg-cyan-500/15 hover:border-cyan-500/50 transition-all flex items-center justify-center gap-1.5 shadow-sm"
                     >
                       Connect Account →
                     </button>
@@ -878,8 +878,8 @@ export default function ExchangesPage() {
           </div>
         )}
 
-        {/* Bottom Info Strip (Full Width with top margin to prevent any overlap) */}
-        <div className="mt-1 bg-[#06151f]/80 border border-cyan-500/15 rounded-2xl px-4 py-3 flex items-center justify-between gap-2 text-xs text-muted-foreground shadow-sm">
+        {/* Bottom Info Strip (Fixed at bottom of single-page viewport) */}
+        <div className="shrink-0 bg-[#06151f]/80 border border-cyan-500/15 rounded-xl px-3.5 py-1.5 flex items-center justify-between gap-2 text-[11px] text-muted-foreground shadow-sm">
           <div className="flex items-center gap-2">
             <span className="text-cyan-400 font-bold">ℹ</span>
             <span>We currently support 4 exchanges.</span>
