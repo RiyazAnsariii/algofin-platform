@@ -19,7 +19,7 @@ _CACHE_RULES: list[tuple[re.Pattern, str]] = [
     # Static registry data — cache aggressively
     (
         re.compile(r"/exchanges/supported$"),
-        "private, max-age=300, stale-while-revalidate=600",
+        "private, no-cache, no-store, must-revalidate",
     ),
     # External data — moderate cache
     (

@@ -496,8 +496,9 @@ export default function ExchangesPage() {
 
   const fetchExchanges = useCallback(async () => {
     try {
-      const data = await cachedGet<ExchangeDef[]>("/exchanges/supported", 5 * 60_000);
-      setExchanges(data);
+      invalidateCache("/exchanges/supported");
+      const res = await api.get<ExchangeDef[]>("/exchanges/supported");
+      setExchanges(res.data);
     } catch { /* fallback */ }
   }, []);
 
