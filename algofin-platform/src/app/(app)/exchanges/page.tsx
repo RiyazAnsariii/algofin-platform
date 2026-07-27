@@ -61,8 +61,8 @@ export function BinanceLogo({ className = "w-9 h-9" }: { className?: string }) {
 export function BybitLogo({ className = "w-9 h-9" }: { className?: string }) {
   return (
     <div className={`${className} rounded-xl bg-[#0d0e12] border border-amber-500/20 flex items-center justify-center shrink-0 p-1 shadow-md select-none`}>
-      <span className="font-extrabold text-[11px] tracking-tight text-white font-sans flex items-center">
-        BY<span className="inline-block w-[3.5px] h-3.5 bg-[#F7A600] rounded-[1px] mx-[1px]" />T
+      <span className="font-extrabold text-[9.5px] tracking-tighter text-white font-sans flex items-center">
+        BYB<span className="inline-block w-[2.5px] h-3 bg-[#F7A600] rounded-[0.5px] mx-[0.5px]" />T
       </span>
     </div>
   );
