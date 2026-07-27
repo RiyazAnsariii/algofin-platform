@@ -474,7 +474,7 @@ export default function ExchangesPage() {
 
   // Search & Filter state
   const [searchQuery, setSearchQuery]       = useState("");
-  const [activeFilter, setActiveFilter]     = useState<"all" | "connected" | "not_connected" | "coming_soon">("all");
+  const [activeFilter, setActiveFilter]     = useState<"all" | "connected">("all");
 
   const fetchAccounts = useCallback(async () => {
     try {
@@ -756,7 +756,6 @@ export default function ExchangesPage() {
             {[
               { id: "all", label: "All" },
               { id: "connected", label: "Connected" },
-              { id: "not_connected", label: "Not Connected" },
             ].map(tab => (
               <button
                 key={tab.id}
