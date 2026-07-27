@@ -1,6 +1,6 @@
 "use client";
 // src/app/(app)/assistant/page.tsx
-// AlgoFin — AI Assistant with Conversation History Panel
+// AlgoFin — AI Assistant with Full-Featured Sidebar Icon Rail
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import api from "@/lib/api";
@@ -29,9 +29,26 @@ interface SavedConversation {
   id:        string;
   title:     string;
   messages:  Message[];
-  createdAt: string;  // ISO string
-  updatedAt: string;  // ISO string
+  createdAt: string;
+  updatedAt: string;
   pinned:    boolean;
+}
+
+interface Notification {
+  id:       string;
+  type:     "event" | "alert" | "drawdown" | "margin" | "strategy";
+  title:    string;
+  body:     string;
+  time:     string;
+  read:     boolean;
+}
+
+interface SavedReport {
+  id:       string;
+  category: "daily" | "weekly" | "monthly" | "risk" | "snapshot";
+  title:    string;
+  date:     string;
+  size:     string;
 }
 
 // ── LocalStorage helpers ───────────────────────────────────────────────────────
@@ -59,19 +76,43 @@ function groupByDate(convos: SavedConversation[]) {
   const now = new Date();
   const todayStr = now.toDateString();
   const yesterdayStr = new Date(now.getTime() - 86400000).toDateString();
+  const thisWeekMs = now.getTime() - 7 * 86400000;
   const pinned: SavedConversation[] = [];
   const today: SavedConversation[] = [];
   const yesterday: SavedConversation[] = [];
+  const thisWeek: SavedConversation[] = [];
   const earlier: SavedConversation[] = [];
   for (const c of convos) {
     if (c.pinned) { pinned.push(c); continue; }
-    const d = new Date(c.updatedAt).toDateString();
-    if (d === todayStr) today.push(c);
-    else if (d === yesterdayStr) yesterday.push(c);
+    const d = new Date(c.updatedAt);
+    if (d.toDateString() === todayStr) today.push(c);
+    else if (d.toDateString() === yesterdayStr) yesterday.push(c);
+    else if (d.getTime() > thisWeekMs) thisWeek.push(c);
     else earlier.push(c);
   }
-  return { pinned, today, yesterday, earlier };
+  return { pinned, today, yesterday, thisWeek, earlier };
 }
+
+// ── Static demo data ───────────────────────────────────────────────────────────
+const DEMO_NOTIFICATIONS: Notification[] = [
+  { id: "n1", type: "event",    title: "CPI Data Released", body: "US CPI came in at 3.1% YoY, slightly above expectations of 3.0%.", time: "2m ago", read: false },
+  { id: "n2", type: "event",    title: "FOMC Meeting Today", body: "Federal Reserve rate decision at 2:00 PM EST. High impact expected.", time: "1h ago", read: false },
+  { id: "n3", type: "drawdown", title: "Portfolio Drawdown Alert", body: "Your portfolio has dropped 5.2% from its peak. Review risk settings.", time: "3h ago", read: false },
+  { id: "n4", type: "margin",   title: "Margin Level Warning", body: "BYBIT margin utilization at 78%. Consider reducing exposure.", time: "5h ago", read: true },
+  { id: "n5", type: "strategy", title: "Strategy Triggered", body: "BTC/USDT EMA crossover strategy fired a buy signal at $43,200.", time: "Yesterday", read: true },
+];
+
+const DEMO_REPORTS: SavedReport[] = [
+  { id: "r1", category: "daily",    title: "Daily Report — Jul 27",      date: "Jul 27, 2026", size: "124 KB" },
+  { id: "r2", category: "daily",    title: "Daily Report — Jul 26",      date: "Jul 26, 2026", size: "118 KB" },
+  { id: "r3", category: "weekly",   title: "Weekly Summary — Jul 21-27", date: "Jul 27, 2026", size: "342 KB" },
+  { id: "r4", category: "monthly",  title: "Monthly PnL — June 2026",    date: "Jul 1, 2026",  size: "1.2 MB" },
+  { id: "r5", category: "risk",     title: "Risk Report — Jul 2026",     date: "Jul 25, 2026", size: "256 KB" },
+  { id: "r6", category: "snapshot", title: "Portfolio Snapshot",         date: "Jul 27, 2026", size: "88 KB" },
+];
+
+// ── Icon Rail Panels ──────────────────────────────────────────────────────────
+type PanelId = "search" | "pinned" | "history" | "reports" | "notifications" | "conversations" | null;
 
 // ── Icons ─────────────────────────────────────────────────────────────────────
 const GeminiIcon = () => (
@@ -104,6 +145,27 @@ const RobotAvatar = () => (
     </div>
   </div>
 );
+
+// ── Notification type config ───────────────────────────────────────────────────
+function notifConfig(type: Notification["type"]) {
+  switch (type) {
+    case "event":    return { color: "text-blue-400",    bg: "bg-blue-500/10 border-blue-500/20",    icon: "📅" };
+    case "drawdown": return { color: "text-rose-400",    bg: "bg-rose-500/10 border-rose-500/20",    icon: "📉" };
+    case "margin":   return { color: "text-amber-400",   bg: "bg-amber-500/10 border-amber-500/20",  icon: "⚠️" };
+    case "strategy": return { color: "text-emerald-400", bg: "bg-emerald-500/10 border-emerald-500/20", icon: "⚡" };
+    default:         return { color: "text-cyan-400",    bg: "bg-cyan-500/10 border-cyan-500/20",    icon: "🔔" };
+  }
+}
+
+function reportConfig(cat: SavedReport["category"]) {
+  switch (cat) {
+    case "daily":    return { color: "text-cyan-400",    bg: "bg-cyan-500/10 border-cyan-500/20",    label: "Daily",    icon: "📋" };
+    case "weekly":   return { color: "text-blue-400",    bg: "bg-blue-500/10 border-blue-500/20",    label: "Weekly",   icon: "📆" };
+    case "monthly":  return { color: "text-violet-400",  bg: "bg-violet-500/10 border-violet-500/20", label: "Monthly",  icon: "📊" };
+    case "risk":     return { color: "text-rose-400",    bg: "bg-rose-500/10 border-rose-500/20",    label: "Risk",     icon: "🛡️" };
+    case "snapshot": return { color: "text-emerald-400", bg: "bg-emerald-500/10 border-emerald-500/20", label: "Snapshot", icon: "📸" };
+  }
+}
 
 // ── Markdown Renderer ─────────────────────────────────────────────────────────
 function RenderMarkdown({ text }: { text: string }) {
@@ -143,9 +205,180 @@ function renderInline(text: string) {
   });
 }
 
-// ── Conversation History Panel ────────────────────────────────────────────────
-function ConversationsPanel({
-  open,
+// ── Panel: Search ─────────────────────────────────────────────────────────────
+function SearchPanel({
+  conversations,
+  onLoad,
+}: {
+  conversations: SavedConversation[];
+  onLoad: (c: SavedConversation) => void;
+}) {
+  const [query, setQuery] = useState("");
+  const [filterType, setFilterType] = useState<"all" | "ticker" | "topic">("all");
+
+  const filters = [
+    { id: "all" as const,    label: "All" },
+    { id: "ticker" as const, label: "Ticker" },
+    { id: "topic" as const,  label: "Topic" },
+  ];
+
+  const tickers = ["BTC", "ETH", "SOL", "BNB", "XRP", "DOGE"];
+  const topics  = ["PnL", "Risk", "Calendar", "Position", "Strategy"];
+
+  const filtered = conversations.filter((c) => {
+    const q = query.toLowerCase();
+    if (!q) return true;
+    return c.title.toLowerCase().includes(q) || c.messages.some((m) => m.content.toLowerCase().includes(q));
+  });
+
+  return (
+    <div className="flex flex-col h-full">
+      <div className="px-3 py-3 border-b border-white/6 shrink-0">
+        <h2 className="text-sm font-bold text-foreground mb-2">Search</h2>
+        <div className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-xl px-2.5 py-1.5">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-muted-foreground shrink-0">
+            <circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>
+          </svg>
+          <input
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search conversations…"
+            className="bg-transparent text-[11px] text-foreground placeholder:text-muted-foreground/50 outline-none flex-1 min-w-0"
+            autoFocus
+          />
+          {query && (
+            <button onClick={() => setQuery("")} className="text-muted-foreground hover:text-foreground transition-colors">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+            </button>
+          )}
+        </div>
+        <div className="flex gap-1 mt-2">
+          {filters.map((f) => (
+            <button
+              key={f.id}
+              onClick={() => setFilterType(f.id)}
+              className={`px-2 py-0.5 rounded-lg text-[10px] font-semibold transition-all ${filterType === f.id ? "bg-cyan-500/20 text-cyan-400 border border-cyan-500/30" : "text-muted-foreground hover:text-foreground hover:bg-white/5 border border-transparent"}`}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {!query && (
+        <div className="px-3 pt-2 pb-1 space-y-2 shrink-0">
+          <div>
+            <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground/40 mb-1">By Ticker</p>
+            <div className="flex flex-wrap gap-1">
+              {tickers.map((t) => (
+                <button key={t} onClick={() => setQuery(t)} className="px-2 py-0.5 rounded-lg border border-white/10 hover:border-cyan-500/40 text-[10px] text-muted-foreground hover:text-cyan-300 transition-all bg-white/3">
+                  {t}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground/40 mb-1">By Topic</p>
+            <div className="flex flex-wrap gap-1">
+              {topics.map((t) => (
+                <button key={t} onClick={() => setQuery(t)} className="px-2 py-0.5 rounded-lg border border-white/10 hover:border-cyan-500/40 text-[10px] text-muted-foreground hover:text-cyan-300 transition-all bg-white/3">
+                  {t}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="flex-1 overflow-y-auto px-2 pb-3 min-h-0 mt-1">
+        {filtered.length === 0 ? (
+          <p className="text-[11px] text-muted-foreground/40 text-center py-8">{query ? "No results found" : "No conversations yet"}</p>
+        ) : (
+          <div className="space-y-0.5">
+            {query && <p className="text-[10px] text-muted-foreground/50 px-2 pb-1">{filtered.length} result{filtered.length !== 1 ? "s" : ""}</p>}
+            {filtered.map((c) => (
+              <button
+                key={c.id}
+                onClick={() => onLoad(c)}
+                className="w-full text-left px-2.5 py-2 rounded-xl hover:bg-white/5 border border-transparent hover:border-white/8 transition-all group"
+              >
+                <p className="text-[11px] font-medium text-foreground/90 group-hover:text-foreground truncate">{c.title}</p>
+                <p className="text-[10px] text-muted-foreground/50 mt-0.5">{new Date(c.updatedAt).toLocaleDateString()}</p>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Panel: Pinned ─────────────────────────────────────────────────────────────
+function PinnedPanel({
+  conversations,
+  activeId,
+  onLoad,
+  onTogglePin,
+}: {
+  conversations: SavedConversation[];
+  activeId: string | null;
+  onLoad: (c: SavedConversation) => void;
+  onTogglePin: (id: string) => void;
+}) {
+  const pinned = conversations.filter((c) => c.pinned);
+
+  return (
+    <div className="flex flex-col h-full">
+      <div className="px-3 py-3 border-b border-white/6 shrink-0 flex items-center justify-between">
+        <h2 className="text-sm font-bold text-foreground">Pinned</h2>
+        <span className="text-[10px] text-muted-foreground/50">{pinned.length} pinned</span>
+      </div>
+      <div className="flex-1 overflow-y-auto px-2 py-2 min-h-0">
+        {pinned.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-10 gap-2 text-center">
+            <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m12 17-7 5 2-8L2 9l8-1 2-7 2 7 8 1-5 5 2 8z"/></svg>
+            </div>
+            <p className="text-[11px] text-muted-foreground/50">No pinned conversations</p>
+            <p className="text-[10px] text-muted-foreground/30">Pin important analyses or trading plans</p>
+          </div>
+        ) : (
+          <div className="space-y-1">
+            {pinned.map((c) => {
+              const isActive = c.id === activeId;
+              return (
+                <div
+                  key={c.id}
+                  onClick={() => onLoad(c)}
+                  className={`group relative flex items-start gap-2 px-2.5 py-2 rounded-xl cursor-pointer transition-all ${isActive ? "bg-cyan-500/10 border border-cyan-500/20" : "hover:bg-white/5 border border-transparent"}`}
+                >
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" className="text-amber-400 mt-0.5 shrink-0">
+                    <path d="m12 17-7 5 2-8L2 9l8-1 2-7 2 7 8 1-5 5 2 8z"/>
+                  </svg>
+                  <div className="flex-1 min-w-0">
+                    <p className={`text-[11px] font-medium truncate ${isActive ? "text-cyan-300" : "text-foreground/90"}`}>{c.title}</p>
+                    <p className="text-[10px] text-muted-foreground/50">{new Date(c.updatedAt).toLocaleDateString()}</p>
+                  </div>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); onTogglePin(c.id); }}
+                    className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-white/10 text-muted-foreground hover:text-rose-400 transition-all shrink-0"
+                    title="Unpin"
+                  >
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Panel: History ─────────────────────────────────────────────────────────────
+function HistoryPanel({
   conversations,
   activeId,
   onNew,
@@ -153,7 +386,6 @@ function ConversationsPanel({
   onDelete,
   onTogglePin,
 }: {
-  open: boolean;
   conversations: SavedConversation[];
   activeId: string | null;
   onNew: () => void;
@@ -161,66 +393,38 @@ function ConversationsPanel({
   onDelete: (id: string) => void;
   onTogglePin: (id: string) => void;
 }) {
-  const [search, setSearch] = useState("");
   const [menuId, setMenuId] = useState<string | null>(null);
-
-  const filtered = conversations.filter((c) =>
-    c.title.toLowerCase().includes(search.toLowerCase())
-  );
-  const { pinned, today, yesterday, earlier } = groupByDate(filtered);
-
-  function formatTime(iso: string) {
-    const d = new Date(iso);
-    return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-  }
+  const { today, yesterday, thisWeek, earlier } = groupByDate(conversations.filter(c => !c.pinned));
 
   function ConvoItem({ c }: { c: SavedConversation }) {
     const isActive = c.id === activeId;
     return (
       <div
-        className={`group relative flex items-center gap-2 px-2.5 py-2 rounded-xl cursor-pointer transition-all ${
-          isActive
-            ? "bg-cyan-500/10 border border-cyan-500/20"
-            : "hover:bg-white/5 border border-transparent"
-        }`}
+        className={`group relative flex items-center gap-2 px-2.5 py-2 rounded-xl cursor-pointer transition-all ${isActive ? "bg-cyan-500/10 border border-cyan-500/20" : "hover:bg-white/5 border border-transparent"}`}
         onClick={() => { setMenuId(null); onLoad(c); }}
       >
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-muted-foreground/40 shrink-0 mt-0.5">
+          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+        </svg>
         <div className="flex-1 min-w-0">
-          <p className={`text-[11px] font-medium truncate ${isActive ? "text-cyan-300" : "text-foreground/90"}`}>
-            {c.title}
-          </p>
-          <p className="text-[10px] text-muted-foreground/60">{formatTime(c.updatedAt)}</p>
+          <p className={`text-[11px] font-medium truncate ${isActive ? "text-cyan-300" : "text-foreground/90"}`}>{c.title}</p>
+          <p className="text-[10px] text-muted-foreground/50">{new Date(c.updatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</p>
         </div>
         <button
           type="button"
           onClick={(e) => { e.stopPropagation(); setMenuId(menuId === c.id ? null : c.id); }}
           className="opacity-0 group-hover:opacity-100 p-1 rounded-lg hover:bg-white/10 text-muted-foreground hover:text-foreground transition-all shrink-0"
         >
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
-            <circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/>
-          </svg>
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
         </button>
-
         {menuId === c.id && (
-          <div className="absolute right-0 top-8 z-50 bg-[#0d1f2d] border border-white/10 rounded-xl shadow-xl overflow-hidden min-w-[130px]">
-            <button
-              type="button"
-              onClick={(e) => { e.stopPropagation(); onTogglePin(c.id); setMenuId(null); }}
-              className="w-full flex items-center gap-2 px-3 py-2 text-[11px] text-muted-foreground hover:text-foreground hover:bg-white/5 transition-all"
-            >
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="m12 17-7 5 2-8L2 9l8-1 2-7 2 7 8 1-5 5 2 8z"/>
-              </svg>
+          <div className="absolute right-0 top-8 z-50 bg-[#0d1f2d] border border-white/10 rounded-xl shadow-xl overflow-hidden min-w-[140px]">
+            <button type="button" onClick={(e) => { e.stopPropagation(); onTogglePin(c.id); setMenuId(null); }} className="w-full flex items-center gap-2 px-3 py-2 text-[11px] text-muted-foreground hover:text-foreground hover:bg-white/5 transition-all">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m12 17-7 5 2-8L2 9l8-1 2-7 2 7 8 1-5 5 2 8z"/></svg>
               {c.pinned ? "Unpin" : "Pin"}
             </button>
-            <button
-              type="button"
-              onClick={(e) => { e.stopPropagation(); onDelete(c.id); setMenuId(null); }}
-              className="w-full flex items-center gap-2 px-3 py-2 text-[11px] text-rose-400 hover:bg-rose-500/10 transition-all"
-            >
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
-              </svg>
+            <button type="button" onClick={(e) => { e.stopPropagation(); onDelete(c.id); setMenuId(null); }} className="w-full flex items-center gap-2 px-3 py-2 text-[11px] text-rose-400 hover:bg-rose-500/10 transition-all">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
               Delete
             </button>
           </div>
@@ -233,35 +437,258 @@ function ConversationsPanel({
     if (!items.length) return null;
     return (
       <div className="space-y-0.5">
-        <p className="text-[10px] font-semibold text-muted-foreground/50 uppercase tracking-widest px-2 mb-1">{label}</p>
+        <p className="text-[9px] font-bold text-muted-foreground/40 uppercase tracking-widest px-2 mb-1">{label}</p>
         {items.map((c) => <ConvoItem key={c.id} c={c} />)}
       </div>
     );
   }
 
-  if (!open) return null;
+  return (
+    <div className="flex flex-col h-full" onClick={() => setMenuId(null)}>
+      <div className="px-3 py-3 border-b border-white/6 shrink-0 flex items-center justify-between">
+        <h2 className="text-sm font-bold text-foreground">History</h2>
+        <button onClick={onNew} className="p-1.5 rounded-lg hover:bg-white/8 text-muted-foreground hover:text-foreground transition-all" title="New conversation">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+            <path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4Z"/>
+          </svg>
+        </button>
+      </div>
+      <div className="flex-1 overflow-y-auto px-2 pb-3 space-y-3 min-h-0 pt-2">
+        {conversations.length === 0 ? (
+          <p className="text-[11px] text-muted-foreground/40 text-center py-8">No conversations yet</p>
+        ) : (
+          <>
+            <Section label="Today" items={today} />
+            <Section label="Yesterday" items={yesterday} />
+            <Section label="This Week" items={thisWeek} />
+            <Section label="Earlier" items={earlier} />
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Panel: Saved Reports ───────────────────────────────────────────────────────
+function ReportsPanel() {
+  const [activeFilter, setActiveFilter] = useState<SavedReport["category"] | "all">("all");
+  const categories: Array<{ id: SavedReport["category"] | "all"; label: string }> = [
+    { id: "all",      label: "All" },
+    { id: "daily",    label: "Daily" },
+    { id: "weekly",   label: "Weekly" },
+    { id: "monthly",  label: "Monthly" },
+    { id: "risk",     label: "Risk" },
+    { id: "snapshot", label: "Snapshot" },
+  ];
+
+  const filtered = activeFilter === "all" ? DEMO_REPORTS : DEMO_REPORTS.filter(r => r.category === activeFilter);
 
   return (
-    <div
-      className="flex flex-col w-60 shrink-0 bg-[#080f16] border-r border-white/6 h-full overflow-hidden"
-      onClick={() => setMenuId(null)}
-    >
+    <div className="flex flex-col h-full">
+      <div className="px-3 py-3 border-b border-white/6 shrink-0">
+        <div className="flex items-center justify-between mb-2">
+          <h2 className="text-sm font-bold text-foreground">Saved Reports</h2>
+          <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-violet-500/15 text-violet-400 border border-violet-500/20 font-semibold">AlgoFin</span>
+        </div>
+        <div className="flex gap-1 flex-wrap">
+          {categories.map((cat) => (
+            <button
+              key={cat.id}
+              onClick={() => setActiveFilter(cat.id)}
+              className={`px-2 py-0.5 rounded-lg text-[10px] font-semibold transition-all ${activeFilter === cat.id ? "bg-cyan-500/20 text-cyan-400 border border-cyan-500/30" : "text-muted-foreground hover:text-foreground hover:bg-white/5 border border-transparent"}`}
+            >
+              {cat.label}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="flex-1 overflow-y-auto px-2 py-2 min-h-0">
+        <div className="space-y-1">
+          {filtered.map((r) => {
+            const cfg = reportConfig(r.category);
+            return (
+              <div key={r.id} className="group flex items-center gap-2.5 px-2.5 py-2 rounded-xl hover:bg-white/5 border border-transparent hover:border-white/8 cursor-pointer transition-all">
+                <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-sm shrink-0 border ${cfg.bg}`}>
+                  {cfg.icon}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[11px] font-medium text-foreground/90 truncate group-hover:text-foreground">{r.title}</p>
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    <span className={`text-[9px] font-semibold ${cfg.color}`}>{cfg.label}</span>
+                    <span className="text-muted-foreground/30 text-[9px]">·</span>
+                    <span className="text-[9px] text-muted-foreground/50">{r.date}</span>
+                    <span className="text-muted-foreground/30 text-[9px]">·</span>
+                    <span className="text-[9px] text-muted-foreground/40">{r.size}</span>
+                  </div>
+                </div>
+                <button className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-white/10 text-muted-foreground hover:text-cyan-400 transition-all shrink-0" title="Download">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+      <div className="px-3 py-2 border-t border-white/6 shrink-0">
+        <button className="w-full text-[11px] text-cyan-400 hover:text-cyan-300 font-semibold py-1.5 rounded-xl hover:bg-cyan-500/10 border border-transparent hover:border-cyan-500/20 transition-all flex items-center justify-center gap-1.5">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+          View All Reports
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ── Panel: Notifications ───────────────────────────────────────────────────────
+function NotificationsPanel({
+  notifications,
+  onMarkRead,
+  onMarkAllRead,
+}: {
+  notifications: Notification[];
+  onMarkRead: (id: string) => void;
+  onMarkAllRead: () => void;
+}) {
+  const unreadCount = notifications.filter(n => !n.read).length;
+
+  return (
+    <div className="flex flex-col h-full">
+      <div className="px-3 py-3 border-b border-white/6 shrink-0">
+        <div className="flex items-center justify-between mb-1">
+          <div className="flex items-center gap-2">
+            <h2 className="text-sm font-bold text-foreground">Notifications</h2>
+            {unreadCount > 0 && (
+              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-rose-500 text-white leading-none">{unreadCount}</span>
+            )}
+          </div>
+          {unreadCount > 0 && (
+            <button onClick={onMarkAllRead} className="text-[10px] text-cyan-400 hover:text-cyan-300 font-semibold transition-colors">
+              Mark all read
+            </button>
+          )}
+        </div>
+        <p className="text-[10px] text-muted-foreground/50">Market events, alerts & strategy signals</p>
+      </div>
+      <div className="flex-1 overflow-y-auto px-2 py-2 min-h-0">
+        <div className="space-y-1.5">
+          {notifications.map((n) => {
+            const cfg = notifConfig(n.type);
+            return (
+              <div
+                key={n.id}
+                onClick={() => onMarkRead(n.id)}
+                className={`group relative flex items-start gap-2.5 px-2.5 py-2.5 rounded-xl cursor-pointer transition-all border ${n.read ? "border-transparent hover:bg-white/3 hover:border-white/6 opacity-60" : `${cfg.bg} hover:opacity-90`}`}
+              >
+                {!n.read && <div className="absolute top-2.5 right-2.5 w-1.5 h-1.5 rounded-full bg-rose-400 shrink-0" />}
+                <span className="text-base leading-none shrink-0 mt-0.5">{cfg.icon}</span>
+                <div className="flex-1 min-w-0">
+                  <p className={`text-[11px] font-semibold ${n.read ? "text-foreground/70" : "text-foreground"}`}>{n.title}</p>
+                  <p className="text-[10px] text-muted-foreground/70 leading-relaxed mt-0.5">{n.body}</p>
+                  <p className="text-[9px] text-muted-foreground/40 mt-1">{n.time}</p>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+      <div className="px-3 py-2 border-t border-white/6 shrink-0">
+        <p className="text-[9px] text-muted-foreground/30 text-center">Alerts from your connected exchanges & watchlists</p>
+      </div>
+    </div>
+  );
+}
+
+// ── Panel: Full Conversations (ChatGPT-style) ──────────────────────────────────
+function ConversationsPanel({
+  conversations,
+  activeId,
+  onNew,
+  onLoad,
+  onDelete,
+  onTogglePin,
+}: {
+  conversations: SavedConversation[];
+  activeId: string | null;
+  onNew: () => void;
+  onLoad: (c: SavedConversation) => void;
+  onDelete: (id: string) => void;
+  onTogglePin: (id: string) => void;
+}) {
+  const [search, setSearch]   = useState("");
+  const [menuId, setMenuId]   = useState<string | null>(null);
+
+  const filtered = conversations.filter((c) =>
+    c.title.toLowerCase().includes(search.toLowerCase())
+  );
+  const { pinned, today, yesterday, thisWeek, earlier } = groupByDate(filtered);
+
+  function ConvoItem({ c }: { c: SavedConversation }) {
+    const isActive = c.id === activeId;
+    return (
+      <div
+        className={`group relative flex items-center gap-2 px-2.5 py-2 rounded-xl cursor-pointer transition-all ${isActive ? "bg-cyan-500/10 border border-cyan-500/20" : "hover:bg-white/5 border border-transparent"}`}
+        onClick={() => { setMenuId(null); onLoad(c); }}
+      >
+        {c.pinned && <svg width="9" height="9" viewBox="0 0 24 24" fill="currentColor" className="text-amber-400 shrink-0"><path d="m12 17-7 5 2-8L2 9l8-1 2-7 2 7 8 1-5 5 2 8z"/></svg>}
+        <div className="flex-1 min-w-0">
+          <p className={`text-[11px] font-medium truncate ${isActive ? "text-cyan-300" : "text-foreground/90"}`}>{c.title}</p>
+          <p className="text-[10px] text-muted-foreground/50">{new Date(c.updatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</p>
+        </div>
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); setMenuId(menuId === c.id ? null : c.id); }}
+          className="opacity-0 group-hover:opacity-100 p-1 rounded-lg hover:bg-white/10 text-muted-foreground hover:text-foreground transition-all shrink-0"
+        >
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
+        </button>
+        {menuId === c.id && (
+          <div className="absolute right-0 top-8 z-50 bg-[#0d1f2d] border border-white/10 rounded-xl shadow-xl overflow-hidden min-w-[150px]">
+            <button type="button" onClick={(e) => { e.stopPropagation(); onTogglePin(c.id); setMenuId(null); }} className="w-full flex items-center gap-2 px-3 py-2 text-[11px] text-muted-foreground hover:text-foreground hover:bg-white/5 transition-all">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m12 17-7 5 2-8L2 9l8-1 2-7 2 7 8 1-5 5 2 8z"/></svg>
+              {c.pinned ? "Unpin" : "Pin"}
+            </button>
+            <button type="button" onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(c.title); setMenuId(null); }} className="w-full flex items-center gap-2 px-3 py-2 text-[11px] text-muted-foreground hover:text-foreground hover:bg-white/5 transition-all">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+              Duplicate
+            </button>
+            <button type="button" onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(JSON.stringify(c.messages)); setMenuId(null); }} className="w-full flex items-center gap-2 px-3 py-2 text-[11px] text-muted-foreground hover:text-foreground hover:bg-white/5 transition-all">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Export
+            </button>
+            <div className="border-t border-white/6 mx-2 my-0.5" />
+            <button type="button" onClick={(e) => { e.stopPropagation(); onDelete(c.id); setMenuId(null); }} className="w-full flex items-center gap-2 px-3 py-2 text-[11px] text-rose-400 hover:bg-rose-500/10 transition-all">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+              Delete
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  function Section({ label, items }: { label: string; items: SavedConversation[] }) {
+    if (!items.length) return null;
+    return (
+      <div className="space-y-0.5">
+        <p className="text-[9px] font-bold text-muted-foreground/40 uppercase tracking-widest px-2 mb-1">{label}</p>
+        {items.map((c) => <ConvoItem key={c.id} c={c} />)}
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col h-full" onClick={() => setMenuId(null)}>
       {/* Header */}
       <div className="flex items-center justify-between px-3 py-3 border-b border-white/6 shrink-0">
         <span className="text-sm font-bold text-foreground">Conversations</span>
-        <button
-          type="button"
-          onClick={onNew}
-          className="p-1.5 rounded-lg hover:bg-white/8 text-muted-foreground hover:text-foreground transition-all"
-          title="New conversation"
-        >
+        <button type="button" onClick={onNew} className="p-1.5 rounded-lg hover:bg-white/8 text-muted-foreground hover:text-foreground transition-all" title="New conversation">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
             <path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4Z"/>
           </svg>
         </button>
       </div>
-
       {/* Search */}
       <div className="px-3 py-2 shrink-0">
         <div className="flex items-center gap-2 bg-white/5 border border-white/8 rounded-xl px-2.5 py-1.5">
@@ -277,18 +704,18 @@ function ConversationsPanel({
           />
         </div>
       </div>
-
       {/* List */}
       <div className="flex-1 overflow-y-auto px-2 pb-3 space-y-3 min-h-0">
         {conversations.length === 0 ? (
-          <p className="text-[11px] text-muted-foreground/50 text-center py-6">No saved conversations yet</p>
+          <p className="text-[11px] text-muted-foreground/40 text-center py-6">No saved conversations yet</p>
         ) : filtered.length === 0 ? (
-          <p className="text-[11px] text-muted-foreground/50 text-center py-6">No results found</p>
+          <p className="text-[11px] text-muted-foreground/40 text-center py-6">No results found</p>
         ) : (
           <>
             <Section label="Pinned" items={pinned} />
             <Section label="Today" items={today} />
             <Section label="Yesterday" items={yesterday} />
+            <Section label="This Week" items={thisWeek} />
             <Section label="Earlier" items={earlier} />
           </>
         )}
@@ -310,10 +737,11 @@ export default function AssistantPage() {
   const [hideBalance, setHideBalance]     = useState(false);
   const [activeQuickAccess, setActiveQuickAccess] = useState("Portfolio Overview");
 
-  // ── Conversation history state ────────────────────────────────────────────
-  const [historyOpen, setHistoryOpen]         = useState(false);
-  const [conversations, setConversations]     = useState<SavedConversation[]>([]);
-  const [activeConvoId, setActiveConvoId]     = useState<string | null>(null);
+  // ── Icon rail panel state ─────────────────────────────────────────────────
+  const [activePanel, setActivePanel]     = useState<PanelId>(null);
+  const [conversations, setConversations] = useState<SavedConversation[]>([]);
+  const [activeConvoId, setActiveConvoId] = useState<string | null>(null);
+  const [notifications, setNotifications] = useState<Notification[]>(DEMO_NOTIFICATIONS);
 
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef  = useRef<HTMLTextAreaElement>(null);
@@ -334,6 +762,19 @@ export default function AssistantPage() {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && (e.key === "k" || e.key === "n")) {
+        e.preventDefault();
+        handleNewConversation();
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [messages, activeConvoId]);
 
   const [portfolioSummary, setPortfolioSummary]         = useState<PortfolioSummaryData | null>(null);
   const [refreshingPortfolio, setRefreshingPortfolio] = useState(false);
@@ -387,10 +828,12 @@ export default function AssistantPage() {
     setMessages((prev) => [...prev, full]);
     return id;
   };
+  void addMessage; // suppress unused warning
 
   const updateMessage = (id: string, updates: Partial<Message>) => {
     setMessages((prev) => prev.map((m) => m.id === id ? { ...m, ...updates } : m));
   };
+  void updateMessage;
 
   // ── Save current conversation to localStorage ─────────────────────────────
   const saveCurrentConversation = useCallback((msgs: Message[]) => {
@@ -496,7 +939,6 @@ export default function AssistantPage() {
             if (event.type === "done") {
               setMessages((prev) => {
                 const updated = prev.map((m) => m.id === assistantMsgId ? { ...m, streaming: false } : m);
-                // Save conversation after completion
                 setTimeout(() => saveCurrentConversation(updated), 200);
                 return updated;
               });
@@ -570,9 +1012,8 @@ export default function AssistantPage() {
     sendMessage(textToSend);
   };
 
-  // ── Conversation history actions ──────────────────────────────────────────
+  // ── Conversation actions ──────────────────────────────────────────────────
   const handleNewConversation = async () => {
-    // Save the current messages before clearing
     if (messages.filter((m) => m.role === "user" || m.role === "assistant").length >= 2) {
       saveCurrentConversation(messages);
     }
@@ -582,12 +1023,12 @@ export default function AssistantPage() {
   };
 
   const handleLoadConversation = (convo: SavedConversation) => {
-    // Save current before switching
     if (messages.filter((m) => m.role === "user" || m.role === "assistant").length >= 2) {
       saveCurrentConversation(messages);
     }
     setMessages(convo.messages);
     setActiveConvoId(convo.id);
+    setActivePanel(null);
   };
 
   const handleDeleteConversation = (id: string) => {
@@ -608,6 +1049,22 @@ export default function AssistantPage() {
       saveConversations(updated);
       return updated;
     });
+  };
+
+  // ── Notifications actions ─────────────────────────────────────────────────
+  const handleMarkRead = (id: string) => {
+    setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
+  };
+
+  const handleMarkAllRead = () => {
+    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+  };
+
+  const unreadCount = notifications.filter(n => !n.read).length;
+
+  // ── Toggle panel ──────────────────────────────────────────────────────────
+  const togglePanel = (panel: PanelId) => {
+    setActivePanel(prev => prev === panel ? null : panel);
   };
 
   const quickAccessItems = [
@@ -675,6 +1132,85 @@ export default function AssistantPage() {
     },
   ];
 
+  // ── Icon rail config ──────────────────────────────────────────────────────
+  const iconRailItems: Array<{
+    id: PanelId;
+    label: string;
+    title: string;
+    badge?: number;
+    icon: React.ReactNode;
+    onClick?: () => void;
+  }> = [
+    {
+      id: null,
+      label: "New Chat",
+      title: "New conversation (Ctrl+K)",
+      icon: (
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+          <path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4Z"/>
+        </svg>
+      ),
+      onClick: handleNewConversation,
+    },
+    {
+      id: "search",
+      label: "Search",
+      title: "Search conversations",
+      icon: (
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>
+        </svg>
+      ),
+    },
+    {
+      id: "pinned",
+      label: "Pinned",
+      title: "Pinned conversations",
+      badge: conversations.filter(c => c.pinned).length || undefined,
+      icon: (
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="m12 17-7 5 2-8L2 9l8-1 2-7 2 7 8 1-5 5 2 8z"/>
+        </svg>
+      ),
+    },
+    {
+      id: "history",
+      label: "History",
+      title: "Recent conversations",
+      icon: (
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+          <path d="M3 3v5h5"/>
+          <path d="M12 7v5l4 2"/>
+        </svg>
+      ),
+    },
+    {
+      id: "reports",
+      label: "Reports",
+      title: "Saved reports",
+      icon: (
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M3 3v18h18"/>
+          <path d="m19 9-5 5-4-4-3 3"/>
+        </svg>
+      ),
+    },
+    {
+      id: "notifications",
+      label: "Alerts",
+      title: "Notifications & alerts",
+      badge: unreadCount || undefined,
+      icon: (
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/>
+          <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>
+        </svg>
+      ),
+    },
+  ];
+
   return (
     <div className="flex flex-col h-full w-full max-w-[1440px] mx-auto overflow-hidden gap-3 pr-5 sm:pr-8 py-6">
       {/* ── Header Row ─────────────────────────────────────────────────── */}
@@ -721,87 +1257,106 @@ export default function AssistantPage() {
 
       {/* ── 2-Column Split Grid Layout ──────────────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 flex-1 min-h-0 overflow-hidden">
-        {/* ── Left Column (~75% width): History Panel + Chat ───────────── */}
+        {/* ── Left Column: Icon Rail + Slide-in Panel + Chat ───────────── */}
         <div className="lg:col-span-8 xl:col-span-9 flex h-full overflow-hidden rounded-2xl border border-white/8 bg-[#060d14]">
 
-          {/* ── Collapsed icon rail ── */}
+          {/* ── Icon Rail ── */}
           <div className="flex flex-col items-center gap-1 py-3 px-1.5 border-r border-white/6 shrink-0 bg-[#080f18]">
-            {/* New chat */}
-            <button
-              type="button"
-              onClick={handleNewConversation}
-              title="New conversation"
-              className="w-8 h-8 flex items-center justify-center rounded-xl text-muted-foreground hover:text-foreground hover:bg-white/8 transition-all"
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                <path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4Z"/>
-              </svg>
-            </button>
-            {/* Search / toggle history */}
-            <button
-              type="button"
-              onClick={() => setHistoryOpen(!historyOpen)}
-              title="Search conversations"
-              className="w-8 h-8 flex items-center justify-center rounded-xl text-muted-foreground hover:text-foreground hover:bg-white/8 transition-all"
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>
-              </svg>
-            </button>
-            {/* Pin */}
-            <button
-              type="button"
-              title="Pinned conversations"
-              onClick={() => setHistoryOpen(true)}
-              className="w-8 h-8 flex items-center justify-center rounded-xl text-muted-foreground hover:text-foreground hover:bg-white/8 transition-all"
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="m12 17-7 5 2-8L2 9l8-1 2-7 2 7 8 1-5 5 2 8z"/>
-              </svg>
-            </button>
-            {/* Recent chats */}
-            <button
-              type="button"
-              title="Recent conversations"
-              onClick={() => setHistoryOpen(true)}
-              className="w-8 h-8 flex items-center justify-center rounded-xl text-muted-foreground hover:text-foreground hover:bg-white/8 transition-all"
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-              </svg>
-            </button>
+            {/* Logo / Bot avatar at top */}
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-b from-cyan-950 to-slate-900 border border-cyan-500/30 flex items-center justify-center mb-1 shrink-0">
+              <div className="flex gap-0.5">
+                <div className="w-1.5 h-1.5 rounded-full bg-cyan-400 shadow-[0_0_4px_#22d3ee]" />
+                <div className="w-1.5 h-1.5 rounded-full bg-cyan-400 shadow-[0_0_4px_#22d3ee]" />
+              </div>
+            </div>
+
+            <div className="w-5 h-[1px] bg-white/8 mb-1" />
+
+            {iconRailItems.map((item) => {
+              const isActive = item.id !== null && activePanel === item.id;
+              const handleClick = item.onClick ?? (() => item.id !== null && togglePanel(item.id));
+              return (
+                <div key={`${item.id}-${item.label}`} className="relative group">
+                  <button
+                    type="button"
+                    onClick={handleClick}
+                    title={item.title}
+                    className={`w-8 h-8 flex items-center justify-center rounded-xl transition-all relative ${
+                      isActive
+                        ? "bg-cyan-500/20 border border-cyan-500/30 text-cyan-400 shadow-[0_0_12px_rgba(6,182,212,0.2)]"
+                        : "text-muted-foreground hover:text-foreground hover:bg-white/8 border border-transparent"
+                    }`}
+                  >
+                    {item.icon}
+                    {item.badge != null && item.badge > 0 && (
+                      <span className="absolute -top-0.5 -right-0.5 min-w-[14px] h-[14px] px-0.5 rounded-full bg-rose-500 text-[8px] font-bold text-white flex items-center justify-center leading-none">
+                        {item.badge > 9 ? "9+" : item.badge}
+                      </span>
+                    )}
+                  </button>
+                  {/* Tooltip */}
+                  <div className="pointer-events-none absolute left-full ml-2 top-1/2 -translate-y-1/2 z-50 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+                    <div className="bg-[#0d1f2d] border border-white/10 rounded-lg px-2 py-1 text-[10px] font-medium text-foreground whitespace-nowrap shadow-xl">
+                      {item.label}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
 
             {/* Spacer */}
             <div className="flex-1" />
 
-            {/* ··· open/close panel */}
-            <button
-              type="button"
-              onClick={() => setHistoryOpen(!historyOpen)}
-              title={historyOpen ? "Collapse history" : "Show conversation history"}
-              className={`w-8 h-8 flex items-center justify-center rounded-xl transition-all ${
-                historyOpen
-                  ? "bg-cyan-500/20 border border-cyan-500/30 text-cyan-400"
-                  : "text-muted-foreground hover:text-foreground hover:bg-white/8"
-              }`}
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-                <circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/>
-              </svg>
-            </button>
+            {/* ⋯ Conversations (full panel) */}
+            <div className="relative group">
+              <button
+                type="button"
+                onClick={() => togglePanel("conversations")}
+                title="All conversations"
+                className={`w-8 h-8 flex items-center justify-center rounded-xl transition-all ${
+                  activePanel === "conversations"
+                    ? "bg-cyan-500/20 border border-cyan-500/30 text-cyan-400"
+                    : "text-muted-foreground hover:text-foreground hover:bg-white/8 border border-transparent"
+                }`}
+              >
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
+                  <circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/>
+                </svg>
+              </button>
+              <div className="pointer-events-none absolute left-full ml-2 top-1/2 -translate-y-1/2 z-50 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+                <div className="bg-[#0d1f2d] border border-white/10 rounded-lg px-2 py-1 text-[10px] font-medium text-foreground whitespace-nowrap shadow-xl">
+                  Conversations
+                </div>
+              </div>
+            </div>
           </div>
 
-          {/* ── Conversations panel (slides in) ── */}
-          <ConversationsPanel
-            open={historyOpen}
-            conversations={conversations}
-            activeId={activeConvoId}
-            onNew={handleNewConversation}
-            onLoad={handleLoadConversation}
-            onDelete={handleDeleteConversation}
-            onTogglePin={handleTogglePin}
-          />
+          {/* ── Slide-in panel (animated) ── */}
+          <div
+            className="shrink-0 border-r border-white/6 bg-[#080f18] overflow-hidden transition-all duration-300 ease-in-out"
+            style={{ width: activePanel ? "220px" : "0px" }}
+          >
+            <div className="w-[220px] h-full">
+              {activePanel === "search" && (
+                <SearchPanel conversations={conversations} onLoad={handleLoadConversation} />
+              )}
+              {activePanel === "pinned" && (
+                <PinnedPanel conversations={conversations} activeId={activeConvoId} onLoad={handleLoadConversation} onTogglePin={handleTogglePin} />
+              )}
+              {activePanel === "history" && (
+                <HistoryPanel conversations={conversations} activeId={activeConvoId} onNew={handleNewConversation} onLoad={handleLoadConversation} onDelete={handleDeleteConversation} onTogglePin={handleTogglePin} />
+              )}
+              {activePanel === "reports" && (
+                <ReportsPanel />
+              )}
+              {activePanel === "notifications" && (
+                <NotificationsPanel notifications={notifications} onMarkRead={handleMarkRead} onMarkAllRead={handleMarkAllRead} />
+              )}
+              {activePanel === "conversations" && (
+                <ConversationsPanel conversations={conversations} activeId={activeConvoId} onNew={handleNewConversation} onLoad={handleLoadConversation} onDelete={handleDeleteConversation} onTogglePin={handleTogglePin} />
+              )}
+            </div>
+          </div>
 
           {/* ── Chat area ── */}
           <div className="flex flex-col flex-1 min-w-0 h-full overflow-hidden">
@@ -1015,7 +1570,7 @@ export default function AssistantPage() {
           </div>
         </div>
 
-        {/* ── Right Sidebar Column (~25% width): Compressed Right Sidebar ─── */}
+        {/* ── Right Sidebar Column (~25% width) ─── */}
         <div className="lg:col-span-4 xl:col-span-3 h-full flex flex-col justify-between overflow-hidden gap-2">
           {/* Widget 1: Portfolio Summary */}
           {(() => {
