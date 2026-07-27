@@ -615,8 +615,6 @@ export default function ExchangesPage() {
       const isConnected = !!accountByExchange[ex.id];
 
       if (activeFilter === "connected" && !isConnected) return false;
-      if (activeFilter === "not_connected" && (isConnected || ex.status !== "live")) return false;
-      if (activeFilter === "coming_soon" && ex.status !== "coming_soon") return false;
 
       if (query) {
         const matchName = ex.name.toLowerCase().includes(query);
