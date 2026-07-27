@@ -1,11 +1,10 @@
 "use client";
 // src/app/(app)/assistant/page.tsx
-// AlgoFin — AI Assistant (matching reference mockup UI)
+// AlgoFin — AI Assistant with Conversation History Panel
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import api from "@/lib/api";
 import Link from "next/link";
-
 import { cachedGet } from "@/lib/apiCache";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -24,6 +23,54 @@ interface Message {
   streaming?: boolean;
   time?:      string;
   tool_call?: { tool: string; status: "running" | "done" };
+}
+
+interface SavedConversation {
+  id:        string;
+  title:     string;
+  messages:  Message[];
+  createdAt: string;  // ISO string
+  updatedAt: string;  // ISO string
+  pinned:    boolean;
+}
+
+// ── LocalStorage helpers ───────────────────────────────────────────────────────
+const LS_KEY = "algofin-conversations";
+
+function loadConversations(): SavedConversation[] {
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    return raw ? (JSON.parse(raw) as SavedConversation[]) : [];
+  } catch { return []; }
+}
+
+function saveConversations(convos: SavedConversation[]): void {
+  try { localStorage.setItem(LS_KEY, JSON.stringify(convos)); } catch { /* ignore */ }
+}
+
+function generateTitle(messages: Message[]): string {
+  const firstUser = messages.find((m) => m.role === "user");
+  if (!firstUser) return "New Conversation";
+  const text = firstUser.content.trim();
+  return text.length > 40 ? text.slice(0, 40) + "…" : text;
+}
+
+function groupByDate(convos: SavedConversation[]) {
+  const now = new Date();
+  const todayStr = now.toDateString();
+  const yesterdayStr = new Date(now.getTime() - 86400000).toDateString();
+  const pinned: SavedConversation[] = [];
+  const today: SavedConversation[] = [];
+  const yesterday: SavedConversation[] = [];
+  const earlier: SavedConversation[] = [];
+  for (const c of convos) {
+    if (c.pinned) { pinned.push(c); continue; }
+    const d = new Date(c.updatedAt).toDateString();
+    if (d === todayStr) today.push(c);
+    else if (d === yesterdayStr) yesterday.push(c);
+    else earlier.push(c);
+  }
+  return { pinned, today, yesterday, earlier };
 }
 
 // ── Icons ─────────────────────────────────────────────────────────────────────
@@ -49,7 +96,6 @@ const UserAvatar = () => (
   </div>
 );
 
-// ── Robot Avatar Graphic Component ───────────────────────────────────────────
 const RobotAvatar = () => (
   <div className="w-10 h-10 rounded-2xl bg-gradient-to-b from-slate-900 to-cyan-950 border border-cyan-400/40 shadow-glow-cyan flex items-center justify-center p-1.5 shrink-0">
     <div className="w-full h-full rounded-xl bg-black/80 border border-cyan-500/30 flex items-center justify-center gap-1.5">
@@ -97,6 +143,160 @@ function renderInline(text: string) {
   });
 }
 
+// ── Conversation History Panel ────────────────────────────────────────────────
+function ConversationsPanel({
+  open,
+  conversations,
+  activeId,
+  onNew,
+  onLoad,
+  onDelete,
+  onTogglePin,
+}: {
+  open: boolean;
+  conversations: SavedConversation[];
+  activeId: string | null;
+  onNew: () => void;
+  onLoad: (c: SavedConversation) => void;
+  onDelete: (id: string) => void;
+  onTogglePin: (id: string) => void;
+}) {
+  const [search, setSearch] = useState("");
+  const [menuId, setMenuId] = useState<string | null>(null);
+
+  const filtered = conversations.filter((c) =>
+    c.title.toLowerCase().includes(search.toLowerCase())
+  );
+  const { pinned, today, yesterday, earlier } = groupByDate(filtered);
+
+  function formatTime(iso: string) {
+    const d = new Date(iso);
+    return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  }
+
+  function ConvoItem({ c }: { c: SavedConversation }) {
+    const isActive = c.id === activeId;
+    return (
+      <div
+        className={`group relative flex items-center gap-2 px-2.5 py-2 rounded-xl cursor-pointer transition-all ${
+          isActive
+            ? "bg-cyan-500/10 border border-cyan-500/20"
+            : "hover:bg-white/5 border border-transparent"
+        }`}
+        onClick={() => { setMenuId(null); onLoad(c); }}
+      >
+        <div className="flex-1 min-w-0">
+          <p className={`text-[11px] font-medium truncate ${isActive ? "text-cyan-300" : "text-foreground/90"}`}>
+            {c.title}
+          </p>
+          <p className="text-[10px] text-muted-foreground/60">{formatTime(c.updatedAt)}</p>
+        </div>
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); setMenuId(menuId === c.id ? null : c.id); }}
+          className="opacity-0 group-hover:opacity-100 p-1 rounded-lg hover:bg-white/10 text-muted-foreground hover:text-foreground transition-all shrink-0"
+        >
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+            <circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/>
+          </svg>
+        </button>
+
+        {menuId === c.id && (
+          <div className="absolute right-0 top-8 z-50 bg-[#0d1f2d] border border-white/10 rounded-xl shadow-xl overflow-hidden min-w-[130px]">
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); onTogglePin(c.id); setMenuId(null); }}
+              className="w-full flex items-center gap-2 px-3 py-2 text-[11px] text-muted-foreground hover:text-foreground hover:bg-white/5 transition-all"
+            >
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="m12 17-7 5 2-8L2 9l8-1 2-7 2 7 8 1-5 5 2 8z"/>
+              </svg>
+              {c.pinned ? "Unpin" : "Pin"}
+            </button>
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); onDelete(c.id); setMenuId(null); }}
+              className="w-full flex items-center gap-2 px-3 py-2 text-[11px] text-rose-400 hover:bg-rose-500/10 transition-all"
+            >
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+              </svg>
+              Delete
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  function Section({ label, items }: { label: string; items: SavedConversation[] }) {
+    if (!items.length) return null;
+    return (
+      <div className="space-y-0.5">
+        <p className="text-[10px] font-semibold text-muted-foreground/50 uppercase tracking-widest px-2 mb-1">{label}</p>
+        {items.map((c) => <ConvoItem key={c.id} c={c} />)}
+      </div>
+    );
+  }
+
+  if (!open) return null;
+
+  return (
+    <div
+      className="flex flex-col w-60 shrink-0 bg-[#080f16] border-r border-white/6 h-full overflow-hidden"
+      onClick={() => setMenuId(null)}
+    >
+      {/* Header */}
+      <div className="flex items-center justify-between px-3 py-3 border-b border-white/6 shrink-0">
+        <span className="text-sm font-bold text-foreground">Conversations</span>
+        <button
+          type="button"
+          onClick={onNew}
+          className="p-1.5 rounded-lg hover:bg-white/8 text-muted-foreground hover:text-foreground transition-all"
+          title="New conversation"
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+            <path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4Z"/>
+          </svg>
+        </button>
+      </div>
+
+      {/* Search */}
+      <div className="px-3 py-2 shrink-0">
+        <div className="flex items-center gap-2 bg-white/5 border border-white/8 rounded-xl px-2.5 py-1.5">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-muted-foreground shrink-0">
+            <circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>
+          </svg>
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search conversations"
+            className="bg-transparent text-[11px] text-foreground placeholder:text-muted-foreground/50 outline-none flex-1 min-w-0"
+          />
+        </div>
+      </div>
+
+      {/* List */}
+      <div className="flex-1 overflow-y-auto px-2 pb-3 space-y-3 min-h-0">
+        {conversations.length === 0 ? (
+          <p className="text-[11px] text-muted-foreground/50 text-center py-6">No saved conversations yet</p>
+        ) : filtered.length === 0 ? (
+          <p className="text-[11px] text-muted-foreground/50 text-center py-6">No results found</p>
+        ) : (
+          <>
+            <Section label="Pinned" items={pinned} />
+            <Section label="Today" items={today} />
+            <Section label="Yesterday" items={yesterday} />
+            <Section label="Earlier" items={earlier} />
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── Main Page Component ───────────────────────────────────────────────────────
 export default function AssistantPage() {
   const [messages, setMessages]           = useState<Message[]>([]);
@@ -110,6 +310,11 @@ export default function AssistantPage() {
   const [hideBalance, setHideBalance]     = useState(false);
   const [activeQuickAccess, setActiveQuickAccess] = useState("Portfolio Overview");
 
+  // ── Conversation history state ────────────────────────────────────────────
+  const [historyOpen, setHistoryOpen]         = useState(false);
+  const [conversations, setConversations]     = useState<SavedConversation[]>([]);
+  const [activeConvoId, setActiveConvoId]     = useState<string | null>(null);
+
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef  = useRef<HTMLTextAreaElement>(null);
   const abortRef  = useRef<AbortController | null>(null);
@@ -119,6 +324,11 @@ export default function AssistantPage() {
     "Monitor economic events to avoid unexpected market volatility.",
     "Review your daily PnL breakdown to optimize trading win rate.",
   ];
+
+  // Load conversations from localStorage
+  useEffect(() => {
+    setConversations(loadConversations());
+  }, []);
 
   // Auto-scroll to bottom
   useEffect(() => {
@@ -182,6 +392,34 @@ export default function AssistantPage() {
     setMessages((prev) => prev.map((m) => m.id === id ? { ...m, ...updates } : m));
   };
 
+  // ── Save current conversation to localStorage ─────────────────────────────
+  const saveCurrentConversation = useCallback((msgs: Message[]) => {
+    if (msgs.filter((m) => m.role === "user" || m.role === "assistant").length < 2) return;
+    const title = generateTitle(msgs);
+    const now = new Date().toISOString();
+    setConversations((prev) => {
+      let updated: SavedConversation[];
+      if (activeConvoId) {
+        updated = prev.map((c) =>
+          c.id === activeConvoId ? { ...c, title, messages: msgs, updatedAt: now } : c
+        );
+      } else {
+        const newConvo: SavedConversation = {
+          id: Math.random().toString(36).slice(2),
+          title,
+          messages: msgs,
+          createdAt: now,
+          updatedAt: now,
+          pinned: false,
+        };
+        setActiveConvoId(newConvo.id);
+        updated = [newConvo, ...prev];
+      }
+      saveConversations(updated);
+      return updated;
+    });
+  }, [activeConvoId]);
+
   const sendMessage = useCallback(async (text: string) => {
     if (!text.trim() || streaming) return;
 
@@ -190,8 +428,14 @@ export default function AssistantPage() {
     setInput("");
     inputRef.current?.focus();
 
-    addMessage({ role: "user", content: userText });
-    const assistantId = addMessage({ role: "assistant", content: "", streaming: true });
+    const userMsgId = Math.random().toString(36).slice(2);
+    const nowTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const userMsg: Message = { id: userMsgId, role: "user", content: userText, streaming: false, time: nowTime };
+
+    const assistantMsgId = Math.random().toString(36).slice(2);
+    const assistantMsg: Message = { id: assistantMsgId, role: "assistant", content: "", streaming: true, time: nowTime };
+
+    setMessages((prev) => [...prev, userMsg, assistantMsg]);
 
     try {
       const token = (() => {
@@ -241,23 +485,22 @@ export default function AssistantPage() {
 
             if (event.type === "chunk" && event.content) {
               fullText += event.content;
-              updateMessage(assistantId, { content: fullText, streaming: true });
+              setMessages((prev) => prev.map((m) => m.id === assistantMsgId ? { ...m, content: fullText, streaming: true } : m));
             }
-
             if (event.type === "tool_call") {
-              updateMessage(assistantId, {
-                tool_call: { tool: event.tool!, status: "running" },
+              setMessages((prev) => prev.map((m) => m.id === assistantMsgId ? { ...m, tool_call: { tool: event.tool!, status: "running" } } : m));
+            }
+            if (event.type === "tool_result") {
+              setMessages((prev) => prev.map((m) => m.id === assistantMsgId ? { ...m, tool_call: undefined } : m));
+            }
+            if (event.type === "done") {
+              setMessages((prev) => {
+                const updated = prev.map((m) => m.id === assistantMsgId ? { ...m, streaming: false } : m);
+                // Save conversation after completion
+                setTimeout(() => saveCurrentConversation(updated), 200);
+                return updated;
               });
             }
-
-            if (event.type === "tool_result") {
-              updateMessage(assistantId, { tool_call: undefined });
-            }
-
-            if (event.type === "done") {
-              updateMessage(assistantId, { streaming: false });
-            }
-
             if (event.type === "error") {
               const errMsg = event.message ?? "Unknown error";
               if (errMsg.includes("GEMINI_API_KEY") || errMsg.includes("not configured")) {
@@ -265,31 +508,32 @@ export default function AssistantPage() {
               } else if (errMsg.includes("quota") || errMsg.includes("429")) {
                 setQuotaError(errMsg);
               }
-              setMessages((prev) => prev.filter((m) => m.id !== assistantId));
+              setMessages((prev) => prev.filter((m) => m.id !== assistantMsgId));
             }
           } catch { /* skip */ }
         }
       }
 
-      updateMessage(assistantId, { streaming: false });
+      setMessages((prev) => prev.map((m) => m.id === assistantMsgId ? { ...m, streaming: false } : m));
     } catch (err: unknown) {
       const errorObj = err as { name?: string; message?: string };
       if (errorObj.name === "AbortError") {
-        setMessages((prev) => prev.filter((m) => m.id !== assistantId || m.content));
+        setMessages((prev) => prev.filter((m) => m.id !== assistantMsgId || m.content));
       } else {
         const isBackendDown = errorObj.message?.includes("Failed to fetch") || errorObj.message?.includes("NetworkError");
-        updateMessage(assistantId, {
+        setMessages((prev) => prev.map((m) => m.id === assistantMsgId ? {
+          ...m,
           content: isBackendDown
             ? "⚠ Cannot reach the backend. Make sure the FastAPI server is running."
             : `⚠ ${errorObj.message ?? "Unknown error"}`,
           streaming: false,
-        });
+        } : m));
       }
     } finally {
       setStreaming(false);
       abortRef.current = null;
     }
-  }, [streaming]);
+  }, [streaming, saveCurrentConversation]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -302,6 +546,7 @@ export default function AssistantPage() {
     if (!confirm("Clear your conversation history?")) return;
     try { await api.delete("/assistant/thread"); } catch { /* ignore */ }
     setMessages([]);
+    setActiveConvoId(null);
   };
 
   const [editingMsgId, setEditingMsgId]   = useState<string | null>(null);
@@ -323,6 +568,46 @@ export default function AssistantPage() {
     setEditingMsgId(null);
     setEditMsgText("");
     sendMessage(textToSend);
+  };
+
+  // ── Conversation history actions ──────────────────────────────────────────
+  const handleNewConversation = async () => {
+    // Save the current messages before clearing
+    if (messages.filter((m) => m.role === "user" || m.role === "assistant").length >= 2) {
+      saveCurrentConversation(messages);
+    }
+    try { await api.delete("/assistant/thread"); } catch { /* ignore */ }
+    setMessages([]);
+    setActiveConvoId(null);
+  };
+
+  const handleLoadConversation = (convo: SavedConversation) => {
+    // Save current before switching
+    if (messages.filter((m) => m.role === "user" || m.role === "assistant").length >= 2) {
+      saveCurrentConversation(messages);
+    }
+    setMessages(convo.messages);
+    setActiveConvoId(convo.id);
+  };
+
+  const handleDeleteConversation = (id: string) => {
+    setConversations((prev) => {
+      const updated = prev.filter((c) => c.id !== id);
+      saveConversations(updated);
+      return updated;
+    });
+    if (activeConvoId === id) {
+      setMessages([]);
+      setActiveConvoId(null);
+    }
+  };
+
+  const handleTogglePin = (id: string) => {
+    setConversations((prev) => {
+      const updated = prev.map((c) => c.id === id ? { ...c, pinned: !c.pinned } : c);
+      saveConversations(updated);
+      return updated;
+    });
   };
 
   const quickAccessItems = [
@@ -436,213 +721,296 @@ export default function AssistantPage() {
 
       {/* ── 2-Column Split Grid Layout ──────────────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 flex-1 min-h-0 overflow-hidden">
-        {/* ── Left Column (~75% width): Chat & Inputs ────────────────────── */}
-        <div className="lg:col-span-8 xl:col-span-9 flex flex-col h-full overflow-hidden gap-3">
-          {/* Top Hero Welcome Card */}
-          <div className="surface-card p-4 rounded-2xl border border-white/8 flex items-center gap-4 relative overflow-hidden shrink-0">
-            <RobotAvatar />
-            <div className="space-y-0.5 max-w-3xl">
-              <h2 className="text-xs sm:text-sm font-bold text-foreground">Hello! I'm your AlgoFin trading assistant.</h2>
-              <p className="text-[11px] sm:text-xs text-muted-foreground/80 leading-relaxed">
-                I can help you monitor your portfolio, track your realized profit and loss (PnL), check your open positions, view recent trades, and keep an eye on upcoming high-impact events.
-              </p>
-              <p className="text-[11px] font-semibold text-cyan-400 flex items-center gap-1 pt-0.5">
-                <span>✈</span> How can I assist you today?
-              </p>
-            </div>
+        {/* ── Left Column (~75% width): History Panel + Chat ───────────── */}
+        <div className="lg:col-span-8 xl:col-span-9 flex h-full overflow-hidden rounded-2xl border border-white/8 bg-[#060d14]">
+
+          {/* ── Collapsed icon rail ── */}
+          <div className="flex flex-col items-center gap-1 py-3 px-1.5 border-r border-white/6 shrink-0 bg-[#080f18]">
+            {/* New chat */}
+            <button
+              type="button"
+              onClick={handleNewConversation}
+              title="New conversation"
+              className="w-8 h-8 flex items-center justify-center rounded-xl text-muted-foreground hover:text-foreground hover:bg-white/8 transition-all"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                <path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4Z"/>
+              </svg>
+            </button>
+            {/* Search / toggle history */}
+            <button
+              type="button"
+              onClick={() => setHistoryOpen(!historyOpen)}
+              title="Search conversations"
+              className="w-8 h-8 flex items-center justify-center rounded-xl text-muted-foreground hover:text-foreground hover:bg-white/8 transition-all"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>
+              </svg>
+            </button>
+            {/* Pin */}
+            <button
+              type="button"
+              title="Pinned conversations"
+              onClick={() => setHistoryOpen(true)}
+              className="w-8 h-8 flex items-center justify-center rounded-xl text-muted-foreground hover:text-foreground hover:bg-white/8 transition-all"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="m12 17-7 5 2-8L2 9l8-1 2-7 2 7 8 1-5 5 2 8z"/>
+              </svg>
+            </button>
+            {/* Recent chats */}
+            <button
+              type="button"
+              title="Recent conversations"
+              onClick={() => setHistoryOpen(true)}
+              className="w-8 h-8 flex items-center justify-center rounded-xl text-muted-foreground hover:text-foreground hover:bg-white/8 transition-all"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+              </svg>
+            </button>
+
+            {/* Spacer */}
+            <div className="flex-1" />
+
+            {/* ··· open/close panel */}
+            <button
+              type="button"
+              onClick={() => setHistoryOpen(!historyOpen)}
+              title={historyOpen ? "Collapse history" : "Show conversation history"}
+              className={`w-8 h-8 flex items-center justify-center rounded-xl transition-all ${
+                historyOpen
+                  ? "bg-cyan-500/20 border border-cyan-500/30 text-cyan-400"
+                  : "text-muted-foreground hover:text-foreground hover:bg-white/8"
+              }`}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                <circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/>
+              </svg>
+            </button>
           </div>
 
-          {/* Chat Feed Area (Flex-1 Internal Scrollbar) */}
-          <div className="flex-1 min-h-0 overflow-y-auto pr-2 space-y-4">
-            <div className="text-center">
-              <span className="text-[11px] text-muted-foreground/50 font-medium">Today</span>
+          {/* ── Conversations panel (slides in) ── */}
+          <ConversationsPanel
+            open={historyOpen}
+            conversations={conversations}
+            activeId={activeConvoId}
+            onNew={handleNewConversation}
+            onLoad={handleLoadConversation}
+            onDelete={handleDeleteConversation}
+            onTogglePin={handleTogglePin}
+          />
+
+          {/* ── Chat area ── */}
+          <div className="flex flex-col flex-1 min-w-0 h-full overflow-hidden">
+            {/* Top Hero Welcome Card */}
+            <div className="surface-card p-4 border-b border-white/8 flex items-center gap-4 relative overflow-hidden shrink-0">
+              <RobotAvatar />
+              <div className="space-y-0.5 max-w-3xl">
+                <h2 className="text-xs sm:text-sm font-bold text-foreground">Hello! I&apos;m your AlgoFin trading assistant.</h2>
+                <p className="text-[11px] sm:text-xs text-muted-foreground/80 leading-relaxed">
+                  I can help you monitor your portfolio, track your realized profit and loss (PnL), check your open positions, view recent trades, and keep an eye on upcoming high-impact events.
+                </p>
+                <p className="text-[11px] font-semibold text-cyan-400 flex items-center gap-1 pt-0.5">
+                  <span>✈</span> How can I assist you today?
+                </p>
+              </div>
             </div>
 
-            {/* Quick Suggestion Chips when no history */}
-            {messages.length === 0 && !loadingHistory && (
-              <div className="flex flex-col items-center justify-center py-8 text-center space-y-3 opacity-90">
-                <p className="text-xs text-muted-foreground">Start a conversation by typing below or picking a quick topic:</p>
-                <div className="flex flex-wrap justify-center gap-2 max-w-lg">
-                  <button
-                    onClick={() => sendMessage("Show me my open positions")}
-                    className="px-3 py-1.5 rounded-xl surface-card border border-white/10 hover:border-cyan-500/40 text-xs text-muted-foreground hover:text-cyan-300 transition-all"
-                  >
-                    💼 Show me my open positions
-                  </button>
-                  <button
-                    onClick={() => sendMessage("What is my realized PnL and estimated monthly fee?")}
-                    className="px-3 py-1.5 rounded-xl surface-card border border-white/10 hover:border-cyan-500/40 text-xs text-muted-foreground hover:text-cyan-300 transition-all"
-                  >
-                    📊 What is my realized PnL &amp; estimated fee?
-                  </button>
-                  <button
-                    onClick={() => sendMessage("How do I connect my exchange with read-only API keys?")}
-                    className="px-3 py-1.5 rounded-xl surface-card border border-white/10 hover:border-cyan-500/40 text-xs text-muted-foreground hover:text-cyan-300 transition-all"
-                  >
-                    🔑 How do I connect read-only API keys?
-                  </button>
-                  <button
-                    onClick={() => sendMessage("How do TradingView webhooks and risk controls work?")}
-                    className="px-3 py-1.5 rounded-xl surface-card border border-white/10 hover:border-cyan-500/40 text-xs text-muted-foreground hover:text-cyan-300 transition-all"
-                  >
-                    ⚡ How do TradingView webhooks work?
-                  </button>
-                </div>
+            {/* Chat Feed Area (Flex-1 Internal Scrollbar) */}
+            <div className="flex-1 min-h-0 overflow-y-auto px-4 py-3 space-y-4">
+              <div className="text-center">
+                <span className="text-[11px] text-muted-foreground/50 font-medium">Today</span>
               </div>
-            )}
 
-            {/* Active Real User/Assistant Messages */}
-            {messages
-              .filter((m) => m.role === "user" || m.role === "assistant")
-              .map((msg) => (
-              <div key={msg.id} className="group">
-                {msg.role === "user" ? (
-                  <div className="flex flex-col items-end space-y-1">
-                    <div className="flex items-center gap-2 mr-11">
-                      <button
-                        type="button"
-                        onClick={() => startEditMessage(msg.id, msg.content)}
-                        className="opacity-0 group-hover:opacity-100 text-[10px] text-cyan-400 hover:underline transition-opacity flex items-center gap-0.5"
-                        title="Edit message"
-                      >
-                        ✏ Edit
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteMessage(msg.id)}
-                        className="opacity-0 group-hover:opacity-100 text-[10px] text-rose-400 hover:underline transition-opacity flex items-center gap-0.5"
-                        title="Delete message"
-                      >
-                        🗑 Delete
-                      </button>
-                      <span className="text-[10px] text-muted-foreground/60">{msg.time || "Now"}</span>
+              {/* Quick Suggestion Chips when no history */}
+              {messages.length === 0 && !loadingHistory && (
+                <div className="flex flex-col items-center justify-center py-8 text-center space-y-3 opacity-90">
+                  <p className="text-xs text-muted-foreground">Start a conversation by typing below or picking a quick topic:</p>
+                  <div className="flex flex-wrap justify-center gap-2 max-w-lg">
+                    <button
+                      onClick={() => sendMessage("Show me my open positions")}
+                      className="px-3 py-1.5 rounded-xl surface-card border border-white/10 hover:border-cyan-500/40 text-xs text-muted-foreground hover:text-cyan-300 transition-all"
+                    >
+                      💼 Show me my open positions
+                    </button>
+                    <button
+                      onClick={() => sendMessage("What is my realized PnL and estimated monthly fee?")}
+                      className="px-3 py-1.5 rounded-xl surface-card border border-white/10 hover:border-cyan-500/40 text-xs text-muted-foreground hover:text-cyan-300 transition-all"
+                    >
+                      📊 What is my realized PnL &amp; estimated fee?
+                    </button>
+                    <button
+                      onClick={() => sendMessage("How do I connect my exchange with read-only API keys?")}
+                      className="px-3 py-1.5 rounded-xl surface-card border border-white/10 hover:border-cyan-500/40 text-xs text-muted-foreground hover:text-cyan-300 transition-all"
+                    >
+                      🔑 How do I connect read-only API keys?
+                    </button>
+                    <button
+                      onClick={() => sendMessage("How do TradingView webhooks and risk controls work?")}
+                      className="px-3 py-1.5 rounded-xl surface-card border border-white/10 hover:border-cyan-500/40 text-xs text-muted-foreground hover:text-cyan-300 transition-all"
+                    >
+                      ⚡ How do TradingView webhooks work?
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Active Real User/Assistant Messages */}
+              {messages
+                .filter((m) => m.role === "user" || m.role === "assistant")
+                .map((msg) => (
+                <div key={msg.id} className="group">
+                  {msg.role === "user" ? (
+                    <div className="flex flex-col items-end space-y-1">
+                      <div className="flex items-center gap-2 mr-11">
+                        <button
+                          type="button"
+                          onClick={() => startEditMessage(msg.id, msg.content)}
+                          className="opacity-0 group-hover:opacity-100 text-[10px] text-cyan-400 hover:underline transition-opacity flex items-center gap-0.5"
+                          title="Edit message"
+                        >
+                          ✏ Edit
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteMessage(msg.id)}
+                          className="opacity-0 group-hover:opacity-100 text-[10px] text-rose-400 hover:underline transition-opacity flex items-center gap-0.5"
+                          title="Delete message"
+                        >
+                          🗑 Delete
+                        </button>
+                        <span className="text-[10px] text-muted-foreground/60">{msg.time || "Now"}</span>
+                      </div>
+
+                      <div className="flex items-start gap-3 justify-end w-full">
+                        {editingMsgId === msg.id ? (
+                          <div className="max-w-[80%] w-full surface-card p-3 rounded-2xl border border-cyan-500/40 space-y-2">
+                            <textarea
+                              value={editMsgText}
+                              onChange={(e) => setEditMsgText(e.target.value)}
+                              rows={2}
+                              className="w-full bg-black/40 border border-white/10 rounded-xl p-2 text-xs text-foreground outline-none resize-y font-sans"
+                            />
+                            <div className="flex items-center justify-end gap-2">
+                              <button
+                                type="button"
+                                onClick={() => setEditingMsgId(null)}
+                                className="px-2.5 py-1 rounded-lg border border-white/10 text-[11px] text-muted-foreground hover:text-foreground transition-all"
+                              >
+                                Cancel
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => saveEditMessage(msg.id)}
+                                className="px-3 py-1 rounded-lg bg-cyan-400 hover:bg-cyan-300 text-black text-[11px] font-semibold transition-all shadow-glow-cyan"
+                              >
+                                Save &amp; Submit
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="max-w-[75%] px-4 py-2.5 rounded-2xl rounded-tr-md bg-[#0e2a36] border border-cyan-500/30 text-xs text-foreground leading-relaxed">
+                            {msg.content}
+                          </div>
+                        )}
+                        <UserAvatar />
+                      </div>
                     </div>
-
-                    <div className="flex items-start gap-3 justify-end w-full">
-                      {editingMsgId === msg.id ? (
-                        <div className="max-w-[80%] w-full surface-card p-3 rounded-2xl border border-cyan-500/40 space-y-2">
-                          <textarea
-                            value={editMsgText}
-                            onChange={(e) => setEditMsgText(e.target.value)}
-                            rows={2}
-                            className="w-full bg-black/40 border border-white/10 rounded-xl p-2 text-xs text-foreground outline-none resize-y font-sans"
-                          />
-                          <div className="flex items-center justify-end gap-2">
+                  ) : (
+                    <div className="flex gap-3">
+                      <RobotAvatar />
+                      <div className="max-w-[85%] space-y-1.5 flex-1">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] text-muted-foreground/60">{msg.time || "Now"}</span>
+                          <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                             <button
                               type="button"
-                              onClick={() => setEditingMsgId(null)}
-                              className="px-2.5 py-1 rounded-lg border border-white/10 text-[11px] text-muted-foreground hover:text-foreground transition-all"
+                              onClick={() => {
+                                navigator.clipboard.writeText(msg.content);
+                                alert("Message copied to clipboard!");
+                              }}
+                              className="text-[10px] text-cyan-400 hover:underline flex items-center gap-0.5"
+                              title="Copy message"
                             >
-                              Cancel
+                              📋 Copy
                             </button>
                             <button
                               type="button"
-                              onClick={() => saveEditMessage(msg.id)}
-                              className="px-3 py-1 rounded-lg bg-cyan-400 hover:bg-cyan-300 text-black text-[11px] font-semibold transition-all shadow-glow-cyan"
+                              onClick={() => handleDeleteMessage(msg.id)}
+                              className="text-[10px] text-rose-400 hover:underline flex items-center gap-0.5"
+                              title="Delete message"
                             >
-                              Save & Submit
+                              🗑 Delete
                             </button>
                           </div>
                         </div>
-                      ) : (
-                        <div className="max-w-[75%] px-4 py-2.5 rounded-2xl rounded-tr-md bg-[#0e2a36] border border-cyan-500/30 text-xs text-foreground leading-relaxed">
-                          {msg.content}
-                        </div>
-                      )}
-                      <UserAvatar />
-                    </div>
-                  </div>
-                ) : (
-                  <div className="flex gap-3">
-                    <RobotAvatar />
-                    <div className="max-w-[85%] space-y-1.5 flex-1">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[10px] text-muted-foreground/60">{msg.time || "Now"}</span>
-                        <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              navigator.clipboard.writeText(msg.content);
-                              alert("Message copied to clipboard!");
-                            }}
-                            className="text-[10px] text-cyan-400 hover:underline flex items-center gap-0.5"
-                            title="Copy message"
-                          >
-                            📋 Copy
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleDeleteMessage(msg.id)}
-                            className="text-[10px] text-rose-400 hover:underline flex items-center gap-0.5"
-                            title="Delete message"
-                          >
-                            🗑 Delete
-                          </button>
-                        </div>
+                        {msg.content ? (
+                          <div className="text-xs text-foreground/90 leading-relaxed surface-card p-3 rounded-xl border border-white/8">
+                            <RenderMarkdown text={msg.content} />
+                            {msg.streaming && (
+                              <span className="inline-block w-1.5 h-4 ml-0.5 bg-cyan-400/60 rounded-sm animate-pulse align-middle" />
+                            )}
+                          </div>
+                        ) : msg.streaming ? (
+                          <div className="text-xs text-cyan-400/90 surface-card p-3 rounded-xl border border-cyan-500/20 flex items-center gap-2">
+                            <span className="w-2 h-2 rounded-full bg-cyan-400 animate-ping" />
+                            <span>
+                              {msg.tool_call?.tool
+                                ? `Fetching ${msg.tool_call.tool.replace(/_/g, " ")}...`
+                                : "Thinking..."}
+                            </span>
+                          </div>
+                        ) : null}
                       </div>
-                      {msg.content ? (
-                        <div className="text-xs text-foreground/90 leading-relaxed surface-card p-3 rounded-xl border border-white/8">
-                          <RenderMarkdown text={msg.content} />
-                          {msg.streaming && (
-                            <span className="inline-block w-1.5 h-4 ml-0.5 bg-cyan-400/60 rounded-sm animate-pulse align-middle" />
-                          )}
-                        </div>
-                      ) : msg.streaming ? (
-                        <div className="text-xs text-cyan-400/90 surface-card p-3 rounded-xl border border-cyan-500/20 flex items-center gap-2">
-                          <span className="w-2 h-2 rounded-full bg-cyan-400 animate-ping" />
-                          <span>
-                            {msg.tool_call?.tool
-                              ? `Fetching ${msg.tool_call.tool.replace(/_/g, " ")}...`
-                              : "Thinking..."}
-                          </span>
-                        </div>
-                      ) : null}
                     </div>
-                  </div>
+                  )}
+                </div>
+              ))}
+              <div ref={bottomRef} />
+            </div>
+
+            {/* Bottom Chat Input Bar */}
+            <div className="surface-card p-3 border-t border-white/8 space-y-2 shrink-0 rounded-none">
+              <div className="flex items-center gap-3">
+                <textarea
+                  ref={inputRef}
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  placeholder="Ask me anything about your trading..."
+                  rows={1}
+                  className="flex-1 bg-transparent px-3 py-1.5 text-xs text-foreground placeholder:text-muted-foreground/50 outline-none resize-none leading-relaxed"
+                />
+                {streaming ? (
+                  <button
+                    type="button"
+                    onClick={() => abortRef.current?.abort()}
+                    className="w-9 h-9 rounded-xl bg-rose-500/20 border border-rose-500/30 text-rose-400 flex items-center justify-center hover:bg-rose-500/30 transition-all shrink-0"
+                  >
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                      <rect x="4" y="4" width="16" height="16" rx="2" />
+                    </svg>
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => sendMessage(input)}
+                    disabled={!input.trim()}
+                    className="w-9 h-9 rounded-xl bg-cyan-400 hover:bg-cyan-300 text-black flex items-center justify-center transition-all shadow-glow-cyan shrink-0 disabled:opacity-40 disabled:shadow-none"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="rotate-45">
+                      <line x1="22" y1="2" x2="11" y2="13" />
+                      <polygon points="22 2 15 22 11 13 2 9 22 2" />
+                    </svg>
+                  </button>
                 )}
               </div>
-            ))}
-            <div ref={bottomRef} />
-          </div>
-
-          {/* Bottom Chat Input Bar */}
-          <div className="surface-card p-3 rounded-2xl border border-white/10 space-y-2 shrink-0">
-            <div className="flex items-center gap-3">
-              <textarea
-                ref={inputRef}
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder="Ask me anything about your trading..."
-                rows={1}
-                className="flex-1 bg-transparent px-3 py-1.5 text-xs text-foreground placeholder:text-muted-foreground/50 outline-none resize-none leading-relaxed"
-              />
-              {streaming ? (
-                <button
-                  type="button"
-                  onClick={() => abortRef.current?.abort()}
-                  className="w-9 h-9 rounded-xl bg-rose-500/20 border border-rose-500/30 text-rose-400 flex items-center justify-center hover:bg-rose-500/30 transition-all shrink-0"
-                >
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
-                    <rect x="4" y="4" width="16" height="16" rx="2" />
-                  </svg>
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => sendMessage(input)}
-                  disabled={!input.trim()}
-                  className="w-9 h-9 rounded-xl bg-cyan-400 hover:bg-cyan-300 text-black flex items-center justify-center transition-all shadow-glow-cyan shrink-0 disabled:opacity-40 disabled:shadow-none"
-                >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="rotate-45">
-                    <line x1="22" y1="2" x2="11" y2="13" />
-                    <polygon points="22 2 15 22 11 13 2 9 22 2" />
-                  </svg>
-                </button>
-              )}
-            </div>
-            <div className="text-[10px] text-muted-foreground/40 text-center border-t border-white/5 pt-1.5">
-              AI can make mistakes. Always verify important information.
+              <div className="text-[10px] text-muted-foreground/40 text-center border-t border-white/5 pt-1.5">
+                AI can make mistakes. Always verify important information.
+              </div>
             </div>
           </div>
         </div>
