@@ -676,9 +676,9 @@ export default function AssistantPage() {
   ];
 
   return (
-    <div className="flex flex-col h-full w-full max-w-[1440px] mx-auto overflow-hidden gap-3 px-5 sm:px-8 py-6">
+    <div className="flex flex-col h-full w-full max-w-[1440px] mx-auto overflow-hidden gap-3 pr-5 sm:pr-8 py-6">
       {/* ── Header Row ─────────────────────────────────────────────────── */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 shrink-0">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 shrink-0 pl-5 sm:pl-8">
         <div>
           <div className="flex items-center gap-3">
             <h1 className="text-xl font-bold text-foreground">AI Assistant</h1>
@@ -708,12 +708,12 @@ export default function AssistantPage() {
 
       {/* Error Banners */}
       {apiKeyMissing && (
-        <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-xs text-rose-300 shrink-0">
+        <div className="pl-5 sm:pl-8 p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-xs text-rose-300 shrink-0">
           ⚠ Gemini API key invalid or missing. Update <code className="font-mono">GEMINI_API_KEY</code> in your backend.
         </div>
       )}
       {quotaError && (
-        <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-300 flex items-center justify-between shrink-0">
+        <div className="pl-5 sm:pl-8 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-300 flex items-center justify-between shrink-0">
           <span>⚠ Gemini free-tier daily quota limit reached.</span>
           <button onClick={() => setQuotaError(null)} className="underline text-[11px]">Dismiss</button>
         </div>

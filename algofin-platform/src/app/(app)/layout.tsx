@@ -342,7 +342,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       {/* Main area: offset by sidebar width, scrolls independently */}
       <div className="flex-1 flex flex-col min-w-0 h-full lg:ml-60">
         <MobileTopBar onLogout={handleLogout} />
-        <main className={`flex-1 px-5 sm:px-8 ${isFullBleed ? "overflow-hidden py-0 h-full" : "overflow-y-auto py-6"}`}>
+        <main className={`flex-1 ${isFullBleed ? "overflow-hidden py-0 h-full" : "overflow-y-auto py-6 px-5 sm:px-8"}`}>
           {checking ? (
             <div className="page-content space-y-6 animate-fade-in">
               <div className="skeleton h-8 w-48 rounded-lg" />
