@@ -552,7 +552,7 @@ export default function ExchangesPage() {
   const lastSyncTimestamp = accounts.find(a => a.last_sync_at)?.last_sync_at || null;
 
   return (
-    <div className="w-full max-w-[1440px] mx-auto h-[calc(100vh-3rem)] flex flex-col text-foreground font-sans gap-3.5">
+    <div className="w-full max-w-[1440px] mx-auto min-h-[calc(100vh-3rem)] flex flex-col text-foreground font-sans gap-3.5 pb-4">
       {/* ── TOP AREA ────────────────────────────────────────────────────── */}
       <div className="space-y-3.5 shrink-0">
         {/* Header with View Documentation button */}
@@ -706,10 +706,10 @@ export default function ExchangesPage() {
       </div>
 
       {/* ── MAIN CONTENT GRID (Full Width 2x2 Grid matching Screenshot) ───────────────── */}
-      <div className="flex flex-col gap-3.5 flex-1 min-h-0">
+      <div className="flex flex-col gap-4">
         {/* Skeletons */}
         {loading && showSkeleton && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {[1, 2, 3, 4].map(i => (
               <div key={i} className="bg-[#0b101b] border border-white/8 rounded-2xl p-4 space-y-3">
                 <div className="flex items-center gap-3">
@@ -727,7 +727,7 @@ export default function ExchangesPage() {
 
         {/* Cards Grid */}
         {!loading && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 flex-1 min-h-0">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {filteredExchanges.map(ex => {
               const account = accountByExchange[ex.id];
               const isConnected = !!account;
@@ -878,8 +878,8 @@ export default function ExchangesPage() {
           </div>
         )}
 
-        {/* Bottom Info Strip (Full Width) */}
-        <div className="shrink-0 bg-[#06151f]/80 border border-cyan-500/15 rounded-2xl px-4 py-3 flex items-center justify-between gap-2 text-xs text-muted-foreground shadow-sm">
+        {/* Bottom Info Strip (Full Width with top margin to prevent any overlap) */}
+        <div className="mt-1 bg-[#06151f]/80 border border-cyan-500/15 rounded-2xl px-4 py-3 flex items-center justify-between gap-2 text-xs text-muted-foreground shadow-sm">
           <div className="flex items-center gap-2">
             <span className="text-cyan-400 font-bold">ℹ</span>
             <span>We currently support 4 exchanges.</span>
