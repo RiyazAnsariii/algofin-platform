@@ -635,7 +635,7 @@ export default function ExchangesPage() {
   const lastSyncTimestamp = accounts.find(a => a.last_sync_at)?.last_sync_at || null;
 
   return (
-    <div className="w-full max-w-[1440px] mx-auto h-[calc(100vh-3.25rem)] flex flex-col justify-between text-foreground font-sans gap-2 overflow-hidden">
+    <div className="w-full max-w-[1440px] mx-auto h-[calc(100vh-3rem)] flex flex-col justify-between text-foreground font-sans gap-2 overflow-hidden">
       {/* ── TOP AREA ────────────────────────────────────────────────────── */}
       <div className="space-y-2 shrink-0">
         {/* Header with View Documentation button */}
