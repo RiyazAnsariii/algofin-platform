@@ -555,12 +555,20 @@ export default function ExchangesPage() {
     <div className="w-full max-w-[1440px] mx-auto h-[calc(100vh-3rem)] flex flex-col text-foreground font-sans gap-3.5">
       {/* ── TOP AREA ────────────────────────────────────────────────────── */}
       <div className="space-y-3.5 shrink-0">
-        {/* Header */}
-        <div>
-          <h1 className="text-2xl font-bold text-foreground tracking-tight">Exchange Accounts</h1>
-          <p className="text-xs text-muted-foreground mt-1">
-            Connect your exchange accounts securely using read-only API keys.
-          </p>
+        {/* Header with View Documentation button */}
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-foreground tracking-tight">Exchange Accounts</h1>
+            <p className="text-xs text-muted-foreground mt-1">
+              Connect your exchange accounts securely using read-only API keys.
+            </p>
+          </div>
+          <button
+            onClick={() => setShowDocModal(true)}
+            className="px-3.5 py-1.5 rounded-xl border border-white/10 text-muted-foreground hover:text-foreground text-xs font-medium bg-white/5 hover:bg-white/10 transition-all flex items-center gap-1.5 shrink-0"
+          >
+            View Documentation ↗
+          </button>
         </div>
 
         {/* Security Alert Banner */}
@@ -613,7 +621,7 @@ export default function ExchangesPage() {
               <p className="text-[11px] font-medium text-muted-foreground leading-none">Portfolio Value</p>
               <div className="flex items-baseline gap-1.5 mt-1">
                 <span className="text-lg font-bold text-foreground">${totalPortfolioValue.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                <span className="text-[10px] text-muted-foreground/80">Across all</span>
+                <span className="text-[10px] text-muted-foreground/80">Across all exchanges</span>
               </div>
             </div>
           </div>
@@ -630,7 +638,7 @@ export default function ExchangesPage() {
               <p className="text-[11px] font-medium text-muted-foreground leading-none">Synced Positions</p>
               <div className="flex items-baseline gap-1.5 mt-1">
                 <span className="text-lg font-bold text-foreground">{totalPositions}</span>
-                <span className="text-[10px] text-muted-foreground/80">Across all</span>
+                <span className="text-[10px] text-muted-foreground/80">Across all exchanges</span>
               </div>
             </div>
           </div>
@@ -647,20 +655,41 @@ export default function ExchangesPage() {
               <p className="text-[11px] font-medium text-muted-foreground leading-none">Last Updated</p>
               <div className="flex items-center gap-2 mt-1">
                 <span className="text-sm font-bold text-foreground">
-                  {lastSyncTimestamp ? relativeTime(lastSyncTimestamp) : "8 sec ago"}
+                  {lastSyncTimestamp ? relativeTime(lastSyncTimestamp) : "--"}
                 </span>
-                <span className="text-[10px] text-emerald-400 font-medium flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"/> Live
+                <span className="text-[10px] text-muted-foreground/80 font-medium">
+                  {connectedCount > 0 ? "Live" : "No data"}
                 </span>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Search & Filter Bar */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#0a0f19]/60 border border-white/6 p-1.5 px-2.5 rounded-2xl">
-          {/* Search input */}
-          <div className="relative flex-1 max-w-sm">
+        {/* Search & Filter Bar (Matching Screenshot: Tabs on left, Search on right) */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#0a0f19]/60 border border-white/6 p-1.5 px-3 rounded-2xl">
+          {/* Filter pills on Left */}
+          <div className="flex items-center gap-1.5">
+            {[
+              { id: "all", label: "All" },
+              { id: "connected", label: "Connected" },
+              { id: "not_connected", label: "Not Connected" },
+            ].map(tab => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveFilter(tab.id as any)}
+                className={`px-4 py-1 rounded-xl text-xs font-medium transition-all whitespace-nowrap ${
+                  activeFilter === tab.id
+                    ? "bg-[#0a2730] text-cyan-400 border border-cyan-500/30 font-semibold"
+                    : "text-muted-foreground hover:text-foreground hover:bg-white/5"
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Search input on Right */}
+          <div className="relative flex-1 max-w-xs">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground">
               <circle cx="11" cy="11" r="8"/>
               <line x1="21" y1="21" x2="16.65" y2="16.65"/>
@@ -673,406 +702,191 @@ export default function ExchangesPage() {
               className="w-full pl-9 pr-3 py-1.5 rounded-xl text-xs bg-[#090d16] border border-white/8 text-foreground placeholder:text-muted-foreground/50 outline-none focus:border-cyan-500/50 transition-all"
             />
           </div>
-
-          {/* Filter pills */}
-          <div className="flex items-center gap-1 bg-[#070a12] p-1 rounded-xl border border-white/6">
-            {[
-              { id: "all", label: "All" },
-              { id: "connected", label: "Connected" },
-              { id: "not_connected", label: "Not Connected" },
-              { id: "coming_soon", label: "Coming Soon" },
-            ].map(tab => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveFilter(tab.id as any)}
-                className={`px-3 py-1 rounded-lg text-xs font-medium transition-all whitespace-nowrap ${
-                  activeFilter === tab.id
-                    ? "bg-cyan-500/20 text-cyan-400 border border-cyan-500/30"
-                    : "text-muted-foreground hover:text-foreground hover:bg-white/5"
-                }`}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
         </div>
       </div>
 
-      {/* ── MAIN CONTENT GRID ────────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-3.5 flex-1 min-h-0 items-stretch">
-        {/* ── LEFT COLUMN: 2x2 EXCHANGE CARDS GRID (8 COLS) ──────────── */}
-        <div className="lg:col-span-8 flex flex-col gap-3 min-h-0 h-full justify-between">
-          {/* Skeletons */}
-          {loading && showSkeleton && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {[1, 2, 3, 4].map(i => (
-                <div key={i} className="bg-[#0b101b] border border-white/8 rounded-2xl p-3.5 space-y-2.5">
-                  <div className="flex items-center gap-3">
-                    <div className="skeleton h-9 w-9 rounded-xl"/>
-                    <div className="space-y-1.5">
-                      <div className="skeleton h-4 w-24"/>
-                      <div className="skeleton h-3 w-16"/>
-                    </div>
+      {/* ── MAIN CONTENT GRID (Full Width 2x2 Grid matching Screenshot) ───────────────── */}
+      <div className="flex flex-col gap-3.5 flex-1 min-h-0">
+        {/* Skeletons */}
+        {loading && showSkeleton && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+            {[1, 2, 3, 4].map(i => (
+              <div key={i} className="bg-[#0b101b] border border-white/8 rounded-2xl p-4 space-y-3">
+                <div className="flex items-center gap-3">
+                  <div className="skeleton h-10 w-10 rounded-xl"/>
+                  <div className="space-y-1.5">
+                    <div className="skeleton h-4 w-28"/>
+                    <div className="skeleton h-3 w-20"/>
                   </div>
-                  <div className="skeleton h-10 w-full rounded-xl"/>
                 </div>
-              ))}
-            </div>
-          )}
+                <div className="skeleton h-12 w-full rounded-xl"/>
+              </div>
+            ))}
+          </div>
+        )}
 
-          {/* Cards Grid */}
-          {!loading && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 flex-1 min-h-0">
-              {filteredExchanges.map(ex => {
-                const account = accountByExchange[ex.id];
-                const isConnected = !!account;
+        {/* Cards Grid */}
+        {!loading && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 flex-1 min-h-0">
+            {filteredExchanges.map(ex => {
+              const account = accountByExchange[ex.id];
+              const isConnected = !!account;
 
-                if (isConnected) {
-                  // ── CONNECTED CARD (Image 2 Design) ────────────────
-                  const formattedDate = account.created_at
-                    ? new Date(account.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
-                    : "May 24, 2025";
-
-                  return (
-                    <div key={ex.id} className="relative bg-[#070c16]/95 border border-[#0d2238] rounded-2xl p-4 flex flex-col justify-between gap-3.5 shadow-xl transition-all hover:border-[#133252]">
-                      {/* Top Header Row */}
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex items-center gap-3">
-                          <ExchangeLogo id={ex.id} name={ex.name} />
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <h3 className="font-bold text-foreground text-base tracking-wide">{ex.name}</h3>
-                              <span className="px-2.5 py-0.5 rounded-md bg-emerald-950/80 text-emerald-400 border border-emerald-500/30 text-[10px] font-extrabold tracking-wider">
-                                CONNECTED
-                              </span>
-                            </div>
-                            <p className="text-xs text-muted-foreground mt-0.5 font-medium">
-                              {ex.display_name.replace(ex.name, "").trim() || ex.markets.join(" · ")}
-                            </p>
-                          </div>
-                        </div>
-
-                        {/* Connected Date & Options Menu */}
-                        <div className="flex items-center gap-2">
-                          <div className="text-right hidden sm:block">
-                            <p className="text-[10px] text-muted-foreground/70 leading-none">Connected on</p>
-                            <p className="text-xs text-muted-foreground font-medium mt-0.5">{formattedDate}</p>
-                          </div>
-                          <div className="relative">
-                            <button
-                              onClick={() => setActiveMenuId(activeMenuId === account.id ? null : account.id)}
-                              className="w-8 h-8 rounded-xl border border-white/10 flex items-center justify-center text-muted-foreground hover:text-foreground text-sm font-bold transition-all hover:bg-white/5"
-                            >
-                              ⋮
-                            </button>
-                            {activeMenuId === account.id && (
-                              <div className="absolute right-0 top-full mt-1 w-36 bg-[#0c121e] border border-white/12 rounded-xl p-1 shadow-2xl z-30 text-xs">
-                                <button onClick={() => handleSync(account.id)} className="w-full text-left px-3 py-1.5 rounded-lg text-foreground hover:bg-white/5 flex items-center gap-2">
-                                  <span>🔄</span> Force sync
-                                </button>
-                                <button onClick={() => handleRevoke(account.id)} className="w-full text-left px-3 py-1.5 rounded-lg text-rose-400 hover:bg-rose-500/10 flex items-center gap-2">
-                                  <span>🗑</span> Revoke
-                                </button>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Middle Feature Pills */}
-                      <div className="flex flex-wrap items-center gap-1.5 text-[10px] text-muted-foreground">
-                        <span className="px-2.5 py-1 rounded-lg bg-[#071828] border border-cyan-500/20 text-cyan-400 font-medium flex items-center gap-1.5">
-                          🔒 Read-only API
-                        </span>
-                        <span className="px-2.5 py-1 rounded-lg bg-[#071828] border border-cyan-500/20 text-cyan-400 font-medium flex items-center gap-1.5">
-                          🔄 Portfolio Sync
-                        </span>
-                        <span className="px-2.5 py-1 rounded-lg bg-[#071828] border border-cyan-500/20 text-cyan-400 font-medium flex items-center gap-1.5">
-                          ⏱ Trade History
-                        </span>
-                      </div>
-
-                      {/* Bottom Stats & Action Row */}
-                      <div className="flex items-end justify-between pt-2 border-t border-white/6 gap-3">
-                        <div className="flex items-baseline gap-5 sm:gap-7">
-                          <div>
-                            <p className="text-base sm:text-lg font-extrabold text-foreground tracking-tight">
-                              $8,742.31
-                            </p>
-                            <p className="text-[11px] text-muted-foreground/80 mt-0.5">Balance</p>
-                          </div>
-                          <div>
-                            <p className="text-base sm:text-lg font-extrabold text-foreground tracking-tight">5</p>
-                            <p className="text-[11px] text-muted-foreground/80 mt-0.5">Positions</p>
-                          </div>
-                          <div>
-                            <p className="text-base sm:text-lg font-extrabold text-foreground tracking-tight">3</p>
-                            <p className="text-[11px] text-muted-foreground/80 mt-0.5">Open Orders</p>
-                          </div>
-                        </div>
-
-                        <button
-                          onClick={() => handleSync(account.id)}
-                          disabled={actionLoading}
-                          className="px-4 py-2 rounded-xl bg-[#061e30] border border-cyan-500/40 text-cyan-400 text-xs font-semibold hover:bg-cyan-500/20 hover:border-cyan-500/60 transition-all flex items-center gap-1.5 shrink-0"
-                        >
-                          View Details →
-                        </button>
-                      </div>
-                    </div>
-                  );
-                }
-
-                // ── NOT CONNECTED CARD ──────────────────────────────
-                const isLive = ex.status === "live";
+              if (isConnected) {
+                // ── CONNECTED CARD (Image 2 Design) ────────────────
+                const formattedDate = account.created_at
+                  ? new Date(account.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+                  : "May 24, 2025";
 
                 return (
-                  <div key={ex.id} className={`bg-[#0b101b]/80 border rounded-2xl p-3.5 flex flex-col justify-between transition-all ${
-                    isLive ? "border-white/8 hover:border-white/16" : "border-white/5 opacity-60"
-                  }`}>
-                    <div className="space-y-2.5">
-                      {/* Header */}
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-2.5">
-                          <ExchangeLogo id={ex.id} name={ex.name} />
-                          <div>
-                            <div className="flex items-center gap-1.5">
-                              <h3 className="font-bold text-foreground text-sm tracking-wide">{ex.name}</h3>
-                              <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
-                                isLive ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/25" : "bg-amber-500/15 text-amber-400 border border-amber-500/25"
-                              }`}>
-                                {isLive ? "LIVE" : "SOON"}
-                              </span>
-                            </div>
-                            <p className="text-[11px] text-muted-foreground mt-0.5">{ex.display_name.replace(ex.name, "").trim() || ex.markets.join(" · ")}</p>
+                  <div key={ex.id} className="relative bg-[#070c16]/95 border border-[#0d2238] rounded-2xl p-4 flex flex-col justify-between gap-3.5 shadow-xl transition-all hover:border-[#133252]">
+                    {/* Top Header Row */}
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-3">
+                        <ExchangeLogo id={ex.id} name={ex.name} />
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h3 className="font-bold text-foreground text-base tracking-wide">{ex.name}</h3>
+                            <span className="px-2.5 py-0.5 rounded-md bg-emerald-950/80 text-emerald-400 border border-emerald-500/30 text-[10px] font-extrabold tracking-wider">
+                              CONNECTED
+                            </span>
                           </div>
+                          <p className="text-xs text-muted-foreground mt-0.5 font-medium">
+                            {ex.display_name.replace(ex.name, "").trim() || ex.markets.join(" · ")}
+                          </p>
                         </div>
-                        <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-white/5 text-muted-foreground border border-white/8">
-                          Not Connected
-                        </span>
                       </div>
 
-                      {/* Feature Tags */}
-                      <div className="flex flex-wrap items-center gap-1.5 text-[10px] text-muted-foreground">
-                        <span className="px-2 py-0.5 rounded-md bg-white/5 border border-white/6">🔒 Read-only API</span>
-                        <span className="px-2 py-0.5 rounded-md bg-white/5 border border-white/6">📈 Portfolio Sync</span>
-                        <span className="px-2 py-0.5 rounded-md bg-white/5 border border-white/6">⏱ Trade History</span>
+                      {/* Connected Date & Options Menu */}
+                      <div className="flex items-center gap-2">
+                        <div className="text-right hidden sm:block">
+                          <p className="text-[10px] text-muted-foreground/70 leading-none">Connected on</p>
+                          <p className="text-xs text-muted-foreground font-medium mt-0.5">{formattedDate}</p>
+                        </div>
+                        <div className="relative">
+                          <button
+                            onClick={() => setActiveMenuId(activeMenuId === account.id ? null : account.id)}
+                            className="w-8 h-8 rounded-xl border border-white/10 flex items-center justify-center text-muted-foreground hover:text-foreground text-sm font-bold transition-all hover:bg-white/5"
+                          >
+                            ⋮
+                          </button>
+                          {activeMenuId === account.id && (
+                            <div className="absolute right-0 top-full mt-1 w-36 bg-[#0c121e] border border-white/12 rounded-xl p-1 shadow-2xl z-30 text-xs">
+                              <button onClick={() => handleSync(account.id)} className="w-full text-left px-3 py-1.5 rounded-lg text-foreground hover:bg-white/5 flex items-center gap-2">
+                                <span>🔄</span> Force sync
+                              </button>
+                              <button onClick={() => handleRevoke(account.id)} className="w-full text-left px-3 py-1.5 rounded-lg text-rose-400 hover:bg-rose-500/10 flex items-center gap-2">
+                                <span>🗑</span> Revoke
+                              </button>
+                            </div>
+                          )}
+                        </div>
                       </div>
-
-                      {/* Description */}
-                      <p className="text-[11px] text-muted-foreground/90 leading-relaxed line-clamp-2">
-                        {ex.description}
-                      </p>
                     </div>
 
-                    {/* Action Button */}
-                    <div className="pt-1">
-                      {isLive ? (
-                        <button
-                          onClick={() => setConnecting(ex)}
-                          className="w-full py-2 rounded-xl bg-cyan-950/40 border border-cyan-500/30 text-cyan-400 text-xs font-semibold hover:bg-cyan-500/20 hover:border-cyan-500/50 transition-all flex items-center justify-center gap-1.5"
-                        >
-                          Connect Account →
-                        </button>
-                      ) : (
-                        <button disabled className="w-full py-2 rounded-xl bg-white/3 border border-white/6 text-xs text-muted-foreground/60 text-center cursor-not-allowed">
-                          Integration Coming Soon
-                        </button>
-                      )}
+                    {/* Middle Feature Pills */}
+                    <div className="flex flex-wrap items-center gap-1.5 text-[10px] text-muted-foreground">
+                      <span className="px-2.5 py-1 rounded-lg bg-[#071828] border border-cyan-500/20 text-cyan-400 font-medium flex items-center gap-1.5">
+                        🔒 Read-only API
+                      </span>
+                      <span className="px-2.5 py-1 rounded-lg bg-[#071828] border border-cyan-500/20 text-cyan-400 font-medium flex items-center gap-1.5">
+                        🔄 Portfolio Sync
+                      </span>
+                      <span className="px-2.5 py-1 rounded-lg bg-[#071828] border border-cyan-500/20 text-cyan-400 font-medium flex items-center gap-1.5">
+                        ⏱ Trade History
+                      </span>
+                    </div>
+
+                    {/* Bottom Stats & Action Row */}
+                    <div className="flex items-end justify-between pt-2 border-t border-white/6 gap-3">
+                      <div className="flex items-baseline gap-5 sm:gap-7">
+                        <div>
+                          <p className="text-base sm:text-lg font-extrabold text-foreground tracking-tight">
+                            $8,742.31
+                          </p>
+                          <p className="text-[11px] text-muted-foreground/80 mt-0.5">Balance</p>
+                        </div>
+                        <div>
+                          <p className="text-base sm:text-lg font-extrabold text-foreground tracking-tight">5</p>
+                          <p className="text-[11px] text-muted-foreground/80 mt-0.5">Positions</p>
+                        </div>
+                        <div>
+                          <p className="text-base sm:text-lg font-extrabold text-foreground tracking-tight">3</p>
+                          <p className="text-[11px] text-muted-foreground/80 mt-0.5">Open Orders</p>
+                        </div>
+                      </div>
+
+                      <button
+                        onClick={() => handleSync(account.id)}
+                        disabled={actionLoading}
+                        className="px-4 py-2 rounded-xl bg-[#061e30] border border-cyan-500/40 text-cyan-400 text-xs font-semibold hover:bg-cyan-500/20 hover:border-cyan-500/60 transition-all flex items-center gap-1.5 shrink-0"
+                      >
+                        View Details →
+                      </button>
                     </div>
                   </div>
                 );
-              })}
-            </div>
-          )}
+              }
 
-          {/* Bottom Info Strip */}
-          <div className="shrink-0 bg-[#0a0f19]/80 border border-white/8 rounded-2xl px-4 py-2.5 flex items-center justify-between gap-2 text-xs text-muted-foreground shadow-sm">
-            <div className="flex items-center gap-2">
-              <span className="text-cyan-400 font-bold">ℹ</span>
-              <span>We currently support 4 exchanges. More coming soon!</span>
-            </div>
-            <button onClick={() => setShowDocModal(true)} className="text-cyan-400 hover:underline font-medium">
-              View Guide ↗
-            </button>
+              // ── NOT CONNECTED CARD (Matching Screenshot 1:1) ──────────────────────────────
+              const isLive = ex.status === "live";
+
+              return (
+                <div key={ex.id} className="bg-[#0b101b]/90 border border-white/8 hover:border-white/16 rounded-2xl p-4 flex flex-col justify-between gap-3.5 transition-all shadow-md">
+                  <div className="space-y-3">
+                    {/* Header */}
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-3">
+                        <ExchangeLogo id={ex.id} name={ex.name} />
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h3 className="font-bold text-foreground text-base tracking-wide">{ex.name}</h3>
+                            <span className="text-[10px] font-semibold px-2.5 py-0.5 rounded-full bg-white/5 text-muted-foreground/70 border border-white/8 uppercase">
+                              NOT CONNECTED
+                            </span>
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-0.5 font-medium">{ex.display_name.replace(ex.name, "").trim() || ex.markets.join(" · ")}</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Feature Tags */}
+                    <div className="flex flex-wrap items-center gap-1.5 text-[10px] text-muted-foreground">
+                      <span className="px-2.5 py-1 rounded-lg bg-white/4 border border-white/6 flex items-center gap-1.5">🔒 Read-only API</span>
+                      <span className="px-2.5 py-1 rounded-lg bg-white/4 border border-white/6 flex items-center gap-1.5">🔄 Portfolio Sync</span>
+                      <span className="px-2.5 py-1 rounded-lg bg-white/4 border border-white/6 flex items-center gap-1.5">⏱ Trade History</span>
+                    </div>
+
+                    {/* Description */}
+                    <p className="text-xs text-muted-foreground/90 leading-relaxed">
+                      {ex.description}
+                    </p>
+                  </div>
+
+                  {/* Action Button */}
+                  <div className="pt-1">
+                    <button
+                      onClick={() => setConnecting(ex)}
+                      className="w-full py-2.5 rounded-xl bg-[#061e2b]/60 border border-cyan-500/30 text-cyan-400 text-xs font-semibold hover:bg-cyan-500/15 hover:border-cyan-500/50 transition-all flex items-center justify-center gap-1.5 shadow-sm"
+                    >
+                      Connect Account →
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
           </div>
-        </div>
+        )}
 
-        {/* ── RIGHT COLUMN: SIDEBAR INFO PANEL (4 COLS) ───────────────── */}
-        <div className="lg:col-span-4 flex flex-col gap-3 min-h-0 h-full">
-          {/* Card 1: How it works (Timeline matching Image 1 1:1) */}
-          <div className="bg-[#0b101b]/95 border border-white/10 rounded-2xl p-4 sm:p-5 flex flex-col flex-1 min-h-0 justify-between overflow-hidden shadow-xl">
-            {/* Header with Sparkle Badge */}
-            <div className="flex items-start gap-3 shrink-0">
-              <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-purple-500/20 via-indigo-500/20 to-cyan-500/20 border border-purple-500/35 flex items-center justify-center text-purple-300 shrink-0 shadow-sm">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M12 3v3m0 12v3M3 12h3m12 0h3m-3.5-6.5l-2 2m-7 7l-2 2m11 0l-2-2m-7-7l-2-2" strokeLinecap="round"/>
-                </svg>
-              </div>
-              <div>
-                <h2 className="text-xs font-extrabold text-foreground tracking-wider uppercase">HOW IT WORKS</h2>
-                <p className="text-[11px] text-muted-foreground leading-tight mt-0.5">
-                  Get started in 4 simple steps and unlock powerful insights.
-                </p>
-              </div>
-            </div>
-
-            {/* Timeline Steps */}
-            <div className="relative pl-6 flex flex-col justify-around flex-1 my-2 before:absolute before:left-[11px] before:top-4 before:bottom-4 before:w-[2px] before:bg-white/12">
-              {/* Step 1 */}
-              <div className="relative flex items-center gap-2">
-                {/* Timeline node */}
-                <div className="absolute -left-6 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-[#0a0714] border-2 border-purple-500 text-purple-300 text-[11px] font-bold flex items-center justify-center shrink-0 z-10 shadow-sm">
-                  1
-                </div>
-
-                {/* Card Container */}
-                <div className="flex-1 bg-[#080d1a]/80 border border-white/8 hover:border-white/15 rounded-xl p-2 px-2.5 flex flex-col gap-1 min-w-0 transition-all shadow-sm">
-                  <div className="flex items-center justify-between gap-1.5 min-w-0">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <div className="w-6 h-6 rounded-full bg-purple-500/12 border border-purple-500/30 flex items-center justify-center text-purple-400 shrink-0">
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/>
-                          <path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/>
-                        </svg>
-                      </div>
-                      <h3 className="text-xs font-bold text-foreground truncate">Connect Exchange</h3>
-                    </div>
-
-                    <span className="px-1.5 py-0.5 rounded-md bg-purple-500/10 border border-purple-500/25 text-purple-300 text-[9px] font-semibold flex items-center gap-1 shrink-0">
-                      <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-                      </svg>
-                      100% Secure
-                    </span>
-                  </div>
-
-                  <p className="text-[10px] text-muted-foreground leading-snug pl-8">
-                    Securely link read-only API keys from your exchange account.
-                  </p>
-                </div>
-              </div>
-
-              {/* Step 2 */}
-              <div className="relative flex items-center gap-2">
-                {/* Timeline node */}
-                <div className="absolute -left-6 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-[#0a0714] border-2 border-purple-500 text-purple-300 text-[11px] font-bold flex items-center justify-center shrink-0 z-10 shadow-sm">
-                  2
-                </div>
-
-                {/* Card Container */}
-                <div className="flex-1 bg-[#080d1a]/80 border border-white/8 hover:border-white/15 rounded-xl p-2 px-2.5 flex flex-col gap-1 min-w-0 transition-all shadow-sm">
-                  <div className="flex items-center justify-between gap-1.5 min-w-0">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <div className="w-6 h-6 rounded-full bg-purple-500/12 border border-purple-500/30 flex items-center justify-center text-purple-400 shrink-0">
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 11-.57-8.38l5.67-5.67"/>
-                        </svg>
-                      </div>
-                      <h3 className="text-xs font-bold text-foreground truncate">Sync Portfolio</h3>
-                    </div>
-
-                    <span className="px-1.5 py-0.5 rounded-md bg-purple-500/10 border border-purple-500/25 text-purple-300 text-[9px] font-semibold flex items-center gap-1 shrink-0">
-                      <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <rect x="2" y="3" width="20" height="14" rx="2"/>
-                        <line x1="8" y1="21" x2="16" y2="21"/>
-                        <line x1="12" y1="17" x2="12" y2="21"/>
-                      </svg>
-                      Auto Sync
-                    </span>
-                  </div>
-
-                  <p className="text-[10px] text-muted-foreground leading-snug pl-8">
-                    Automatically import balances, open positions &amp; trade history.
-                  </p>
-                </div>
-              </div>
-
-              {/* Step 3 */}
-              <div className="relative flex items-center gap-2">
-                {/* Timeline node */}
-                <div className="absolute -left-6 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-[#071114] border-2 border-cyan-500 text-cyan-300 text-[11px] font-bold flex items-center justify-center shrink-0 z-10 shadow-sm">
-                  3
-                </div>
-
-                {/* Card Container */}
-                <div className="flex-1 bg-[#080d1a]/80 border border-white/8 hover:border-white/15 rounded-xl p-2 px-2.5 flex flex-col gap-1 min-w-0 transition-all shadow-sm">
-                  <div className="flex items-center justify-between gap-1.5 min-w-0">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <div className="w-6 h-6 rounded-full bg-cyan-500/12 border border-cyan-500/30 flex items-center justify-center text-cyan-400 shrink-0">
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <line x1="18" y1="20" x2="18" y2="10"/>
-                          <line x1="12" y1="20" x2="12" y2="4"/>
-                          <line x1="6" y1="20" x2="6" y2="14"/>
-                        </svg>
-                      </div>
-                      <h3 className="text-xs font-bold text-foreground truncate">View Analytics</h3>
-                    </div>
-
-                    <span className="px-1.5 py-0.5 rounded-md bg-cyan-500/10 border border-cyan-500/25 text-cyan-300 text-[9px] font-semibold flex items-center gap-1 shrink-0">
-                      <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/>
-                        <polyline points="17 6 23 6 23 12"/>
-                      </svg>
-                      AI Insights
-                    </span>
-                  </div>
-
-                  <p className="text-[10px] text-muted-foreground leading-snug pl-8">
-                    Track performance metrics &amp; get real-time AI trading insights.
-                  </p>
-                </div>
-              </div>
-
-              {/* Step 4 */}
-              <div className="relative flex items-center gap-2">
-                {/* Timeline node */}
-                <div className="absolute -left-6 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-[#070b14] border-2 border-blue-500 text-blue-300 text-[11px] font-bold flex items-center justify-center shrink-0 z-10 shadow-sm">
-                  4
-                </div>
-
-                {/* Card Container */}
-                <div className="flex-1 bg-[#080d1a]/80 border border-white/8 hover:border-white/15 rounded-xl p-2 px-2.5 flex flex-col gap-1 min-w-0 transition-all shadow-sm">
-                  <div className="flex items-center justify-between gap-1.5 min-w-0">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <div className="w-6 h-6 rounded-full bg-blue-500/12 border border-blue-500/30 flex items-center justify-center text-blue-400 shrink-0">
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/>
-                          <path d="M13.73 21a2 2 0 01-3.46 0"/>
-                        </svg>
-                      </div>
-                      <h3 className="text-xs font-bold text-foreground truncate">Stay Updated</h3>
-                    </div>
-
-                    <span className="px-1.5 py-0.5 rounded-md bg-blue-500/10 border border-blue-500/25 text-blue-300 text-[9px] font-semibold flex items-center gap-1 shrink-0">
-                      <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
-                      </svg>
-                      Real-time
-                    </span>
-                  </div>
-
-                  <p className="text-[10px] text-muted-foreground leading-snug pl-8">
-                    Real-time market feeds keep your dashboard data always fresh.
-                  </p>
-                </div>
-              </div>
-            </div>
+        {/* Bottom Info Strip (Full Width) */}
+        <div className="shrink-0 bg-[#06151f]/80 border border-cyan-500/15 rounded-2xl px-4 py-3 flex items-center justify-between gap-2 text-xs text-muted-foreground shadow-sm">
+          <div className="flex items-center gap-2">
+            <span className="text-cyan-400 font-bold">ℹ</span>
+            <span>We currently support 4 exchanges.</span>
           </div>
-
-          {/* Card 2: Need Help? */}
-          <div className="bg-[#0b101b]/90 border border-white/8 rounded-2xl p-4 space-y-2.5 shrink-0">
-            <h2 className="text-xs font-bold text-foreground tracking-wide uppercase text-muted-foreground/80">Need Help?</h2>
-            <p className="text-xs text-muted-foreground leading-snug">
-              Learn how to generate API keys securely for each exchange.
-            </p>
-            <button
-              onClick={() => setShowDocModal(true)}
-              className="w-full py-2.5 rounded-xl bg-[#091a24] border border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/10 text-xs font-semibold transition-all flex items-center justify-center gap-1.5"
-            >
-              View Documentation ↗
-            </button>
-          </div>
+          <button onClick={() => setShowDocModal(true)} className="text-cyan-400 hover:underline font-medium flex items-center gap-1">
+            View Guide ↗
+          </button>
         </div>
       </div>
 
