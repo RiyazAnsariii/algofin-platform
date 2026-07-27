@@ -154,13 +154,15 @@ export default function AssistantPage() {
           }> };
         }>("/assistant/thread");
         setThreadId(res.data.data.thread_id);
-        const loaded = res.data.data.messages.map((m) => ({
-          id:        m.id,
-          role:      m.role as Message["role"],
-          content:   m.content,
-          tool_name: m.tool_name,
-          time:      new Date(m.created_at || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        }));
+        const loaded = res.data.data.messages
+          .filter((m) => (m.role === "user" || m.role === "assistant") && m.content?.trim())
+          .map((m) => ({
+            id:        m.id,
+            role:      m.role as Message["role"],
+            content:   m.content,
+            tool_name: m.tool_name,
+            time:      new Date(m.created_at || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          }));
         setMessages(loaded);
       } catch { /* no history yet */ }
       finally { setLoadingHistory(false); }
@@ -243,7 +245,6 @@ export default function AssistantPage() {
             }
 
             if (event.type === "tool_call") {
-              addMessage({ role: "tool", content: "", tool_name: event.tool });
               updateMessage(assistantId, {
                 tool_call: { tool: event.tool!, status: "running" },
               });
@@ -491,7 +492,9 @@ export default function AssistantPage() {
             )}
 
             {/* Active Real User/Assistant Messages */}
-            {messages.map((msg) => (
+            {messages
+              .filter((m) => m.role === "user" || m.role === "assistant")
+              .map((msg) => (
               <div key={msg.id} className="group">
                 {msg.role === "user" ? (
                   <div className="flex flex-col items-end space-y-1">
@@ -577,14 +580,23 @@ export default function AssistantPage() {
                           </button>
                         </div>
                       </div>
-                      {msg.content && (
+                      {msg.content ? (
                         <div className="text-xs text-foreground/90 leading-relaxed surface-card p-3 rounded-xl border border-white/8">
                           <RenderMarkdown text={msg.content} />
                           {msg.streaming && (
                             <span className="inline-block w-1.5 h-4 ml-0.5 bg-cyan-400/60 rounded-sm animate-pulse align-middle" />
                           )}
                         </div>
-                      )}
+                      ) : msg.streaming ? (
+                        <div className="text-xs text-cyan-400/90 surface-card p-3 rounded-xl border border-cyan-500/20 flex items-center gap-2">
+                          <span className="w-2 h-2 rounded-full bg-cyan-400 animate-ping" />
+                          <span>
+                            {msg.tool_call?.tool
+                              ? `Fetching ${msg.tool_call.tool.replace(/_/g, " ")}...`
+                              : "Thinking..."}
+                          </span>
+                        </div>
+                      ) : null}
                     </div>
                   </div>
                 )}
