@@ -322,52 +322,136 @@ function ConnectModal({
   );
 }
 
-// ── Documentation Modal ──────────────────────────────────────────
+// ── Documentation / How It Works Modal (Image 2 Design 1:1) ───────
 function DocumentationModal({ onClose }: { onClose: () => void }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md">
-      <div className="w-full max-w-lg bg-[#0c121e] border border-white/12 rounded-2xl p-5 space-y-4 animate-fade-up shadow-2xl max-h-[85vh] overflow-y-auto">
-        <div className="flex items-center justify-between border-b border-white/8 pb-3">
-          <div className="flex items-center gap-2 text-cyan-400">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
-              <polyline points="14 2 14 8 20 8"/>
-            </svg>
-            <h2 className="text-sm font-semibold text-foreground">API Key Setup Guide</h2>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+      <div className="w-full max-w-lg bg-[#070b14] border border-[#121c2e] rounded-3xl p-6 space-y-5 animate-fade-up shadow-2xl relative overflow-hidden">
+        {/* Top Header */}
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-purple-950/40 border border-purple-500/30 flex items-center justify-center text-purple-400 shrink-0 shadow-inner">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
+              </svg>
+            </div>
+            <div>
+              <h2 className="text-base font-extrabold text-foreground tracking-wide uppercase font-sans">HOW IT WORKS</h2>
+              <p className="text-xs text-muted-foreground mt-0.5">Get started in 4 simple steps and unlock powerful insights.</p>
+            </div>
           </div>
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground text-xl p-1">×</button>
+          <button onClick={onClose} className="w-7 h-7 rounded-xl border border-white/10 flex items-center justify-center text-muted-foreground hover:text-foreground text-xs font-bold transition-all hover:bg-white/5">
+            ✕
+          </button>
         </div>
 
-        <div className="space-y-3 text-[11px] text-muted-foreground leading-relaxed">
-          <div className="p-3 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-300">
-            💡 <strong>Read-Only API Keys Required:</strong> AlgoFin only requires read-only API permissions to sync your balance, open positions, and trading history. Never grant withdrawal permissions.
+        {/* 4 Vertical Timeline Steps */}
+        <div className="relative pl-2.5 space-y-3">
+          {/* Vertical Connecting Line */}
+          <div className="absolute left-[21px] top-6 bottom-6 w-0.5 bg-gradient-to-b from-purple-500/60 via-cyan-500/60 to-blue-500/60" />
+
+          {/* Step 1 */}
+          <div className="relative flex items-center gap-3.5 z-10">
+            <div className="w-8 h-8 rounded-full bg-[#0c0915] border-2 border-purple-500 text-purple-400 font-bold text-xs flex items-center justify-center shrink-0 shadow-md">
+              1
+            </div>
+            <div className="flex-1 bg-[#0a0f1d]/90 border border-purple-500/20 hover:border-purple-500/40 rounded-2xl p-3 px-4 flex items-center justify-between gap-3 transition-all shadow-sm">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 shrink-0">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+                    <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="font-bold text-foreground text-sm">Connect Exchange</h3>
+                  <p className="text-xs text-muted-foreground mt-0.5">Securely link read-only API keys from your exchange account.</p>
+                </div>
+              </div>
+              <span className="px-2.5 py-1 rounded-full bg-purple-950/70 border border-purple-500/40 text-purple-300 text-[10px] font-semibold tracking-wide whitespace-nowrap shrink-0">
+                🛡 100% Secure
+              </span>
+            </div>
           </div>
 
-          <div className="space-y-1">
-            <h3 className="font-semibold text-foreground text-xs">1. Binance API Setup</h3>
-            <p>Go to API Management → Create API Key → Check <strong>Enable Reading</strong> only.</p>
+          {/* Step 2 */}
+          <div className="relative flex items-center gap-3.5 z-10">
+            <div className="w-8 h-8 rounded-full bg-[#0c0915] border-2 border-purple-500 text-purple-400 font-bold text-xs flex items-center justify-center shrink-0 shadow-md">
+              2
+            </div>
+            <div className="flex-1 bg-[#0a0f1d]/90 border border-purple-500/20 hover:border-purple-500/40 rounded-2xl p-3 px-4 flex items-center justify-between gap-3 transition-all shadow-sm">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 shrink-0">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M21.5 2v6h-6M2.5 22v-6h6" />
+                    <path d="M2 11.5a10 10 0 0 1 18.8-4.3L21.5 8M22 12.5a10 10 0 0 1-18.8 4.2L2.5 16" />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="font-bold text-foreground text-sm">Sync Portfolio</h3>
+                  <p className="text-xs text-muted-foreground mt-0.5">Automatically import balances, open positions & trade history.</p>
+                </div>
+              </div>
+              <span className="px-2.5 py-1 rounded-full bg-purple-950/70 border border-purple-500/40 text-purple-300 text-[10px] font-semibold tracking-wide whitespace-nowrap shrink-0">
+                🖥 Auto Sync
+              </span>
+            </div>
           </div>
 
-          <div className="space-y-1 border-t border-white/6 pt-2">
-            <h3 className="font-semibold text-foreground text-xs">2. Bybit API Setup</h3>
-            <p>Go to API Management → System-Generated API Keys → Select <strong>Read-Only</strong> permissions.</p>
+          {/* Step 3 */}
+          <div className="relative flex items-center gap-3.5 z-10">
+            <div className="w-8 h-8 rounded-full bg-[#06151f] border-2 border-cyan-500 text-cyan-400 font-bold text-xs flex items-center justify-center shrink-0 shadow-md">
+              3
+            </div>
+            <div className="flex-1 bg-[#06141d]/90 border border-cyan-500/20 hover:border-cyan-500/40 rounded-2xl p-3 px-4 flex items-center justify-between gap-3 transition-all shadow-sm">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400 shrink-0">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <line x1="18" y1="20" x2="18" y2="10" />
+                    <line x1="12" y1="20" x2="12" y2="4" />
+                    <line x1="6" y1="20" x2="6" y2="14" />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="font-bold text-foreground text-sm">View Analytics</h3>
+                  <p className="text-xs text-muted-foreground mt-0.5">Track performance metrics & get real-time AI trading insights.</p>
+                </div>
+              </div>
+              <span className="px-2.5 py-1 rounded-full bg-cyan-950/70 border border-cyan-500/40 text-cyan-300 text-[10px] font-semibold tracking-wide whitespace-nowrap shrink-0">
+                📈 AI Insights
+              </span>
+            </div>
           </div>
 
-          <div className="space-y-1 border-t border-white/6 pt-2">
-            <h3 className="font-semibold text-foreground text-xs">3. Coinbase Advanced Setup</h3>
-            <p>Create API Key on Coinbase Developer Platform with read account/order scopes.</p>
-          </div>
-
-          <div className="space-y-1 border-t border-white/6 pt-2">
-            <h3 className="font-semibold text-foreground text-xs">4. Delta Exchange Setup</h3>
-            <p>Create Read-Only API Key under Profile settings for Futures &amp; Options sync.</p>
+          {/* Step 4 */}
+          <div className="relative flex items-center gap-3.5 z-10">
+            <div className="w-8 h-8 rounded-full bg-[#071120] border-2 border-blue-500 text-blue-400 font-bold text-xs flex items-center justify-center shrink-0 shadow-md">
+              4
+            </div>
+            <div className="flex-1 bg-[#081324]/90 border border-blue-500/20 hover:border-blue-500/40 rounded-2xl p-3 px-4 flex items-center justify-between gap-3 transition-all shadow-sm">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 shrink-0">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                    <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="font-bold text-foreground text-sm">Stay Updated</h3>
+                  <p className="text-xs text-muted-foreground mt-0.5">Real-time market feeds keep your dashboard data always fresh.</p>
+                </div>
+              </div>
+              <span className="px-2.5 py-1 rounded-full bg-blue-950/70 border border-blue-500/40 text-blue-300 text-[10px] font-semibold tracking-wide whitespace-nowrap shrink-0">
+                ⚡ Real-time
+              </span>
+            </div>
           </div>
         </div>
 
+        {/* Bottom Button */}
         <div className="pt-1">
-          <button onClick={onClose}
-            className="w-full py-2 rounded-xl bg-white/10 hover:bg-white/15 text-foreground text-xs font-semibold transition-all">
-            Close Guide
+          <button onClick={onClose} className="w-full py-2.5 rounded-xl bg-cyan-500 text-black text-xs font-bold hover:bg-cyan-400 transition-all glow-cyan-sm shadow-md">
+            Got It
           </button>
         </div>
       </div>
