@@ -391,7 +391,7 @@ export default function AssistantPage() {
   ];
 
   return (
-    <div className="flex flex-col h-[calc(100vh-3.25rem-3rem)] w-full max-w-[1440px] mx-auto overflow-hidden gap-3">
+    <div className="flex flex-col h-full w-full max-w-[1440px] mx-auto overflow-hidden gap-3 px-5 sm:px-8 py-6">
       {/* ── Header Row ─────────────────────────────────────────────────── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 shrink-0">
         <div>

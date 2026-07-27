@@ -284,6 +284,8 @@ function MobileTopBar({ onLogout }: { onLogout: () => void }) {
 // ── App layout ────────────────────────────────────────────────────
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
+  const pathname = usePathname();
+  const isFullBleed = pathname === "/assistant";
   const { user, setAccessToken, setUser, clearAuth, logout } = useAuthStore();
 
   // Initialize checking state synchronously if already authenticated in Zustand/localStorage
@@ -340,7 +342,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       {/* Main area: offset by sidebar width, scrolls independently */}
       <div className="flex-1 flex flex-col min-w-0 lg:ml-60">
         <MobileTopBar onLogout={handleLogout} />
-        <main className="flex-1 overflow-y-auto px-5 py-6 sm:px-8">
+        <main className={`flex-1 px-5 sm:px-8 ${isFullBleed ? "overflow-hidden py-0" : "overflow-y-auto py-6"}`}>
           {checking ? (
             <div className="page-content space-y-6 animate-fade-in">
               <div className="skeleton h-8 w-48 rounded-lg" />
