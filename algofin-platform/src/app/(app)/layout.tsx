@@ -293,7 +293,17 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const isFullBleed = pathname === "/assistant";
   const { user, setAccessToken, setUser, clearAuth, logout } = useAuthStore();
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  // On /assistant the sidebar starts collapsed; everywhere else it starts open
+  const [sidebarOpen, setSidebarOpen] = useState(() => pathname !== "/assistant");
+
+  // Auto-manage sidebar open state when navigating between pages
+  useEffect(() => {
+    if (pathname === "/assistant") {
+      setSidebarOpen(false);
+    } else {
+      setSidebarOpen(true);
+    }
+  }, [pathname]);
 
   // Initialize checking state synchronously if already authenticated in Zustand/localStorage
   const [checking, setChecking] = useState(() => {
@@ -353,8 +363,16 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       {/* Fixed sidebar — renders instantly with no unmounting or flickering */}
       <Sidebar user={user} onLogout={handleLogout} open={sidebarOpen} />
 
-      {/* Main area: offset by sidebar width when open, scrolls independently */}
-      <div className={`flex-1 flex flex-col min-w-0 h-full transition-all duration-300 ease-in-out ${sidebarOpen ? "lg:ml-60" : "lg:ml-0"}`}>
+      {/* Backdrop: only on /assistant, closes sidebar when clicked */}
+      {isFullBleed && sidebarOpen && (
+        <div
+          className="fixed inset-0 z-20 bg-black/40 lg:block hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
+      {/* Main area: offset by sidebar width when open (non-assistant pages), scrolls independently */}
+      <div className={`flex-1 flex flex-col min-w-0 h-full transition-all duration-300 ease-in-out ${!isFullBleed && sidebarOpen ? "lg:ml-60" : "lg:ml-0"}`}>
         <MobileTopBar onLogout={handleLogout} />
         <main className={`flex-1 ${isFullBleed ? "overflow-hidden py-0 h-full" : "overflow-y-auto py-6 pr-5 sm:pr-8"}`}>
           {checking ? (
