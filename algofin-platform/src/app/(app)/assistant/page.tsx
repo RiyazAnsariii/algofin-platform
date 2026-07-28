@@ -345,25 +345,48 @@ function SearchPanel({
                   )}
                 </div>
 
-                {/* Hover controls: pin + 3-dot */}
+                {/* Controls: pin + 3-dot — always visible */}
                 {renamingId !== c.id && (
-                  <div className="flex items-center gap-0.5 shrink-0">
+                  <div style={{ display: "flex", alignItems: "center", gap: "2px", flexShrink: 0 }}>
+                    {/* Pin button */}
                     <button
                       type="button"
                       title={c.pinned ? "Unpin" : "Pin"}
                       onClick={(e) => { e.stopPropagation(); onTogglePin(c.id); }}
-                      className={`p-1 rounded-lg hover:bg-white/10 transition-all ${ c.pinned ? "text-amber-400" : "text-muted-foreground hover:text-amber-400" }`}
+                      style={{
+                        padding: "4px",
+                        borderRadius: "6px",
+                        background: "transparent",
+                        border: "none",
+                        cursor: "pointer",
+                        color: c.pinned ? "#f59e0b" : "#6b7280",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
                     >
-                      <svg width="10" height="10" viewBox="0 0 24 24" fill={c.pinned ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill={c.pinned ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2">
                         <path d="m12 17-7 5 2-8L2 9l8-1 2-7 2 7 8 1-5 5 2 8z"/>
                       </svg>
                     </button>
+
+                    {/* 3-dot menu button */}
                     <button
                       type="button"
                       onClick={(e) => { e.stopPropagation(); setMenuId(menuId === c.id ? null : c.id); }}
-                      className="p-1 rounded-lg hover:bg-white/10 text-muted-foreground hover:text-foreground transition-all"
+                      style={{
+                        padding: "4px",
+                        borderRadius: "6px",
+                        background: menuId === c.id ? "rgba(255,255,255,0.1)" : "transparent",
+                        border: "none",
+                        cursor: "pointer",
+                        color: "#9ca3af",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
                     >
-                      <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
                         <circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/>
                       </svg>
                     </button>
