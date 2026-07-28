@@ -347,7 +347,7 @@ function SearchPanel({
 
                 {/* Hover controls: pin + 3-dot */}
                 {renamingId !== c.id && (
-                  <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                  <div className="flex items-center gap-0.5 shrink-0">
                     <button
                       type="button"
                       title={c.pinned ? "Unpin" : "Pin"}
@@ -527,7 +527,7 @@ function HistoryPanel({
 
         {/* Hover controls */}
         {!renamingId && (
-          <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+          <div className="flex items-center gap-0.5 shrink-0">
             <button
               type="button"
               title={c.pinned ? "Unpin" : "Pin"}
@@ -790,7 +790,7 @@ function ConversationsPanel({
 
         {/* Hover controls: pin + 3-dot */}
         {!renamingLocal && (
-          <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+          <div className="flex items-center gap-0.5 shrink-0">
             <button
               type="button"
               title={c.pinned ? "Unpin" : "Pin"}
