@@ -82,7 +82,7 @@ class Settings(BaseSettings):
     gemini_model: str = "gemini-flash-latest"  # primary model
     # Fallback models tried in order if primary hits quota (429)
     gemini_fallback_models: str = "gemini-flash-lite-latest,gemini-2.0-flash-lite-001"
-    assistant_max_history: int = 40  # messages kept in context per session
+    assistant_max_history: int = 20  # messages kept in context per session (20 = ~10 turns)
 
     # ── Sync intervals (minutes) ───────────────────────────────────
     sync_balances_interval_minutes: int = 10

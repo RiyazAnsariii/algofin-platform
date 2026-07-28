@@ -235,7 +235,7 @@ def _get_cached_model(model_name: str) -> genai.GenerativeModel:
         generation_config=genai.GenerationConfig(
             temperature=0.4,
             top_p=0.95,
-            max_output_tokens=2048,
+            max_output_tokens=1500,
         ),
     )
 
@@ -316,6 +316,9 @@ async def chat_stream(
                 model = _build_gemini_model(model_name)
                 gemini_history = _messages_to_gemini_history(history)
                 chat = model.start_chat(history=gemini_history)
+                # Use stream=False for the initial call so that function-calling
+                # (tool use) works correctly — Gemini requires a complete response
+                # to inspect function_call parts before dispatching tools.
                 response = await chat.send_message_async(user_message, stream=False)
                 if attempt > 0:
                     logger.info(f"[Assistant] Fell back to model: {model_name}")
@@ -353,10 +356,15 @@ async def chat_stream(
             }
             return
 
-        # Function calling loop
+        # ── Function calling loop ─────────────────────────────────────
+        # Rounds 1..N-1: stream=False (required for tool/function-call detection).
+        # Final round (no more tool calls): stream=True for true token streaming
+        # so the client sees the first words within ~1 second.
         full_response = ""
         max_tool_rounds = 5
-        for _ in range(max_tool_rounds):
+        final_stream = None  # will hold the streaming response on the last turn
+
+        for round_num in range(max_tool_rounds):
             # Check for function calls
             fn_calls = [
                 part.function_call
@@ -366,11 +374,21 @@ async def chat_stream(
             ]
 
             if not fn_calls:
-                # No tool calls — extract text response
-                for candidate in response.candidates:
-                    for part in candidate.content.parts:
-                        if hasattr(part, "text") and part.text:
-                            full_response += part.text
+                # No more tool calls — this is the final text turn.
+                # Re-request with stream=True to get true token streaming.
+                if round_num == 0:
+                    # First turn and no tool calls — re-issue with streaming.
+                    # Build a fresh chat with the same history to stream the reply.
+                    stream_chat = model.start_chat(history=gemini_history)
+                    final_stream = await stream_chat.send_message_async(
+                        user_message, stream=True
+                    )
+                else:
+                    # After tool rounds: re-request the last tool-result batch with streaming.
+                    final_stream = await chat.send_message_async(
+                        genai.protos.Content(parts=tool_responses, role="user"),
+                        stream=True,
+                    )
                 break
 
             # Execute each tool call — deduplicate within this round
@@ -407,21 +425,27 @@ async def chat_stream(
                     )
                 )
 
-            # Send tool results back to Gemini
+            # Send tool results back to Gemini (non-streaming — need to inspect
+            # whether the model wants another tool call or will now respond).
             response = await chat.send_message_async(
                 genai.protos.Content(parts=tool_responses, role="user"),
                 stream=False,
             )
 
-        # Stream the final text response word by word for UX
-        if full_response:
-            words = full_response.split(" ")
-            chunk = ""
-            for i, word in enumerate(words):
-                chunk += word + " "
-                if (i + 1) % 5 == 0 or i == len(words) - 1:
-                    yield {"type": "chunk", "content": chunk}
-                    chunk = ""
+        # ── True streaming: yield chunks as they arrive from Gemini ──
+        if final_stream is not None:
+            async for chunk in final_stream:
+                try:
+                    text = chunk.text
+                    if text:
+                        full_response += text
+                        yield {"type": "chunk", "content": text}
+                except Exception:
+                    # Some chunks (e.g. finish-reason only) have no .text — skip.
+                    pass
+        elif full_response:
+            # Fallback: shouldn't normally reach here, but guard against it.
+            yield {"type": "chunk", "content": full_response}
         else:
             yield {"type": "chunk", "content": "(No response generated)"}
 
