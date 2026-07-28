@@ -148,14 +148,20 @@ const NAV_ITEMS = [
 function Sidebar({
   user,
   onLogout,
+  open,
 }: {
   user: User | null;
   onLogout: () => void;
+  open: boolean;
 }) {
   const pathname = usePathname();
 
   return (
-    <aside className="w-60 flex-shrink-0 hidden lg:flex flex-col border-r border-white/6 bg-sidebar h-screen fixed top-0 left-0 z-30">
+    <aside
+      className={`w-60 flex-shrink-0 hidden lg:flex flex-col border-r border-white/6 bg-sidebar h-screen fixed top-0 left-0 z-30 transition-transform duration-300 ease-in-out ${
+        open ? "translate-x-0" : "-translate-x-full"
+      }`}
+    >
       {/* Logo */}
       <div className="px-4 h-14 flex items-center border-b border-white/6">
         <Link href="/dashboard" className="flex items-center gap-2.5 group">
@@ -287,6 +293,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const isFullBleed = pathname === "/assistant";
   const { user, setAccessToken, setUser, clearAuth, logout } = useAuthStore();
+  const [sidebarOpen, setSidebarOpen] = useState(true);
 
   // Initialize checking state synchronously if already authenticated in Zustand/localStorage
   const [checking, setChecking] = useState(() => {
@@ -297,6 +304,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     }
     return true;
   });
+
+  // Listen for sidebar toggle events dispatched by child pages (e.g. assistant)
+  useEffect(() => {
+    const handler = () => setSidebarOpen((prev) => !prev);
+    window.addEventListener("algofin:toggle-sidebar", handler);
+    return () => window.removeEventListener("algofin:toggle-sidebar", handler);
+  }, []);
 
   useEffect(() => {
     const guard = async () => {
@@ -337,10 +351,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex h-screen overflow-hidden bg-background">
       {/* Fixed sidebar — renders instantly with no unmounting or flickering */}
-      <Sidebar user={user} onLogout={handleLogout} />
+      <Sidebar user={user} onLogout={handleLogout} open={sidebarOpen} />
 
-      {/* Main area: offset by sidebar width, scrolls independently */}
-      <div className="flex-1 flex flex-col min-w-0 h-full lg:ml-60">
+      {/* Main area: offset by sidebar width when open, scrolls independently */}
+      <div className={`flex-1 flex flex-col min-w-0 h-full transition-all duration-300 ease-in-out ${sidebarOpen ? "lg:ml-60" : "lg:ml-0"}`}>
         <MobileTopBar onLogout={handleLogout} />
         <main className={`flex-1 ${isFullBleed ? "overflow-hidden py-0 h-full" : "overflow-y-auto py-6 pr-5 sm:pr-8"}`}>
           {checking ? (
