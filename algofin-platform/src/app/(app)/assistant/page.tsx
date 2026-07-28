@@ -205,210 +205,25 @@ function renderInline(text: string) {
   });
 }
 
-// ── Shared Conversation Item Row with Pin, 3-Dots, Rename, and Delete ──────────
-function ConversationRowItem({
-  convo,
-  isActive,
-  onLoad,
-  onTogglePin,
-  onDelete,
-  onRename,
-}: {
-  convo: SavedConversation;
-  isActive: boolean;
-  onLoad: (c: SavedConversation) => void;
-  onTogglePin: (id: string) => void;
-  onDelete: (id: string) => void;
-  onRename: (id: string, newTitle: string) => void;
-}) {
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
-  const [editTitle, setEditTitle] = useState(convo.title);
-  const menuRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    setEditTitle(convo.title);
-  }, [convo.title]);
-
-  // Close dropdown menu on click outside
-  useEffect(() => {
-    if (!menuOpen) return;
-    const handleClickOutside = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        setMenuOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [menuOpen]);
-
-  const handleSaveRename = () => {
-    if (editTitle.trim() && editTitle.trim() !== convo.title) {
-      onRename(convo.id, editTitle.trim());
-    } else {
-      setEditTitle(convo.title);
-    }
-    setIsEditing(false);
-    setMenuOpen(false);
-  };
-
-  return (
-    <div
-      onClick={() => {
-        if (!isEditing) onLoad(convo);
-      }}
-      className={`group relative flex items-center justify-between gap-1.5 px-2.5 py-2 rounded-xl cursor-pointer transition-all border ${
-        isActive
-          ? "bg-cyan-500/10 border-cyan-500/20 text-cyan-300 shadow-sm"
-          : "hover:bg-white/5 border-transparent text-foreground/90 hover:text-foreground"
-      }`}
-    >
-      {/* Title / Inline Edit */}
-      <div className="flex-1 min-w-0 pr-1">
-        {isEditing ? (
-          <input
-            type="text"
-            value={editTitle}
-            onChange={(e) => setEditTitle(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") handleSaveRename();
-              if (e.key === "Escape") {
-                setEditTitle(convo.title);
-                setIsEditing(false);
-              }
-            }}
-            onBlur={handleSaveRename}
-            onClick={(e) => e.stopPropagation()}
-            autoFocus
-            className="w-full bg-black/70 border border-cyan-500/50 rounded-lg px-2 py-1 text-[11px] text-foreground outline-none focus:ring-1 focus:ring-cyan-400"
-          />
-        ) : (
-          <div>
-            <p className={`text-[11px] font-medium truncate ${isActive ? "text-cyan-300 font-semibold" : "text-foreground/90 group-hover:text-foreground"}`}>
-              {convo.title}
-            </p>
-            <p className="text-[9.5px] text-muted-foreground/50 mt-0.5">
-              {new Date(convo.updatedAt).toLocaleDateString()}
-            </p>
-          </div>
-        )}
-      </div>
-
-      {/* Action Buttons: Pin + 3-Dots (visible on hover or when pinned or menu is open) */}
-      {!isEditing && (
-        <div
-          className={`flex items-center gap-0.5 shrink-0 transition-opacity duration-150 ${
-            convo.pinned || menuOpen ? "opacity-100" : "opacity-0 group-hover:opacity-100"
-          }`}
-          onClick={(e) => e.stopPropagation()}
-        >
-          {/* Pin Button */}
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              onTogglePin(convo.id);
-            }}
-            className={`p-1 rounded-md transition-all ${
-              convo.pinned
-                ? "text-amber-400 hover:bg-amber-400/10"
-                : "text-muted-foreground/70 hover:text-foreground hover:bg-white/10"
-            }`}
-            title={convo.pinned ? "Unpin conversation" : "Pin conversation"}
-          >
-            {/* Pushpin SVG Icon */}
-            <svg width="12" height="12" viewBox="0 0 24 24" fill={convo.pinned ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="m15 4.5-3 3-4 1 1 4-3 3 1.5 1.5 3-3 4 1 1-4 3-3z" />
-              <path d="m9 15-6 6" />
-            </svg>
-          </button>
-
-          {/* 3-Dots Menu Button */}
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              setMenuOpen(!menuOpen);
-            }}
-            className={`p-1 rounded-md transition-all ${
-              menuOpen
-                ? "bg-white/15 text-foreground"
-                : "text-muted-foreground/70 hover:text-foreground hover:bg-white/10"
-            }`}
-            title="More options"
-          >
-            {/* Horizontal 3 dots (...) icon */}
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
-              <circle cx="5" cy="12" r="2" />
-              <circle cx="12" cy="12" r="2" />
-              <circle cx="19" cy="12" r="2" />
-            </svg>
-          </button>
-        </div>
-      )}
-
-      {/* Dropdown Menu Popup (ONLY Rename & Delete as requested) */}
-      {menuOpen && (
-        <div
-          ref={menuRef}
-          onClick={(e) => e.stopPropagation()}
-          className="absolute right-1 top-8 z-50 bg-[#0d1722] border border-white/12 rounded-xl shadow-2xl overflow-hidden min-w-[130px] py-1 backdrop-blur-md"
-        >
-          {/* Option 1: Rename */}
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              setMenuOpen(false);
-              setIsEditing(true);
-            }}
-            className="w-full flex items-center gap-2.5 px-3 py-2 text-[11px] font-medium text-gray-200 hover:text-white hover:bg-white/8 transition-all text-left"
-          >
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-400 shrink-0">
-              <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" />
-            </svg>
-            <span>Rename</span>
-          </button>
-
-          {/* Option 2: Delete */}
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              setMenuOpen(false);
-              onDelete(convo.id);
-            }}
-            className="w-full flex items-center gap-2.5 px-3 py-2 text-[11px] font-medium text-rose-400 hover:bg-rose-500/10 transition-all text-left"
-          >
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-rose-400 shrink-0">
-              <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-            </svg>
-            <span>Delete</span>
-          </button>
-        </div>
-      )}
-    </div>
-  );
-}
-
 // ── Panel: Search ─────────────────────────────────────────────────────────────
 function SearchPanel({
   conversations,
-  activeId,
   onLoad,
-  onDelete,
   onTogglePin,
+  onDelete,
   onRename,
 }: {
   conversations: SavedConversation[];
-  activeId: string | null;
   onLoad: (c: SavedConversation) => void;
-  onDelete: (id: string) => void;
   onTogglePin: (id: string) => void;
+  onDelete: (id: string) => void;
   onRename: (id: string, newTitle: string) => void;
 }) {
   const [query, setQuery] = useState("");
   const [filterType, setFilterType] = useState<"all" | "ticker" | "topic">("all");
+  const [menuId, setMenuId] = useState<string | null>(null);
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [renameText, setRenameText] = useState("");
 
   const filters = [
     { id: "all" as const,    label: "All" },
@@ -425,8 +240,19 @@ function SearchPanel({
     return c.title.toLowerCase().includes(q) || c.messages.some((m) => m.content.toLowerCase().includes(q));
   });
 
+  const startRename = (c: SavedConversation) => {
+    setMenuId(null);
+    setRenamingId(c.id);
+    setRenameText(c.title);
+  };
+
+  const commitRename = (id: string) => {
+    if (renameText.trim()) onRename(id, renameText.trim());
+    setRenamingId(null);
+  };
+
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full" onClick={() => setMenuId(null)}>
       <div className="px-3 py-3 border-b border-white/6 shrink-0">
         <h2 className="text-sm font-bold text-foreground mb-2">Search</h2>
         <div className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-xl px-2.5 py-1.5">
@@ -489,19 +315,94 @@ function SearchPanel({
         {filtered.length === 0 ? (
           <p className="text-[11px] text-muted-foreground/40 text-center py-8">{query ? "No results found" : "No conversations yet"}</p>
         ) : (
-          <div className="space-y-1">
+          <div className="space-y-0.5">
             {query && <p className="text-[10px] text-muted-foreground/50 px-2 pb-1">{filtered.length} result{filtered.length !== 1 ? "s" : ""}</p>}
             {filtered.map((c) => (
-              <ConversationRowItem
+              <div
                 key={c.id}
-                convo={c}
-                isActive={c.id === activeId}
-                onLoad={onLoad}
-                onTogglePin={onTogglePin}
-                onDelete={onDelete}
-                onRename={onRename}
-              />
+                className="group relative flex items-center gap-2 px-2.5 py-2 rounded-xl hover:bg-white/5 border border-transparent hover:border-white/8 transition-all cursor-pointer"
+                onClick={() => { if (renamingId === c.id) return; onLoad(c); }}
+              >
+                {/* Title or inline rename */}
+                <div className="flex-1 min-w-0">
+                  {renamingId === c.id ? (
+                    <input
+                      autoFocus
+                      value={renameText}
+                      onChange={(e) => setRenameText(e.target.value)}
+                      onClick={(e) => e.stopPropagation()}
+                      onBlur={() => commitRename(c.id)}
+                      onKeyDown={(e) => { if (e.key === "Enter") commitRename(c.id); if (e.key === "Escape") setRenamingId(null); }}
+                      className="w-full bg-white/10 border border-cyan-500/40 rounded-lg px-2 py-0.5 text-[11px] text-foreground outline-none"
+                    />
+                  ) : (
+                    <>
+                      <p className="text-[11px] font-medium text-foreground/90 group-hover:text-foreground truncate">
+                        {c.pinned && <span className="inline-block mr-1 text-amber-400">★</span>}{c.title}
+                      </p>
+                      <p className="text-[10px] text-muted-foreground/50 mt-0.5">{new Date(c.updatedAt).toLocaleDateString()}</p>
+                    </>
+                  )}
+                </div>
+
+                {/* Hover controls: pin + 3-dot */}
+                {renamingId !== c.id && (
+                  <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                    <button
+                      type="button"
+                      title={c.pinned ? "Unpin" : "Pin"}
+                      onClick={(e) => { e.stopPropagation(); onTogglePin(c.id); }}
+                      className={`p-1 rounded-lg hover:bg-white/10 transition-all ${ c.pinned ? "text-amber-400" : "text-muted-foreground hover:text-amber-400" }`}
+                    >
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill={c.pinned ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2">
+                        <path d="m12 17-7 5 2-8L2 9l8-1 2-7 2 7 8 1-5 5 2 8z"/>
+                      </svg>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); setMenuId(menuId === c.id ? null : c.id); }}
+                      className="p-1 rounded-lg hover:bg-white/10 text-muted-foreground hover:text-foreground transition-all"
+                    >
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor">
+                        <circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/>
+                      </svg>
+                    </button>
+                  </div>
+                )}
+
+                {/* Dropdown: Rename + Delete */}
+                {menuId === c.id && (
+                  <div
+                    className="absolute right-0 top-8 z-50 bg-[#0d1f2d] border border-white/10 rounded-xl shadow-xl overflow-hidden min-w-[130px]"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); startRename(c); }}
+                      className="w-full flex items-center gap-2 px-3 py-2 text-[11px] text-muted-foreground hover:text-foreground hover:bg-white/5 transition-all"
+                    >
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                        <path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4Z"/>
+                      </svg>
+                      Rename
+                    </button>
+                    <div className="border-t border-white/6 mx-2 my-0.5" />
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); onDelete(c.id); setMenuId(null); }}
+                      className="w-full flex items-center gap-2 px-3 py-2 text-[11px] text-rose-400 hover:bg-rose-500/10 transition-all"
+                    >
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                      </svg>
+                      Delete
+                    </button>
+                  </div>
+                )}
+              </div>
             ))}
+
           </div>
         )}
       </div>
@@ -515,15 +416,11 @@ function PinnedPanel({
   activeId,
   onLoad,
   onTogglePin,
-  onDelete,
-  onRename,
 }: {
   conversations: SavedConversation[];
   activeId: string | null;
   onLoad: (c: SavedConversation) => void;
   onTogglePin: (id: string) => void;
-  onDelete: (id: string) => void;
-  onRename: (id: string, newTitle: string) => void;
 }) {
   const pinned = conversations.filter((c) => c.pinned);
 
@@ -544,24 +441,37 @@ function PinnedPanel({
           </div>
         ) : (
           <div className="space-y-1">
-            {pinned.map((c) => (
-              <ConversationRowItem
-                key={c.id}
-                convo={c}
-                isActive={c.id === activeId}
-                onLoad={onLoad}
-                onTogglePin={onTogglePin}
-                onDelete={onDelete}
-                onRename={onRename}
-              />
-            ))}
+            {pinned.map((c) => {
+              const isActive = c.id === activeId;
+              return (
+                <div
+                  key={c.id}
+                  onClick={() => onLoad(c)}
+                  className={`group relative flex items-start gap-2 px-2.5 py-2 rounded-xl cursor-pointer transition-all ${isActive ? "bg-cyan-500/10 border border-cyan-500/20" : "hover:bg-white/5 border border-transparent"}`}
+                >
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" className="text-amber-400 mt-0.5 shrink-0">
+                    <path d="m12 17-7 5 2-8L2 9l8-1 2-7 2 7 8 1-5 5 2 8z"/>
+                  </svg>
+                  <div className="flex-1 min-w-0">
+                    <p className={`text-[11px] font-medium truncate ${isActive ? "text-cyan-300" : "text-foreground/90"}`}>{c.title}</p>
+                    <p className="text-[10px] text-muted-foreground/50">{new Date(c.updatedAt).toLocaleDateString()}</p>
+                  </div>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); onTogglePin(c.id); }}
+                    className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-white/10 text-muted-foreground hover:text-rose-400 transition-all shrink-0"
+                    title="Unpin"
+                  >
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+                  </button>
+                </div>
+              );
+            })}
           </div>
         )}
       </div>
     </div>
   );
 }
-
 
 // ── Panel: History ─────────────────────────────────────────────────────────────
 function HistoryPanel({
@@ -584,31 +494,67 @@ function HistoryPanel({
 
   function ConvoItem({ c }: { c: SavedConversation }) {
     const isActive = c.id === activeId;
+    const [renamingId, setRenamingId] = useState<string | null>(null);
+    const [renameText, setRenameText] = useState("");
+
+    const startRename = () => { setMenuId(null); setRenamingId(c.id); setRenameText(c.title); };
+    const commitRename = () => { if (renameText.trim()) onRename(c.id, renameText.trim()); setRenamingId(null); };
+
     return (
       <div
         className={`group relative flex items-center gap-2 px-2.5 py-2 rounded-xl cursor-pointer transition-all ${isActive ? "bg-cyan-500/10 border border-cyan-500/20" : "hover:bg-white/5 border border-transparent"}`}
-        onClick={() => { setMenuId(null); onLoad(c); }}
+        onClick={() => { if (renamingId) return; setMenuId(null); onLoad(c); }}
       >
         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-muted-foreground/40 shrink-0 mt-0.5">
           <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
         </svg>
         <div className="flex-1 min-w-0">
-          <p className={`text-[11px] font-medium truncate ${isActive ? "text-cyan-300" : "text-foreground/90"}`}>{c.title}</p>
+          {renamingId === c.id ? (
+            <input
+              autoFocus
+              value={renameText}
+              onChange={(e) => setRenameText(e.target.value)}
+              onClick={(e) => e.stopPropagation()}
+              onBlur={commitRename}
+              onKeyDown={(e) => { if (e.key === "Enter") commitRename(); if (e.key === "Escape") setRenamingId(null); }}
+              className="w-full bg-white/10 border border-cyan-500/40 rounded-lg px-2 py-0.5 text-[11px] text-foreground outline-none"
+            />
+          ) : (
+            <p className={`text-[11px] font-medium truncate ${isActive ? "text-cyan-300" : "text-foreground/90"}`}>{c.title}</p>
+          )}
           <p className="text-[10px] text-muted-foreground/50">{new Date(c.updatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</p>
         </div>
-        <button
-          type="button"
-          onClick={(e) => { e.stopPropagation(); setMenuId(menuId === c.id ? null : c.id); }}
-          className="opacity-0 group-hover:opacity-100 p-1 rounded-lg hover:bg-white/10 text-muted-foreground hover:text-foreground transition-all shrink-0"
-        >
-          <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
-        </button>
-        {menuId === c.id && (
-          <div className="absolute right-0 top-8 z-50 bg-[#0d1f2d] border border-white/10 rounded-xl shadow-xl overflow-hidden min-w-[140px]">
-            <button type="button" onClick={(e) => { e.stopPropagation(); onTogglePin(c.id); setMenuId(null); }} className="w-full flex items-center gap-2 px-3 py-2 text-[11px] text-muted-foreground hover:text-foreground hover:bg-white/5 transition-all">
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m12 17-7 5 2-8L2 9l8-1 2-7 2 7 8 1-5 5 2 8z"/></svg>
-              {c.pinned ? "Unpin" : "Pin"}
+
+        {/* Hover controls */}
+        {!renamingId && (
+          <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+            <button
+              type="button"
+              title={c.pinned ? "Unpin" : "Pin"}
+              onClick={(e) => { e.stopPropagation(); onTogglePin(c.id); }}
+              className={`p-1 rounded-lg hover:bg-white/10 transition-all ${ c.pinned ? "text-amber-400" : "text-muted-foreground hover:text-amber-400" }`}
+            >
+              <svg width="10" height="10" viewBox="0 0 24 24" fill={c.pinned ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2">
+                <path d="m12 17-7 5 2-8L2 9l8-1 2-7 2 7 8 1-5 5 2 8z"/>
+              </svg>
             </button>
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); setMenuId(menuId === c.id ? null : c.id); }}
+              className="p-1 rounded-lg hover:bg-white/10 text-muted-foreground hover:text-foreground transition-all"
+            >
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
+            </button>
+          </div>
+        )}
+
+        {menuId === c.id && (
+          <div className="absolute right-0 top-8 z-50 bg-[#0d1f2d] border border-white/10 rounded-xl shadow-xl overflow-hidden min-w-[130px]" onClick={(e) => e.stopPropagation()}>
+            <button type="button" onClick={(e) => { e.stopPropagation(); startRename(); }} className="w-full flex items-center gap-2 px-3 py-2 text-[11px] text-muted-foreground hover:text-foreground hover:bg-white/5 transition-all">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4Z"/></svg>
+              Rename
+            </button>
+            <div className="border-t border-white/6 mx-2 my-0.5" />
             <button type="button" onClick={(e) => { e.stopPropagation(); onDelete(c.id); setMenuId(null); }} className="w-full flex items-center gap-2 px-3 py-2 text-[11px] text-rose-400 hover:bg-rose-500/10 transition-all">
               <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
               Delete
@@ -803,29 +749,91 @@ function ConversationsPanel({
   onTogglePin: (id: string) => void;
   onRename: (id: string, newTitle: string) => void;
 }) {
-  const [search, setSearch] = useState("");
+  const [search, setSearch]   = useState("");
+  const [menuId, setMenuId]   = useState<string | null>(null);
 
   const filtered = conversations.filter((c) =>
     c.title.toLowerCase().includes(search.toLowerCase())
   );
   const { pinned, today, yesterday, thisWeek, earlier } = groupByDate(filtered);
 
+  function ConvoItem({ c }: { c: SavedConversation }) {
+    const isActive = c.id === activeId;
+    const [renamingLocal, setRenamingLocal] = useState(false);
+    const [renameText, setRenameText] = useState(c.title);
+
+    const startRename = () => { setMenuId(null); setRenamingLocal(true); setRenameText(c.title); };
+    const commitRename = () => { if (renameText.trim()) onRename(c.id, renameText.trim()); setRenamingLocal(false); };
+
+    return (
+      <div
+        className={`group relative flex items-center gap-2 px-2.5 py-2 rounded-xl cursor-pointer transition-all ${isActive ? "bg-cyan-500/10 border border-cyan-500/20" : "hover:bg-white/5 border border-transparent"}`}
+        onClick={() => { if (renamingLocal) return; setMenuId(null); onLoad(c); }}
+      >
+        {c.pinned && <svg width="9" height="9" viewBox="0 0 24 24" fill="currentColor" className="text-amber-400 shrink-0"><path d="m12 17-7 5 2-8L2 9l8-1 2-7 2 7 8 1-5 5 2 8z"/></svg>}
+        <div className="flex-1 min-w-0">
+          {renamingLocal ? (
+            <input
+              autoFocus
+              value={renameText}
+              onChange={(e) => setRenameText(e.target.value)}
+              onClick={(e) => e.stopPropagation()}
+              onBlur={commitRename}
+              onKeyDown={(e) => { if (e.key === "Enter") commitRename(); if (e.key === "Escape") setRenamingLocal(false); }}
+              className="w-full bg-white/10 border border-cyan-500/40 rounded-lg px-2 py-0.5 text-[11px] text-foreground outline-none"
+            />
+          ) : (
+            <p className={`text-[11px] font-medium truncate ${isActive ? "text-cyan-300" : "text-foreground/90"}`}>{c.title}</p>
+          )}
+          <p className="text-[10px] text-muted-foreground/50">{new Date(c.updatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</p>
+        </div>
+
+        {/* Hover controls: pin + 3-dot */}
+        {!renamingLocal && (
+          <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+            <button
+              type="button"
+              title={c.pinned ? "Unpin" : "Pin"}
+              onClick={(e) => { e.stopPropagation(); onTogglePin(c.id); }}
+              className={`p-1 rounded-lg hover:bg-white/10 transition-all ${ c.pinned ? "text-amber-400" : "text-muted-foreground hover:text-amber-400" }`}
+            >
+              <svg width="10" height="10" viewBox="0 0 24 24" fill={c.pinned ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2">
+                <path d="m12 17-7 5 2-8L2 9l8-1 2-7 2 7 8 1-5 5 2 8z"/>
+              </svg>
+            </button>
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); setMenuId(menuId === c.id ? null : c.id); }}
+              className="p-1 rounded-lg hover:bg-white/10 text-muted-foreground hover:text-foreground transition-all"
+            >
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
+            </button>
+          </div>
+        )}
+
+        {menuId === c.id && (
+          <div className="absolute right-0 top-8 z-50 bg-[#0d1f2d] border border-white/10 rounded-xl shadow-xl overflow-hidden min-w-[130px]" onClick={(e) => e.stopPropagation()}>
+            <button type="button" onClick={(e) => { e.stopPropagation(); startRename(); }} className="w-full flex items-center gap-2 px-3 py-2 text-[11px] text-muted-foreground hover:text-foreground hover:bg-white/5 transition-all">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4Z"/></svg>
+              Rename
+            </button>
+            <div className="border-t border-white/6 mx-2 my-0.5" />
+            <button type="button" onClick={(e) => { e.stopPropagation(); onDelete(c.id); setMenuId(null); }} className="w-full flex items-center gap-2 px-3 py-2 text-[11px] text-rose-400 hover:bg-rose-500/10 transition-all">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+              Delete
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  }
+
   function Section({ label, items }: { label: string; items: SavedConversation[] }) {
     if (!items.length) return null;
     return (
-      <div className="space-y-1">
+      <div className="space-y-0.5">
         <p className="text-[9px] font-bold text-muted-foreground/40 uppercase tracking-widest px-2 mb-1">{label}</p>
-        {items.map((c) => (
-          <ConversationRowItem
-            key={c.id}
-            convo={c}
-            isActive={c.id === activeId}
-            onLoad={onLoad}
-            onTogglePin={onTogglePin}
-            onDelete={onDelete}
-            onRename={onRename}
-          />
-        ))}
+        {items.map((c) => <ConvoItem key={c.id} c={c} />)}
       </div>
     );
   }
@@ -1205,9 +1213,8 @@ export default function AssistantPage() {
   };
 
   const handleRenameConversation = (id: string, newTitle: string) => {
-    if (!newTitle.trim()) return;
     setConversations((prev) => {
-      const updated = prev.map((c) => (c.id === id ? { ...c, title: newTitle.trim() } : c));
+      const updated = prev.map((c) => c.id === id ? { ...c, title: newTitle } : c);
       saveConversations(updated);
       return updated;
     });
@@ -1477,24 +1484,13 @@ export default function AssistantPage() {
           >
             <div className="w-[220px] h-full">
               {activePanel === "search" && (
-                <SearchPanel
-                  conversations={conversations}
-                  activeId={activeConvoId}
-                  onLoad={handleLoadConversation}
-                  onDelete={handleDeleteConversation}
-                  onTogglePin={handleTogglePin}
-                  onRename={handleRenameConversation}
-                />
+                <SearchPanel conversations={conversations} onLoad={handleLoadConversation} onTogglePin={handleTogglePin} onDelete={handleDeleteConversation} onRename={handleRenameConversation} />
               )}
               {activePanel === "pinned" && (
-                <PinnedPanel
-                  conversations={conversations}
-                  activeId={activeConvoId}
-                  onLoad={handleLoadConversation}
-                  onTogglePin={handleTogglePin}
-                  onDelete={handleDeleteConversation}
-                  onRename={handleRenameConversation}
-                />
+                <PinnedPanel conversations={conversations} activeId={activeConvoId} onLoad={handleLoadConversation} onTogglePin={handleTogglePin} />
+              )}
+              {activePanel === "history" && (
+                <HistoryPanel conversations={conversations} activeId={activeConvoId} onNew={handleNewConversation} onLoad={handleLoadConversation} onDelete={handleDeleteConversation} onTogglePin={handleTogglePin} onRename={handleRenameConversation} />
               )}
               {activePanel === "reports" && (
                 <ReportsPanel />
@@ -1503,15 +1499,7 @@ export default function AssistantPage() {
                 <NotificationsPanel notifications={notifications} onMarkRead={handleMarkRead} onMarkAllRead={handleMarkAllRead} />
               )}
               {activePanel === "conversations" && (
-                <ConversationsPanel
-                  conversations={conversations}
-                  activeId={activeConvoId}
-                  onNew={handleNewConversation}
-                  onLoad={handleLoadConversation}
-                  onDelete={handleDeleteConversation}
-                  onTogglePin={handleTogglePin}
-                  onRename={handleRenameConversation}
-                />
+                <ConversationsPanel conversations={conversations} activeId={activeConvoId} onNew={handleNewConversation} onLoad={handleLoadConversation} onDelete={handleDeleteConversation} onTogglePin={handleTogglePin} onRename={handleRenameConversation} />
               )}
             </div>
           </div>
