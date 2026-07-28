@@ -1142,24 +1142,13 @@ export default function AssistantPage() {
     onClick?: () => void;
   }> = [
     {
-      id: null,
+      id: "search" as PanelId,
       label: "Open sidebar",
       title: "Open sidebar",
       icon: (
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <rect x="3" y="3" width="18" height="18" rx="2"/>
           <path d="M9 3v18"/>
-        </svg>
-      ),
-      onClick: () => window.dispatchEvent(new Event("algofin:toggle-sidebar")),
-    },
-    {
-      id: "search",
-      label: "Search",
-      title: "Search conversations",
-      icon: (
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>
         </svg>
       ),
     },
