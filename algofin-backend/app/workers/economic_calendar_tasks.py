@@ -64,11 +64,45 @@ async def run_startup_sync_if_needed(db: AsyncSession, redis: aioredis.Redis) ->
     """
     Startup sync safeguard called on application boot (lifespan).
     If last sync was >30 minutes ago or DB is empty, attempts to acquire distributed lock and run immediate sync.
+
+    IMPORTANT: Always bumps the Redis cache version on startup so stale cached responses
+    (which may contain now-blacklisted events or wrong impacts) are immediately invalidated
+    after any code deployment. This ensures blacklist rule changes take effect instantly.
     """
     try:
         service = EconomicCalendarService(db)
 
-        # 1. Check if DB is empty or data age > 30 minutes
+        # 0. ALWAYS bump Redis cache version on startup — this instantly invalidates all
+        #    cached API responses so the new blacklist rules apply immediately.
+        if redis:
+            new_version = await EconomicCalendarCache.increment_version(redis)
+            logger.info(f"[StartupSync] Redis cache version bumped to {new_version} — stale responses invalidated.")
+
+        # 1. Purge any DB events that are now blacklisted by updated rules.
+        #    This ensures stale blacklisted events don't serve from DB after deploy.
+        try:
+            from app.events.blacklist import is_event_blacklisted
+            from sqlalchemy import select, delete
+            from app.models.economic_event import EconomicEvent
+
+            all_events_result = await db.execute(select(EconomicEvent))
+            all_events = all_events_result.scalars().all()
+            blacklisted_ids = [
+                evt.id for evt in all_events
+                if is_event_blacklisted(evt.title, evt.currency)
+            ]
+            if blacklisted_ids:
+                await db.execute(
+                    delete(EconomicEvent).where(EconomicEvent.id.in_(blacklisted_ids))
+                )
+                await db.commit()
+                logger.info(f"[StartupSync] Purged {len(blacklisted_ids)} blacklisted events from DB.")
+            else:
+                logger.info("[StartupSync] No blacklisted events found in DB — DB is clean.")
+        except Exception as purge_exc:
+            logger.warning(f"[StartupSync] Non-fatal: Could not purge blacklisted events: {purge_exc}")
+
+        # 2. Check if DB is empty or data age > 30 minutes
         total_count = await service.repo.get_total_events_count()
         metrics = await EconomicCalendarCache.get_sync_metrics(redis)
 
@@ -86,12 +120,16 @@ async def run_startup_sync_if_needed(db: AsyncSession, redis: aioredis.Redis) ->
                     logger.info(f"[StartupSync] Data is {int(age_mins)} mins old. Immediate sync needed.")
             except Exception:
                 needs_sync = True
+        else:
+            # No sync metrics in Redis — treat as first boot
+            needs_sync = True
+            logger.info("[StartupSync] No sync metrics found. Triggering immediate sync.")
 
         if not needs_sync:
             logger.info("[StartupSync] Data is fresh. Skipping startup sync.")
             return
 
-        # 2. Acquire Redis lock to prevent duplicate sync jobs across multiple workers
+        # 3. Acquire Redis lock to prevent duplicate sync jobs across multiple workers
         locked = await EconomicCalendarCache.acquire_lock(redis, ttl_seconds=60)
         if not locked:
             logger.info("[StartupSync] Another worker acquired startup sync lock. Skipping.")
@@ -107,3 +145,4 @@ async def run_startup_sync_if_needed(db: AsyncSession, redis: aioredis.Redis) ->
 
     except Exception as exc:
         logger.warning(f"[StartupSync] Non-fatal exception during startup sync: {exc}")
+
