@@ -194,12 +194,23 @@ def is_forced_high_impact(title: str, currency: Optional[str] = None) -> bool:
     t_lower = title.strip().lower()
     curr = (currency or "").strip().upper()
 
+    # ADP Non-Farm Employment Change is 🟠 Medium on FF (Aug 5 confirmed) — NOT High
+    # 'non-farm employment change' pattern is for non-ADP NFP releases only
+    # Skip pattern loop entirely for ADP version
+    if "adp" in t_lower:
+        return False
+
     for pattern in FORCED_HIGH_IMPACT_PATTERNS:
         if pattern in t_lower:
             return True
 
     # AUD CPI m/m and CPI y/y are 🔴 High impact on Forex Factory (confirmed Jul 29)
     if curr == "AUD" and t_lower in ("cpi m/m", "cpi y/y"):
+        return True
+
+    # NZD Unemployment Rate is 🔴 High on FF (Aug 5 confirmed)
+    # Title is now bare 'Unemployment Rate' for NZD (no 'NZ' prefix) so pattern 'nz unemployment rate' won't match
+    if curr == "NZD" and t_lower == "unemployment rate":
         return True
 
     return False

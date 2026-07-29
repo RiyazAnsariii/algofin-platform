@@ -263,6 +263,13 @@ def _is_noise_event(title: str, country: str = "") -> bool:
     # NOTE: 'Italian' removed from this list — FF Aug 4 confirms 'Italian Retail Sales m/m' (1:30pm EUR Low) IS valid
     if "retail sales" in t and any(c in t for c in ("spanish", "austrian", "portuguese", "dutch", "greek", "belgian", "irish")):
         return True
+    # S&P Global Services PMI: Spain and Italy are valid FF events — exempt from _NOISE_EXACT_TITLES
+    # AUD, NZD and other countries are NOT on FF — block them
+    # Uses substring match to also catch 'S&P Global Services PMI Final'
+    if "s&p global services pmi" in t:
+        if c_lower in ("spain", "es", "italy", "it"):
+            return False
+        return True  # AUD, NZD, and all others are noise
     # S&P Global Manufacturing PMI: Spain, Italy, and Canada are valid FF events — exempt from _NOISE_EXACT_TITLES
     # (CAD Aug 4 confirmed: TradingView sends 'S&P Global Manufacturing PMI' for Canada -> should show as 'Manufacturing PMI')
     if t == "s&p global manufacturing pmi" and c_lower in ("spain", "es", "italy", "it", "canada", "ca"):
@@ -279,6 +286,9 @@ def _is_noise_event(title: str, country: str = "") -> bool:
         return False
     # JPY Prelim Industrial Production m/m is a valid FF event (Jul 31 confirmed) — exempt from "industrial production" keyword
     if "prelim industrial production" in t and c_lower in ("japan", "jp"):
+        return False
+    # French Industrial Production m/m is a valid FF event (Aug 5 confirmed) — exempt from "industrial production" keyword
+    if "industrial production m/m" in t and c_lower in ("france", "fr"):
         return False
     # JPY and CHF Retail Sales y/y are valid FF events (Jul 31 confirmed) — exempt from "retail sales y/y" keyword
     if "retail sales y/y" in t and c_lower in ("japan", "jp", "switzerland", "ch"):
@@ -333,6 +343,10 @@ _EXACT_TITLE_MAP: dict[str, str] = {
     "BoE MPC Member Pill Speech": "MPC Member Pill Speaks",
     "MPC Member Pill Speech": "MPC Member Pill Speaks",
     "Pill Speech": "MPC Member Pill Speaks",
+    # NZD Labour Cost Index — FF uses 'Labor Cost Index q/q' (American spelling, singular 'Cost')
+    "Labour Costs Index q/q": "Labor Cost Index q/q",
+    "Labour Cost Index q/q": "Labor Cost Index q/q",
+    "Labor Costs Index q/q": "Labor Cost Index q/q",
     "RBA Hunter Speech": "RBA Assist Gov Hunter Speaks",
     "RBA Hunter Speaks": "RBA Assist Gov Hunter Speaks",
     "RBA Official Speech": "RBA Official Speaks",
@@ -576,8 +590,9 @@ def _format_title_forex_factory_style(title: str, country: str = "") -> str:
         return f"{prefix}{tag}{cpi_type} {period}".strip()
 
     # 5. Country-prefixed Unemployment Rate for non-US
-    # NOTE: JPY Unemployment Rate keeps bare "Unemployment Rate" (FF format) — not "Japanese Unemployment Rate"
-    if t.strip() == "Unemployment Rate" and adj and country not in ("United States", "US", "Japan", "JP"):
+    # NOTE: JPY and NZD Unemployment Rate keeps bare "Unemployment Rate" (FF format) — not "Japanese/NZ Unemployment Rate"
+    # NZD High impact is handled separately in is_forced_high_impact via currency-aware rule
+    if t.strip() == "Unemployment Rate" and adj and country not in ("United States", "US", "Japan", "JP", "New Zealand", "NZ"):
         return f"{adj} Unemployment Rate"
 
     # 6. Standard Forex Factory format conversions
