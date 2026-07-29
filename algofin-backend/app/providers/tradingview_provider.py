@@ -259,16 +259,20 @@ def _is_noise_event(title: str, country: str = "") -> bool:
     # Permanently drop generic House Price Index and y/y (keep HPI m/m & S&P/CS Composite-20 HPI y/y)
     if ("house price index" in t or "home price" in t) and not ("composite-20" in t or "hpi m/m" in t):
         return True
-    # Permanently drop regional European Retail Sales (Spanish, Italian, Austrian, Portuguese, Dutch, Greek)
-    if "retail sales" in t and any(c in t for c in ("spanish", "italian", "austrian", "portuguese", "dutch", "greek", "belgian", "irish")):
+    # Permanently drop regional European Retail Sales (Spanish, Austrian, Portuguese, Dutch, Greek, Belgian, Irish)
+    # NOTE: 'Italian' removed from this list — FF Aug 4 confirms 'Italian Retail Sales m/m' (1:30pm EUR Low) IS valid
+    if "retail sales" in t and any(c in t for c in ("spanish", "austrian", "portuguese", "dutch", "greek", "belgian", "irish")):
         return True
-    if t == "s&p global manufacturing pmi" and c_lower in ("spain", "es", "italy", "it"):
+    # S&P Global Manufacturing PMI: Spain, Italy, and Canada are valid FF events — exempt from _NOISE_EXACT_TITLES
+    # (CAD Aug 4 confirmed: TradingView sends 'S&P Global Manufacturing PMI' for Canada -> should show as 'Manufacturing PMI')
+    if t == "s&p global manufacturing pmi" and c_lower in ("spain", "es", "italy", "it", "canada", "ca"):
         return False
     # ANZ Business Confidence is a valid Forex Factory event (Jul 29/30 confirmed) — exempt from "business confidence" keyword
     if "anz business confidence" in t or "anz-business confidence" in t:
         return False
-    # Italian 10-y Bond Auction is a valid FF event (Jul 30 Tentative/Low EUR) — exempt from "bond auction" keyword
-    if "italian 10-y bond" in t or "italian 10-year bond" in t:
+    # 10-y Bond Auctions are valid FF events across all currencies—exempt from 'bond auction' keyword
+    # Confirmed: Italian 10-y (Jul 30 EUR Tentative), JPY 10-y (Aug 4 9:05am), French 10-y (Aug 4 EUR Tentative)
+    if "10-y bond" in t or "10-year bond" in t:
         return False
     # Advance GDP Price Index q/q is a valid FF event (Jul 30 USD Medium) — exempt from "gdp price index" keyword
     if "advance gdp price index" in t:
@@ -485,7 +489,7 @@ def _format_title_forex_factory_style(title: str, country: str = "") -> str:
         return f"CPI {period}"
     if "manufacturing pmi" in t_lower and "ism" not in t_lower and "ratingdog" not in t_lower and "caixin" not in t_lower:
         is_final = "final" in t_lower
-        if country in ("Japan", "JP", "Eurozone", "EU", "United Kingdom", "GB", "United States", "US", "Australia", "AU", "New Zealand", "NZ"):
+        if country in ("Japan", "JP", "Eurozone", "EU", "United Kingdom", "GB", "United States", "US", "Australia", "AU", "New Zealand", "NZ", "Canada", "CA"):
             return "Final Manufacturing PMI" if is_final else "Manufacturing PMI"
         if country in ("France", "FR"):
             return "French Final Manufacturing PMI" if is_final else "French Manufacturing PMI"
