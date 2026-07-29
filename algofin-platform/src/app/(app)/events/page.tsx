@@ -905,168 +905,191 @@ export default function EventsPage() {
                       </div>
                     </td>
                   </tr>
-                  {/* Event Rows for Selected Single Day */}
-                  {singleDayEvents.map((evt) => {
+                  {/* Event Rows for Selected Single Day — FF-style time grouping */}
+                  {singleDayEvents.map((evt, idx) => {
                     const effectiveImpact = isForcedHighImpactFrontend(evt.title)
                       ? "high"
                       : (isForcedMediumImpactFrontend(evt.title, evt.currency)
                           ? "medium"
                           : ((evt.impact || "low").toLowerCase() as ImpactLevel));
                     const impactCfg = IMPACT_CONFIG[effectiveImpact] || IMPACT_CONFIG.low;
-                      const isAlertOn = alertMap[evt.id];
-                      const isActualBetter =
-                        evt.actual && evt.forecast && parseFloat(evt.actual) > parseFloat(evt.forecast);
-                      const isActualWorse =
-                        evt.actual && evt.forecast && parseFloat(evt.actual) < parseFloat(evt.forecast);
+                    const isAlertOn = alertMap[evt.id];
+                    const isActualBetter =
+                      evt.actual && evt.forecast && parseFloat(evt.actual) > parseFloat(evt.forecast);
+                    const isActualWorse =
+                      evt.actual && evt.forecast && parseFloat(evt.actual) < parseFloat(evt.forecast);
 
-                      return (
-                        <tr
-                          key={evt.id}
-                          className="hover:bg-white/[0.03] transition-colors group border-b border-white/[0.04]"
-                        >
-                          {/* Date */}
-                          <td className="py-2.5 px-4 text-muted-foreground/80 font-medium text-[11px] whitespace-nowrap w-28">
-                            {new Date(evt.event_time).toLocaleDateString("en-US", {
+                    // ── FF-style time grouping: show time only for the first event in each time slot
+                    const prevEvt = idx > 0 ? singleDayEvents[idx - 1] : null;
+                    const prevTime = prevEvt ? formatTimeOnly(prevEvt.event_time) : null;
+                    const thisTime = formatTimeOnly(evt.event_time);
+                    const isFirstInTimeGroup = prevTime !== thisTime;
+
+                    // Check if this is the last row in its time group (to draw a bottom separator)
+                    const nextEvt = idx < singleDayEvents.length - 1 ? singleDayEvents[idx + 1] : null;
+                    const nextTime = nextEvt ? formatTimeOnly(nextEvt.event_time) : null;
+                    const isLastInTimeGroup = nextTime !== thisTime;
+
+                    return (
+                      <tr
+                        key={evt.id}
+                        className={`hover:bg-white/[0.03] transition-colors group ${
+                          isLastInTimeGroup
+                            ? "border-b border-white/[0.07]"
+                            : "border-b border-white/[0.02]"
+                        }`}
+                      >
+                        {/* Date — shown only for first event in each time group */}
+                        <td className="py-2.5 px-4 text-muted-foreground/80 font-medium text-[11px] whitespace-nowrap w-28">
+                          {isFirstInTimeGroup ? (
+                            new Date(evt.event_time).toLocaleDateString("en-US", {
                               weekday: "short",
                               month: "short",
                               day: "numeric",
-                            })}
-                          </td>
+                            })
+                          ) : (
+                            <span className="block w-4 border-l-2 border-white/10 h-full" />
+                          )}
+                        </td>
 
-                          {/* Time */}
-                          <td className="py-2.5 px-3 font-mono text-muted-foreground font-semibold whitespace-nowrap text-[11px] w-20">
-                            {formatTimeOnly(evt.event_time)}
-                          </td>
+                        {/* Time — shown only for first event in each time group */}
+                        <td className="py-2.5 px-3 font-mono font-semibold whitespace-nowrap text-[11px] w-20">
+                          {isFirstInTimeGroup ? (
+                            <span className="text-cyan-300/80">{thisTime}</span>
+                          ) : (
+                            <span className="block ml-2 w-3 border-l-2 border-white/10" />
+                          )}
+                        </td>
 
-                          {/* Currency */}
-                          <td className="py-2.5 px-3 text-center whitespace-nowrap w-16">
-                            <span className="inline-flex items-center gap-1 font-bold text-foreground bg-white/5 border border-white/10 px-2 py-0.5 rounded-md font-mono text-[10px]">
-                              <span>{CURRENCY_FLAGS[evt.currency] || "🌐"}</span>
-                              <span>{evt.currency}</span>
-                            </span>
-                          </td>
+                        {/* Currency */}
+                        <td className="py-2.5 px-3 text-center whitespace-nowrap w-16">
+                          <span className="inline-flex items-center gap-1 font-bold text-foreground bg-white/5 border border-white/10 px-2 py-0.5 rounded-md font-mono text-[10px]">
+                            <span>{CURRENCY_FLAGS[evt.currency] || "🌐"}</span>
+                            <span>{evt.currency}</span>
+                          </span>
+                        </td>
 
-                          {/* Impact */}
-                          <td className="py-2.5 px-3 text-center whitespace-nowrap w-20">
+                        {/* Impact */}
+                        <td className="py-2.5 px-3 text-center whitespace-nowrap w-20">
+                          <span
+                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md font-bold text-[10px] border ${impactCfg.bg} ${impactCfg.text} ${impactCfg.border}`}
+                          >
+                            <span className={`w-1.5 h-1.5 rounded-full ${impactCfg.folderBg}`} />
+                            <span>{impactCfg.label}</span>
+                          </span>
+                        </td>
+
+                        {/* Event Title */}
+                        <td className="py-2.5 px-4 font-semibold text-foreground group-hover:text-cyan-300 transition-colors">
+                          <div className="flex items-center gap-2">
+                            <span>{evt.title}</span>
+                            {evt.status === "Ongoing" && (
+                              <span className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/40 animate-pulse">
+                                Live
+                              </span>
+                            )}
+                            {evt.status === "Completed" && (
+                              <span className="px-1.5 py-0.5 rounded text-[9px] font-medium uppercase tracking-wider bg-emerald-500/10 text-emerald-400/80 border border-emerald-500/20">
+                                Done
+                              </span>
+                            )}
+                          </div>
+                        </td>
+
+                        {/* Alerts Toggle */}
+                        <td className="py-2.5 px-2 text-center w-12">
+                          <button
+                            type="button"
+                            onClick={() => toggleAlert(evt.id, evt.title)}
+                            className={`p-1 rounded-lg transition-all ${
+                              isAlertOn
+                                ? "text-amber-400 bg-amber-500/20 border border-amber-500/30"
+                                : "text-muted-foreground/50 hover:text-foreground hover:bg-white/10"
+                            }`}
+                            title={isAlertOn ? "Alert active (15m before)" : "Set alert"}
+                          >
+                            🔔
+                          </button>
+                        </td>
+
+                        {/* Detail Modal Trigger */}
+                        <td className="py-2.5 px-2 text-center w-12">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setActiveModalEvent(evt);
+                              setModalTab("detail");
+                            }}
+                            className={`p-1 rounded-lg border transition-all flex items-center justify-center mx-auto ${impactCfg.folderColor}`}
+                            title={`View Details (${impactCfg.label} Impact)`}
+                          >
+                            <svg
+                              width="14"
+                              height="14"
+                              viewBox="0 0 24 24"
+                              fill={impactCfg.folderFill}
+                              stroke="currentColor"
+                              strokeWidth="1.5"
+                            >
+                              <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+                            </svg>
+                          </button>
+                        </td>
+
+                        {/* Actual */}
+                        <td className="py-2.5 px-3 text-right font-mono font-bold text-[11px] whitespace-nowrap w-24">
+                          {evt.actual !== null ? (
                             <span
-                              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md font-bold text-[10px] border ${impactCfg.bg} ${impactCfg.text} ${impactCfg.border}`}
+                              className={
+                                isActualBetter
+                                  ? "text-emerald-400"
+                                  : isActualWorse
+                                  ? "text-rose-400"
+                                  : "text-foreground"
+                              }
                             >
-                              <span className={`w-1.5 h-1.5 rounded-full ${impactCfg.folderBg}`} />
-                              <span>{impactCfg.label}</span>
+                              {evt.actual}
                             </span>
-                          </td>
+                          ) : (
+                            <span className="text-muted-foreground/30 font-normal">--</span>
+                          )}
+                        </td>
 
-                          {/* Event Title */}
-                          <td className="py-2.5 px-4 font-semibold text-foreground group-hover:text-cyan-300 transition-colors">
-                            <div className="flex items-center gap-2">
-                              <span>{evt.title}</span>
-                              {evt.status === "Ongoing" && (
-                                <span className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/40 animate-pulse">
-                                  Live
-                                </span>
-                              )}
-                              {evt.status === "Completed" && (
-                                <span className="px-1.5 py-0.5 rounded text-[9px] font-medium uppercase tracking-wider bg-emerald-500/10 text-emerald-400/80 border border-emerald-500/20">
-                                  Done
-                                </span>
-                              )}
-                            </div>
-                          </td>
+                        {/* Forecast */}
+                        <td className="py-2.5 px-3 text-right font-mono text-muted-foreground/90 font-medium text-[11px] whitespace-nowrap w-24">
+                          {evt.forecast ?? "--"}
+                        </td>
 
-                          {/* Alerts Toggle */}
-                          <td className="py-2.5 px-2 text-center w-12">
-                            <button
-                              type="button"
-                              onClick={() => toggleAlert(evt.id, evt.title)}
-                              className={`p-1 rounded-lg transition-all ${
-                                isAlertOn
-                                  ? "text-amber-400 bg-amber-500/20 border border-amber-500/30"
-                                  : "text-muted-foreground/50 hover:text-foreground hover:bg-white/10"
-                              }`}
-                              title={isAlertOn ? "Alert active (15m before)" : "Set alert"}
-                            >
-                              🔔
-                            </button>
-                          </td>
+                        {/* Previous */}
+                        <td className="py-2.5 px-3 text-right font-mono text-muted-foreground/70 text-[11px] whitespace-nowrap w-24">
+                          {evt.previous ? (
+                            <span>
+                              {evt.previous}
+                              {isActualBetter && <span className="text-emerald-400 ml-1">▲</span>}
+                              {isActualWorse && <span className="text-rose-400 ml-1">▼</span>}
+                            </span>
+                          ) : (
+                            "--"
+                          )}
+                        </td>
 
-                          {/* Detail Modal Trigger */}
-                          <td className="py-2.5 px-2 text-center w-12">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setActiveModalEvent(evt);
-                                setModalTab("detail");
-                              }}
-                              className={`p-1 rounded-lg border transition-all flex items-center justify-center mx-auto ${impactCfg.folderColor}`}
-                              title={`View Details (${impactCfg.label} Impact)`}
-                            >
-                              <svg
-                                width="14"
-                                height="14"
-                                viewBox="0 0 24 24"
-                                fill={impactCfg.folderFill}
-                                stroke="currentColor"
-                                strokeWidth="1.5"
-                              >
-                                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
-                              </svg>
-                            </button>
-                          </td>
-
-                          {/* Actual */}
-                          <td className="py-2.5 px-3 text-right font-mono font-bold text-[11px] whitespace-nowrap w-24">
-                            {evt.actual !== null ? (
-                              <span
-                                className={
-                                  isActualBetter
-                                    ? "text-emerald-400"
-                                    : isActualWorse
-                                    ? "text-rose-400"
-                                    : "text-foreground"
-                                }
-                              >
-                                {evt.actual}
-                              </span>
-                            ) : (
-                              <span className="text-muted-foreground/30 font-normal">--</span>
-                            )}
-                          </td>
-
-                          {/* Forecast */}
-                          <td className="py-2.5 px-3 text-right font-mono text-muted-foreground/90 font-medium text-[11px] whitespace-nowrap w-24">
-                            {evt.forecast ?? "--"}
-                          </td>
-
-                          {/* Previous */}
-                          <td className="py-2.5 px-3 text-right font-mono text-muted-foreground/70 text-[11px] whitespace-nowrap w-24">
-                            {evt.previous ? (
-                              <span>
-                                {evt.previous}
-                                {isActualBetter && <span className="text-emerald-400 ml-1">▲</span>}
-                                {isActualWorse && <span className="text-rose-400 ml-1">▼</span>}
-                              </span>
-                            ) : (
-                              "--"
-                            )}
-                          </td>
-
-                          {/* Graph Modal Trigger */}
-                          <td className="py-2.5 px-3 text-center w-14">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setActiveModalEvent(evt);
-                                setModalTab("graph");
-                              }}
-                              className="p-1 rounded-lg text-cyan-400/70 hover:text-cyan-400 hover:bg-cyan-500/10 transition-colors"
-                              title="View Graph"
-                            >
-                              📊
-                            </button>
-                          </td>
-                        </tr>
-                      );
-                    })}
+                        {/* Graph Modal Trigger */}
+                        <td className="py-2.5 px-3 text-center w-14">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setActiveModalEvent(evt);
+                              setModalTab("graph");
+                            }}
+                            className="p-1 rounded-lg text-cyan-400/70 hover:text-cyan-400 hover:bg-cyan-500/10 transition-colors"
+                            title="View Graph"
+                          >
+                            📊
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
                   </>
                 )}
             </tbody>
