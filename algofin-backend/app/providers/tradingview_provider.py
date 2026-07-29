@@ -141,12 +141,13 @@ _NOISE_KEYWORDS: tuple[str, ...] = (
     "private house approvals",
     "30-year mortgage", "15-year mortgage", "mortgage rate",
 
-    # Sentiment clutter (keep headline Consumer Confidence & Ifo Business Climate)
+    # Sentiment clutter (keep headline Consumer Confidence, Ifo Business Climate, ANZ Business Confidence, KOF)
     "business confidence",
     "industrial sentiment", "services sentiment",
     "economic sentiment", "selling price expectations",
     "consumer inflation expectations",
-    "anz business confidence", "kof leading",
+    # NOTE: "anz business confidence" is valid on FF (Jul 29/30) — NOT a noise event
+    # NOTE: "kof leading" / KOF Economic Barometer is valid on FF (Jul 30) — NOT a noise event
     "nab business", "westpac consumer",
     "consumer confidence final",
     "ifo current conditions", "ifo expectations",
@@ -263,10 +264,14 @@ def _is_noise_event(title: str, country: str = "") -> bool:
         return True
     if t == "s&p global manufacturing pmi" and c_lower in ("spain", "es", "italy", "it"):
         return False
+    # ANZ Business Confidence is a valid Forex Factory event (Jul 29/30 confirmed) — exempt from "business confidence" keyword
+    if "anz business confidence" in t or "anz-business confidence" in t:
+        return False
     for kw in _NOISE_KEYWORDS:
         if kw in t:
             return True
     return t in _NOISE_EXACT_TITLES
+
 
 
 
@@ -292,8 +297,15 @@ _COUNTRY_ADJECTIVES: dict[str, str] = {
 
 _EXACT_TITLE_MAP: dict[str, str] = {
     "Fed Press Conference": "FOMC Press Conference",
+    "FOMC Press Conference": "FOMC Press Conference",
     "Fed Interest Rate Decision": "Federal Funds Rate",
     "Federal Reserve Interest Rate Decision": "Federal Funds Rate",
+    # FOMC Statement — TradingView sends various raw titles for this FF event
+    "FOMC Statement": "FOMC Statement",
+    "Fed Statement": "FOMC Statement",
+    "Fed Monetary Policy Statement": "FOMC Statement",
+    "Federal Reserve Statement": "FOMC Statement",
+    "Fed Rate Statement": "FOMC Statement",
     "BoE Gov Bailey Speech": "BOE Gov Bailey Speaks",
     "BoE Gov Bailey Speaks": "BOE Gov Bailey Speaks",
     "RBA Hunter Speech": "RBA Assist Gov Hunter Speaks",
