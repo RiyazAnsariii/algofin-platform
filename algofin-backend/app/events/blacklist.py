@@ -124,6 +124,11 @@ EXCLUDED_EXACT_TITLES = {
     # Note: USD "Advance GDP q/q" is handled separately via currency-aware rule in is_event_blacklisted
     # EUR: Not present on Forex Factory
     "Wage Growth y/y",
+    # JPY: Wrong title format — FF uses "Tokyo Core CPI y/y" (Medium), not these generic national CPI titles
+    # TradingView sends "Tokyo Core CPI" which was being incorrectly formatted as "Japanese Core CPI y/y"
+    "Japanese Core CPI y/y",
+    "Japanese CPI y/y",
+    "Japanese CPI m/m",
 }
 
 # 🔴 High Impact (Red Folder) Events on Forex Factory
@@ -162,7 +167,8 @@ FORCED_HIGH_IMPACT_PATTERNS = [
 FORCED_MEDIUM_IMPACT_PATTERNS = [
     "tokyo core cpi",
     "core cpi flash estimate",
-    "cpi flash estimate",
+    # NOTE: "cpi flash estimate" REMOVED — FF Jul 31 shows bare "CPI Flash Estimate y/y" as Low (yellow folder)
+    # Only "Core CPI Flash Estimate y/y" is Medium. The broad "cpi flash estimate" pattern was catching both.
     "employment cost index",
     "chicago pmi",
     "ism manufacturing prices",

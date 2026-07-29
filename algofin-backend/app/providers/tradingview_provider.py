@@ -273,6 +273,12 @@ def _is_noise_event(title: str, country: str = "") -> bool:
     # Advance GDP Price Index q/q is a valid FF event (Jul 30 USD Medium) — exempt from "gdp price index" keyword
     if "advance gdp price index" in t:
         return False
+    # JPY Prelim Industrial Production m/m is a valid FF event (Jul 31 confirmed) — exempt from "industrial production" keyword
+    if "prelim industrial production" in t and c_lower in ("japan", "jp"):
+        return False
+    # JPY and CHF Retail Sales y/y are valid FF events (Jul 31 confirmed) — exempt from "retail sales y/y" keyword
+    if "retail sales y/y" in t and c_lower in ("japan", "jp", "switzerland", "ch"):
+        return False
     for kw in _NOISE_KEYWORDS:
         if kw in t:
             return True
@@ -314,6 +320,15 @@ _EXACT_TITLE_MAP: dict[str, str] = {
     "Fed Rate Statement": "FOMC Statement",
     "BoE Gov Bailey Speech": "BOE Gov Bailey Speaks",
     "BoE Gov Bailey Speaks": "BOE Gov Bailey Speaks",
+    # BOJ Monetary Policy Statement — TradingView sends various raw titles
+    "BOJ Monetary Policy Statement": "Monetary Policy Statement",
+    "BoJ Monetary Policy Statement": "Monetary Policy Statement",
+    "BOJ Statement": "Monetary Policy Statement",
+    "BOJ Monetary Decision": "Monetary Policy Statement",
+    # MPC Member Pill Speaks — GBP Low event on FF Jul 31
+    "BoE MPC Member Pill Speech": "MPC Member Pill Speaks",
+    "MPC Member Pill Speech": "MPC Member Pill Speaks",
+    "Pill Speech": "MPC Member Pill Speaks",
     "RBA Hunter Speech": "RBA Assist Gov Hunter Speaks",
     "RBA Hunter Speaks": "RBA Assist Gov Hunter Speaks",
     "RBA Official Speech": "RBA Official Speaks",
@@ -531,6 +546,13 @@ def _format_title_forex_factory_style(title: str, country: str = "") -> str:
 
     # 4. Country-specific CPI: German Prelim CPI y/y, French Flash CPI m/m, CPI m/m (Australia/AUD), etc.
     if "Inflation Rate" in t or "CPI" in t:
+        # Special case: Tokyo CPI (Japan's leading CPI indicator) — must keep "Tokyo" prefix, not "Japanese"
+        # FF title: "Tokyo Core CPI y/y" (Medium) — TradingView sends "Tokyo Core CPI", "Tokyo CPI ex Fresh Food", etc.
+        if "Tokyo" in t or "tokyo" in t_lower:
+            if "Core" in t or "core" in t_lower or "ex fresh" in t_lower or "ex food" in t_lower:
+                return "Tokyo Core CPI y/y"
+            return "Tokyo CPI y/y"
+
         period = "y/y" if ("YoY" in t or "y/y" in t) else ("m/m" if ("MoM" in t or "m/m" in t) else "")
         tag = ""
         if "Flash" in t:
@@ -550,7 +572,8 @@ def _format_title_forex_factory_style(title: str, country: str = "") -> str:
         return f"{prefix}{tag}{cpi_type} {period}".strip()
 
     # 5. Country-prefixed Unemployment Rate for non-US
-    if t.strip() == "Unemployment Rate" and adj and country not in ("United States", "US"):
+    # NOTE: JPY Unemployment Rate keeps bare "Unemployment Rate" (FF format) — not "Japanese Unemployment Rate"
+    if t.strip() == "Unemployment Rate" and adj and country not in ("United States", "US", "Japan", "JP"):
         return f"{adj} Unemployment Rate"
 
     # 6. Standard Forex Factory format conversions
