@@ -1383,7 +1383,7 @@ export default function AssistantPage() {
   ];
 
   return (
-    <div className="flex flex-col w-full max-w-[1440px] mx-auto gap-3">
+    <div className="flex flex-col w-full max-w-[1440px] mx-auto gap-3 h-full">
       {/* ── Header Row ─────────────────────────────────────────────────── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 shrink-0 px-5 sm:px-8">
         <div>
@@ -1427,9 +1427,9 @@ export default function AssistantPage() {
       )}
 
       {/* ── 2-Column Split Grid Layout ──────────────────────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 flex-1 min-h-0">
         {/* ── Left Column: Icon Rail + Slide-in Panel + Chat ───────────── */}
-        <div className="lg:col-span-8 xl:col-span-9 flex h-[78vh] overflow-hidden rounded-2xl border border-white/8 bg-[#060d14]">
+        <div className="lg:col-span-8 xl:col-span-9 flex h-full overflow-hidden rounded-2xl border border-white/8 bg-[#060d14]">
 
           {/* ── Icon Rail ── */}
           <div className="flex flex-col items-center gap-1 py-3 px-1.5 border-r border-white/6 shrink-0 bg-[#080f18]">
@@ -1742,7 +1742,7 @@ export default function AssistantPage() {
         </div>
 
         {/* ── Right Sidebar Column (~25% width) ─── */}
-        <div className="lg:col-span-4 xl:col-span-3 h-full flex flex-col justify-between overflow-hidden gap-2">
+        <div className="lg:col-span-4 xl:col-span-3 h-full flex flex-col justify-between overflow-y-auto gap-2">
           {/* Widget 1: Portfolio Summary */}
           {(() => {
             const totalBalance = portfolioSummary?.total_value_usdt ?? 0;
