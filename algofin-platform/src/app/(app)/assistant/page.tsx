@@ -504,6 +504,7 @@ function HistoryPanel({
   onLoad,
   onDelete,
   onTogglePin,
+  onRename,
 }: {
   conversations: SavedConversation[];
   activeId: string | null;
@@ -511,6 +512,7 @@ function HistoryPanel({
   onLoad: (c: SavedConversation) => void;
   onDelete: (id: string) => void;
   onTogglePin: (id: string) => void;
+  onRename: (id: string, newTitle: string) => void;
 }) {
   const [menuId, setMenuId] = useState<string | null>(null);
   const { today, yesterday, thisWeek, earlier } = groupByDate(conversations.filter(c => !c.pinned));
