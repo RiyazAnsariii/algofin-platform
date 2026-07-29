@@ -129,6 +129,12 @@ EXCLUDED_EXACT_TITLES = {
     "Japanese Core CPI y/y",
     "Japanese CPI y/y",
     "Japanese CPI m/m",
+
+    # ── Aug 7 (NFP Day) Cleanups ──────────────────────────────────────────────
+    # Employment sub-components — NOT on FF (FF shows headline, not breakdowns)
+    "French Unemployment Rate",
+    "FAO Food Price Index",
+    "Average Hourly Earnings y/y",   # Only m/m is on FF (High impact)
 }
 
 # 🔴 High Impact (Red Folder) Events on Forex Factory
@@ -155,12 +161,15 @@ FORCED_HIGH_IMPACT_PATTERNS = [
     "employment change q/q",
     "non-farm employment change",
     "nonfarm payrolls",
+    "non farm payrolls",         # TradingView variant of 'Nonfarm Payrolls' (space vs no space)
     "cpi m/m (us)",
     "cpi y/y (us)",
     # AUD CPI releases are 🔴 High impact on Forex Factory (Jul 29 screenshot confirmed)
     "trimmed mean cpi m/m",
     # BOE Gov Bailey Speaks is 🔴 High on Forex Factory (Jul 30 screenshot confirmed)
     "boe gov bailey speaks",
+    # USD Aug 7 (NFP day) High impact releases
+    "average hourly earnings m/m",  # USD Aug 7 FF confirmed High
 ]
 
 # 🟠 Medium Impact (Orange Folder) Events on Forex Factory
@@ -209,8 +218,19 @@ def is_forced_high_impact(title: str, currency: Optional[str] = None) -> bool:
         return True
 
     # NZD Unemployment Rate is 🔴 High on FF (Aug 5 confirmed)
-    # Title is now bare 'Unemployment Rate' for NZD (no 'NZ' prefix) so pattern 'nz unemployment rate' won't match
     if curr == "NZD" and t_lower == "unemployment rate":
+        return True
+
+    # CAD Employment Change is 🔴 High on FF (Aug 7 NFP day confirmed)
+    if curr == "CAD" and t_lower == "employment change":
+        return True
+
+    # CAD Unemployment Rate is 🔴 High on FF (Aug 7 confirmed) — same release as NFP
+    if curr == "CAD" and t_lower == "unemployment rate":
+        return True
+
+    # USD Unemployment Rate is 🔴 High on FF (Aug 7 confirmed) — released with Nonfarm Payrolls
+    if curr == "USD" and t_lower == "unemployment rate":
         return True
 
     return False
@@ -322,7 +342,8 @@ def is_event_blacklisted(title: str, currency: Optional[str] = None) -> bool:
     if t_lower == "unemployment rate":
         # EUR Unemployment Rate is a valid FF event (Jul 30 screenshot confirmed) — keep it
         # JPY, NZD, CHF already had headline unemployment rate events — keep those too
-        if curr in ("JPY", "NZD", "CHF", "EUR"):
+        # CAD and USD Unemployment Rate are 🔴 High on FF (Aug 7 NFP day confirmed) — keep both
+        if curr in ("JPY", "NZD", "CHF", "EUR", "CAD", "USD"):
             return False
         return True
 
@@ -346,6 +367,27 @@ def is_event_blacklisted(title: str, currency: Optional[str] = None) -> bool:
 
     # 16. Drop JPY Services PMI
     if "services pmi" in t_lower and curr == "JPY":
+        return True
+
+    # 17. NFP sub-components — NOT on FF (Aug 7 confirmed); FF shows only headline numbers
+    if any(k in t_lower for k in ("government payrolls", "manufacturing payrolls", "nonfarm payrolls private",
+                                   "u-6 unemployment", "full time employment", "part time employment",
+                                   "average hourly wages", "average weekly hours", "used car prices")):
+        return True
+
+    # 18. Foreign Exchange Reserves — only CHF (Swiss National Bank) is on FF
+    # JPY, EUR, CNY Foreign Exchange Reserves are NOT on FF (Aug 7 confirmed)
+    if "foreign exchange reserves" in t_lower and curr != "CHF":
+        return True
+
+    # 19. EUR & CNY Exports/Imports sub-breakdowns — NOT on FF
+    # FF shows Trade Balance (aggregate), not individual Exports/Imports with EUR or CNY
+    # Aug 7 confirmed: 'Exports m/m', 'Imports m/m', 'Exports', 'Imports' (EUR) and Exports/Imports y/y (CNY)
+    if t_lower in ("exports", "imports", "exports m/m", "imports m/m", "exports y/y", "imports y/y") and curr in ("EUR", "CNY"):
+        return True
+
+    # 20. Average Hourly Earnings y/y — only m/m is on FF (High); y/y variant is NOT on FF
+    if "average hourly earnings y/y" in t_lower:
         return True
 
     return False

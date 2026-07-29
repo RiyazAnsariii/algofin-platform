@@ -291,7 +291,8 @@ def _is_noise_event(title: str, country: str = "") -> bool:
     if "prelim industrial production" in t and c_lower in ("japan", "jp"):
         return False
     # French and Italian Industrial Production m/m are valid FF events (Aug 5/Aug 6 confirmed) — exempt from keyword
-    if "industrial production m/m" in t and c_lower in ("france", "fr", "italy", "it"):
+    # German Industrial Production m/m also on FF (Aug 7 confirmed)
+    if "industrial production m/m" in t and c_lower in ("france", "fr", "italy", "it", "germany", "de"):
         return False
     # JPY and CHF Retail Sales y/y are valid FF events (Jul 31 confirmed) — exempt from "retail sales y/y" keyword
     if "retail sales y/y" in t and c_lower in ("japan", "jp", "switzerland", "ch"):
@@ -357,6 +358,12 @@ _EXACT_TITLE_MAP: dict[str, str] = {
     # Wholesale Inventories — FF uses 'Final Wholesale Inventories m/m'
     "Wholesale Inventories m/m": "Final Wholesale Inventories m/m",
     "Wholesale Inventories": "Final Wholesale Inventories m/m",
+    # Aug 7 (NFP Day) title normalizations
+    "Non Farm Payrolls": "Nonfarm Payrolls",           # TradingView sends space-variant; FF uses no-space title
+    "Balance of Trade Yuan": "Trade Balance",            # CNY trade balance title fix
+    "Ivey PMI s.a": "Ivey PMI",                         # TradingView appends 's.a' (seasonally adjusted)
+    "Ivey PMI s.a.": "Ivey PMI",                        # variant with period
+    "Household Spending m/m": "Household Spending y/y", # JPY: FF uses y/y; TradingView sends m/m
     "RBA Hunter Speech": "RBA Assist Gov Hunter Speaks",
     "RBA Hunter Speaks": "RBA Assist Gov Hunter Speaks",
     "RBA Official Speech": "RBA Official Speaks",
