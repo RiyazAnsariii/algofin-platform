@@ -267,6 +267,12 @@ def _is_noise_event(title: str, country: str = "") -> bool:
     # ANZ Business Confidence is a valid Forex Factory event (Jul 29/30 confirmed) — exempt from "business confidence" keyword
     if "anz business confidence" in t or "anz-business confidence" in t:
         return False
+    # Italian 10-y Bond Auction is a valid FF event (Jul 30 Tentative/Low EUR) — exempt from "bond auction" keyword
+    if "italian 10-y bond" in t or "italian 10-year bond" in t:
+        return False
+    # Advance GDP Price Index q/q is a valid FF event (Jul 30 USD Medium) — exempt from "gdp price index" keyword
+    if "advance gdp price index" in t:
+        return False
     for kw in _NOISE_KEYWORDS:
         if kw in t:
             return True

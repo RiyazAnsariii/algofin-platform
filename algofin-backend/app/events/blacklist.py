@@ -101,7 +101,8 @@ EXCLUDED_EXACT_TITLES = {
     "Jobs/applications ratio",
     "Flash GDP q/q",
     "GDP q/q",
-    "Eurozone Unemployment Rate",
+    # NOTE: "Eurozone Unemployment Rate" was here but FF Jul 30 confirms EUR Unemployment Rate IS valid
+    # Removed — it maps to "Unemployment Rate" which is now allowed for EUR via rule 11
     # EUR: FF uses "German Prelim GDP q/q" — data provider sends "German Flash GDP q/q" (wrong title)
     "German Flash GDP q/q",
     # EUR: FF uses "Italian Prelim GDP q/q" (Low) — "Italian Advance GDP q/q" is wrong title AND wrong impact (was High)
@@ -294,9 +295,14 @@ def is_event_blacklisted(title: str, currency: Optional[str] = None) -> bool:
     if "retail sales m/m" in t_lower and (curr == "EUR" or t_lower == "retail sales m/m") and "italian" not in t_lower:
         return True
 
-    # 11. Italian Unemployment Rate / German Unemployment Rate / Unemployed Persons / Generic Unemployment Rate for EUR
-    if (t_lower in ("italian unemployment rate", "german unemployment rate", "unemployed persons", "unemployment rate") and curr == "EUR") or t_lower == "unemployment rate":
-        if curr in ("JPY", "NZD", "CHF"):
+    # 11. Unemployment Rate noise cleanup
+    # Italian / German / Unemployed Persons are too granular for FF — always blacklist
+    if t_lower in ("italian unemployment rate", "german unemployment rate", "unemployed persons"):
+        return True
+    if t_lower == "unemployment rate":
+        # EUR Unemployment Rate is a valid FF event (Jul 30 screenshot confirmed) — keep it
+        # JPY, NZD, CHF already had headline unemployment rate events — keep those too
+        if curr in ("JPY", "NZD", "CHF", "EUR"):
             return False
         return True
 
