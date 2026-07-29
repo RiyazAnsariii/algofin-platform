@@ -309,8 +309,10 @@ def is_event_blacklisted(title: str, currency: Optional[str] = None) -> bool:
         return True
 
     # 10. Retail Sales m/m for EUR / non-US
-    # NOTE: 'German Retail Sales m/m' is valid on FF (Aug 3 confirmed) — exclude from blacklist
-    if "retail sales m/m" in t_lower and (curr == "EUR" or t_lower == "retail sales m/m") and "italian" not in t_lower and "german" not in t_lower:
+    # NOTE: 'German Retail Sales m/m' unblocked (Aug 3), 'Italian Retail Sales m/m' handled by noise filter
+    # NOTE: Bare 'Retail Sales m/m' (EUR) = Eurozone Retail Sales — FF Aug 6 confirms it IS valid (2:30pm EUR Low)
+    #       Only block COUNTRY-PREFIXED EUR retail sales (French, Spanish, etc.) not the bare Eurozone title
+    if "retail sales m/m" in t_lower and curr == "EUR" and "italian" not in t_lower and "german" not in t_lower and t_lower != "retail sales m/m":
         return True
 
     # 11. Unemployment Rate noise cleanup
@@ -328,8 +330,9 @@ def is_event_blacklisted(title: str, currency: Optional[str] = None) -> bool:
     # Now handled via FORCED_HIGH_IMPACT_PATTERNS above.
     # (old rule: if "bailey speaks" in t_lower: return True  — DELETED)
 
-    # 13. Sub-breakdown employment costs & sub-ISM indicators & Construction PMI & Wholesale Prices & Supply Chain Index
-    if "employment cost -" in t_lower or "housing credit" in t_lower or "ism manufacturing new orders" in t_lower or "ism manufacturing employment" in t_lower or "ism services new orders" in t_lower or "ism services employment" in t_lower or "ism services business activity" in t_lower or "ism services prices" in t_lower or "construction pmi" in t_lower or "wholesale prices" in t_lower or "supply chain pressure" in t_lower or "aib services" in t_lower:
+    # 13. Sub-breakdown employment costs & sub-ISM indicators & Wholesale Prices & Supply Chain Index
+    # NOTE: 'construction pmi' REMOVED — FF Aug 6 shows GBP Construction PMI (2:00pm Low) IS valid
+    if "employment cost -" in t_lower or "housing credit" in t_lower or "ism manufacturing new orders" in t_lower or "ism manufacturing employment" in t_lower or "ism services new orders" in t_lower or "ism services employment" in t_lower or "ism services business activity" in t_lower or "ism services prices" in t_lower or "wholesale prices" in t_lower or "supply chain pressure" in t_lower or "aib services" in t_lower:
         return True
 
     # 14. Car registrations & Treasury refunding estimates

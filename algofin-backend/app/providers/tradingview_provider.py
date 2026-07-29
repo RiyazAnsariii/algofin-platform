@@ -277,9 +277,12 @@ def _is_noise_event(title: str, country: str = "") -> bool:
     # ANZ Business Confidence is a valid Forex Factory event (Jul 29/30 confirmed) — exempt from "business confidence" keyword
     if "anz business confidence" in t or "anz-business confidence" in t:
         return False
-    # 10-y Bond Auctions are valid FF events across all currencies—exempt from 'bond auction' keyword
-    # Confirmed: Italian 10-y (Jul 30 EUR Tentative), JPY 10-y (Aug 4 9:05am), French 10-y (Aug 4 EUR Tentative)
-    if "10-y bond" in t or "10-year bond" in t:
+    # 10-y and 30-y Bond Auctions are valid FF events for JPY, EUR, and GBP — exempt from 'bond auction' keyword
+    # Confirmed: JPY 10-y (Aug 4), JPY 30-y (Aug 6), EUR Italian 10-y (Jul 30), EUR French 10-y (Aug 4),
+    #            EUR Spanish 10-y (Aug 6), GBP 10-y (Aug 6), GBP 30-y (Aug 6)
+    # CAD 10-Year Bond Auction is NOT on FF — keep blocked (only allow for JPY, EUR, GBP)
+    if ("10-y bond" in t or "10-year bond" in t or "30-y bond" in t or "30-year bond" in t) and \
+       c_lower in ("japan", "jp", "eurozone", "eu", "france", "fr", "italy", "it", "spain", "es", "united kingdom", "gb", "germany", "de"):
         return False
     # Advance GDP Price Index q/q is a valid FF event (Jul 30 USD Medium) — exempt from "gdp price index" keyword
     if "advance gdp price index" in t:
@@ -287,8 +290,8 @@ def _is_noise_event(title: str, country: str = "") -> bool:
     # JPY Prelim Industrial Production m/m is a valid FF event (Jul 31 confirmed) — exempt from "industrial production" keyword
     if "prelim industrial production" in t and c_lower in ("japan", "jp"):
         return False
-    # French Industrial Production m/m is a valid FF event (Aug 5 confirmed) — exempt from "industrial production" keyword
-    if "industrial production m/m" in t and c_lower in ("france", "fr"):
+    # French and Italian Industrial Production m/m are valid FF events (Aug 5/Aug 6 confirmed) — exempt from keyword
+    if "industrial production m/m" in t and c_lower in ("france", "fr", "italy", "it"):
         return False
     # JPY and CHF Retail Sales y/y are valid FF events (Jul 31 confirmed) — exempt from "retail sales y/y" keyword
     if "retail sales y/y" in t and c_lower in ("japan", "jp", "switzerland", "ch"):
@@ -347,6 +350,13 @@ _EXACT_TITLE_MAP: dict[str, str] = {
     "Labour Costs Index q/q": "Labor Cost Index q/q",
     "Labour Cost Index q/q": "Labor Cost Index q/q",
     "Labor Costs Index q/q": "Labor Cost Index q/q",
+    # Spanish Bond Auction — TradingView uses Spanish 'Bonos y Obligaciones', FF uses 'Spanish 10-y Bond Auction'
+    "Bonos y Obligaciones Auction": "Spanish 10-y Bond Auction",
+    "Bonos Auction": "Spanish 10-y Bond Auction",
+    "Bonos y Obligaciones": "Spanish 10-y Bond Auction",
+    # Wholesale Inventories — FF uses 'Final Wholesale Inventories m/m'
+    "Wholesale Inventories m/m": "Final Wholesale Inventories m/m",
+    "Wholesale Inventories": "Final Wholesale Inventories m/m",
     "RBA Hunter Speech": "RBA Assist Gov Hunter Speaks",
     "RBA Hunter Speaks": "RBA Assist Gov Hunter Speaks",
     "RBA Official Speech": "RBA Official Speaks",
@@ -495,6 +505,9 @@ def _format_title_forex_factory_style(title: str, country: str = "") -> str:
         if country in ("United States", "US", "Canada", "CA"):
             return "Trade Balance"
         if country in ("Australia", "AU"):
+            # FF uses 'Goods Trade Balance' for AUD (not 'Trade Balance m/m')
+            return "Goods Trade Balance"
+        if country in ("Australia", "AU") and "m/m" in t_lower:
             return "Trade Balance m/m"
     if "inflation gauge" in t_lower:
         return "MI Inflation Gauge m/m"
@@ -590,9 +603,9 @@ def _format_title_forex_factory_style(title: str, country: str = "") -> str:
         return f"{prefix}{tag}{cpi_type} {period}".strip()
 
     # 5. Country-prefixed Unemployment Rate for non-US
-    # NOTE: JPY and NZD Unemployment Rate keeps bare "Unemployment Rate" (FF format) — not "Japanese/NZ Unemployment Rate"
-    # NZD High impact is handled separately in is_forced_high_impact via currency-aware rule
-    if t.strip() == "Unemployment Rate" and adj and country not in ("United States", "US", "Japan", "JP", "New Zealand", "NZ"):
+    # NOTE: JPY, NZD, CHF Unemployment Rate keeps bare "Unemployment Rate" (FF format) — no country prefix
+    # JPY fixed Jul 31, NZD fixed Aug 5, CHF fixed Aug 6
+    if t.strip() == "Unemployment Rate" and adj and country not in ("United States", "US", "Japan", "JP", "New Zealand", "NZ", "Switzerland", "CH"):
         return f"{adj} Unemployment Rate"
 
     # 6. Standard Forex Factory format conversions
