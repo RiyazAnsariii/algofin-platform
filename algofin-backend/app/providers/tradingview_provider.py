@@ -549,11 +549,13 @@ def _format_title_forex_factory_style(title: str, country: str = "") -> str:
 
 
 # ── Forex Factory Impact Classifier ──────────────────────────────────────────
-def _determine_impact_level(formatted_title: str, default_impact: str) -> str:
+def _determine_impact_level(formatted_title: str, default_impact: str, currency: str = "") -> str:
     """Classify event impact as High (🔴), Medium (🟠), or Low (🟡) matching Forex Factory screenshots 1:1."""
-    if is_forced_high_impact(formatted_title):
+    curr = (currency or "").strip().upper()
+
+    if is_forced_high_impact(formatted_title, curr):
         return "High"
-    if is_forced_medium_impact(formatted_title):
+    if is_forced_medium_impact(formatted_title, curr):
         return "Medium"
 
     t = formatted_title.lower()
@@ -565,10 +567,16 @@ def _determine_impact_level(formatted_title: str, default_impact: str) -> str:
         "boe monetary policy report", "monetary policy summary",
         "mpc official bank rate votes", "official bank rate", "federal funds rate",
         "advance gdp q/q", "core pce price index m/m",
-        "trimmed mean cpi", "non-farm payrolls", "nonfarm payrolls",
+        "trimmed mean cpi m/m", "non-farm payrolls", "nonfarm payrolls",
         "boj policy rate", "boj interest rate decision", "boj outlook report",
         "boj press conference", "gdp m/m",
+        # BOE Gov Bailey Speaks is 🔴 High on Forex Factory (Jul 30 confirmed)
+        "boe gov bailey speaks",
     )):
+        return "High"
+
+    # AUD CPI m/m and CPI y/y are 🔴 High impact
+    if curr == "AUD" and t in ("cpi m/m", "cpi y/y"):
         return "High"
 
     # 2. Medium Impact 🟠 (Strict Orange folder events per Forex Factory screenshots)
@@ -609,10 +617,6 @@ def _determine_impact_level(formatted_title: str, default_impact: str) -> str:
         return "Low"
 
     return "Low"
-
-
-
-
 
 
 
@@ -766,7 +770,7 @@ class TradingViewProvider(BaseEconomicCalendarProvider):
                 title: str = _format_title_forex_factory_style(raw_title, country=country)
                 if is_event_blacklisted(title, currency):
                     continue
-                impact = _determine_impact_level(title, default_impact=impact)
+                impact = _determine_impact_level(title, default_impact=impact, currency=currency)
 
                 # Batch deduplication: keep only one headline release per (title, currency, time)
                 dedup_key = (title, currency, event_dt)

@@ -212,7 +212,7 @@ class EconomicCalendarService:
             if is_event_blacklisted(e.title, e.currency):
                 continue
             status = self.calculate_status(e.event_time_utc, e.actual)
-            impact = "High" if is_forced_high_impact(e.title) else ("Medium" if is_forced_medium_impact(e.title, e.currency) else e.impact)
+            impact = "High" if is_forced_high_impact(e.title, e.currency) else ("Medium" if is_forced_medium_impact(e.title, e.currency) else e.impact)
             formatted_events.append(
                 {
                     "id": str(e.id),

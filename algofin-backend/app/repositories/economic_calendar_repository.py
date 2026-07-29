@@ -77,7 +77,7 @@ class EconomicCalendarRepository:
         for evt in raw_list:
             if is_event_blacklisted(evt.title, evt.currency):
                 continue
-            if is_forced_high_impact(evt.title):
+            if is_forced_high_impact(evt.title, evt.currency):
                 evt.impact = "High"
             elif is_forced_medium_impact(evt.title, evt.currency):
                 evt.impact = "Medium"
@@ -129,7 +129,7 @@ class EconomicCalendarRepository:
             # Skip any blacklisted events permanently
             if is_event_blacklisted(dto.title, dto.currency):
                 continue
-            if is_forced_high_impact(dto.title):
+            if is_forced_high_impact(dto.title, dto.currency):
                 dto.impact = "High"
             elif is_forced_medium_impact(dto.title, dto.currency):
                 dto.impact = "Medium"

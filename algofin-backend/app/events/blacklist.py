@@ -22,8 +22,8 @@ EXCLUDED_EXACT_TITLES = {
     "PCE Prices q/q Advance",
     "PCE Price Index m/m",
     "PCE Price Index y/y",
-    "BOE Gov Bailey Speaks",
-    "BoE Gov Bailey Speaks",
+    # NOTE: BOE Gov Bailey Speaks was previously blacklisted but IS present on FF as 🔴 High (Jul 30 confirmed)
+    # — removed from blacklist, now in FORCED_HIGH_IMPACT_PATTERNS instead
     "EIA Natural Gas Stocks Change",
 
     # ── Jul 31 ForexFactory Cleanups ─────────────────────────────────────────
@@ -94,7 +94,7 @@ EXCLUDED_EXACT_TITLES = {
     "ISM Services New Orders",
     "S&P Global Composite PMI",
 
-    # ── Jul 30 ForexFactory Cleanups ─────────────────────────────────────────
+    # ── Jul 30 ForexFactory Cleanups (Screenshot cross-reference) ───────────
     "MPC Meeting Minutes",
     "German Prelim CPI y/y",
     "Fed Balance Sheet",
@@ -102,6 +102,27 @@ EXCLUDED_EXACT_TITLES = {
     "Flash GDP q/q",
     "GDP q/q",
     "Eurozone Unemployment Rate",
+    # EUR: FF uses "German Prelim GDP q/q" — data provider sends "German Flash GDP q/q" (wrong title)
+    "German Flash GDP q/q",
+    # EUR: FF uses "Italian Prelim GDP q/q" (Low) — "Italian Advance GDP q/q" is wrong title AND wrong impact (was High)
+    "Italian Advance GDP q/q",
+    # EUR: FF uses "Prelim Flash GDP q/q" — "Eurozone Flash GDP q/q" is wrong title
+    "Eurozone Flash GDP q/q",
+
+    # ── Jul 29 ForexFactory Cleanups ─────────────────────────────────────────
+    # AUD: FF shows "CPI m/m", "CPI y/y", and "Trimmed Mean CPI m/m" — NOT standalone "Trimmed Mean CPI"
+    "Trimmed Mean CPI",
+    # AUD: FF has CPI m/m / CPI y/y specifically — bare generic "CPI" is NOT a FF event
+    "CPI",
+    # EUR: FF uses "German Import Prices m/m" — generic "Import Prices m/m" is not listed
+    "Import Prices m/m",
+    # GBP: Not present on Forex Factory Jul 29
+    "Mortgage Lending",
+    "BoE Consumer Credit",
+    # EUR: Not present on Forex Factory Jul 29 (FF uses "Flash GDP q/q" for Eurozone, not "Advance GDP q/q")
+    # Note: USD "Advance GDP q/q" is handled separately via currency-aware rule in is_event_blacklisted
+    # EUR: Not present on Forex Factory
+    "Wage Growth y/y",
 }
 
 # 🔴 High Impact (Red Folder) Events on Forex Factory
@@ -130,6 +151,10 @@ FORCED_HIGH_IMPACT_PATTERNS = [
     "nonfarm payrolls",
     "cpi m/m (us)",
     "cpi y/y (us)",
+    # AUD CPI releases are 🔴 High impact on Forex Factory (Jul 29 screenshot confirmed)
+    "trimmed mean cpi m/m",
+    # BOE Gov Bailey Speaks is 🔴 High on Forex Factory (Jul 30 screenshot confirmed)
+    "boe gov bailey speaks",
 ]
 
 # 🟠 Medium Impact (Orange Folder) Events on Forex Factory
@@ -155,14 +180,21 @@ FORCED_MEDIUM_IMPACT_PATTERNS = [
 ]
 
 
-def is_forced_high_impact(title: str) -> bool:
+def is_forced_high_impact(title: str, currency: Optional[str] = None) -> bool:
     """Check if an economic event title is explicitly classified as High Impact (🔴)."""
     if not title:
         return False
     t_lower = title.strip().lower()
+    curr = (currency or "").strip().upper()
+
     for pattern in FORCED_HIGH_IMPACT_PATTERNS:
         if pattern in t_lower:
             return True
+
+    # AUD CPI m/m and CPI y/y are 🔴 High impact on Forex Factory (confirmed Jul 29)
+    if curr == "AUD" and t_lower in ("cpi m/m", "cpi y/y"):
+        return True
+
     return False
 
 
@@ -213,6 +245,10 @@ def is_event_blacklisted(title: str, currency: Optional[str] = None) -> bool:
     if "gdp y/y" in t_lower:
         return True
 
+    # 1a. EUR "Advance GDP q/q" — FF uses "Flash GDP q/q" for Eurozone; only USD uses "Advance GDP q/q"
+    if "advance gdp q/q" in t_lower and curr == "EUR":
+        return True
+
     # 2. Export prices & Private Sector Credit y/y & Household Spending y/y & Cotality
     if "export prices" in t_lower or "private sector credit y/y" in t_lower or "household spending y/y" in t_lower or "cotality" in t_lower:
         return True
@@ -246,7 +282,11 @@ def is_event_blacklisted(title: str, currency: Optional[str] = None) -> bool:
 
     # 9. Generic CPI y/y / CPI m/m / Prelim CPI y/y / Prelim CPI m/m
     if t_lower in ("cpi y/y", "cpi m/m", "prelim cpi y/y", "prelim cpi m/m"):
+        # CHF CPI m/m is Medium impact — keep it
         if curr == "CHF" and t_lower == "cpi m/m":
+            return False
+        # AUD CPI m/m and CPI y/y are 🔴 High impact on FF (Jul 29 confirmed) — keep them
+        if curr == "AUD" and t_lower in ("cpi m/m", "cpi y/y"):
             return False
         return True
 
@@ -260,9 +300,9 @@ def is_event_blacklisted(title: str, currency: Optional[str] = None) -> bool:
             return False
         return True
 
-    # 12. BOE Gov Bailey Speaks
-    if "bailey speaks" in t_lower:
-        return True
+    # 12. BOE Gov Bailey Speaks — REMOVED from blacklist (Jul 30 FF screenshot confirms it IS present as 🔴 High)
+    # Now handled via FORCED_HIGH_IMPACT_PATTERNS above.
+    # (old rule: if "bailey speaks" in t_lower: return True  — DELETED)
 
     # 13. Sub-breakdown employment costs & sub-ISM indicators & Construction PMI & Wholesale Prices & Supply Chain Index
     if "employment cost -" in t_lower or "housing credit" in t_lower or "ism manufacturing new orders" in t_lower or "ism manufacturing employment" in t_lower or "ism services new orders" in t_lower or "ism services employment" in t_lower or "ism services business activity" in t_lower or "ism services prices" in t_lower or "construction pmi" in t_lower or "wholesale prices" in t_lower or "supply chain pressure" in t_lower or "aib services" in t_lower:
