@@ -79,8 +79,8 @@ EXCLUDED_EXACT_TITLES = {
     "Participation Rate",
     "Labour Costs Index y/y",
     "Overtime Pay y/y",
-    "Omdia Total Vehicle Sales",
-    "Total Vehicle Sales",
+    # NOTE: "Omdia Total Vehicle Sales" and "Total Vehicle Sales" removed — FF Aug 3 All-Day (USD, Low) confirms it IS valid
+    # "Wholesale Prices m/m" / "Wholesale Prices y/y" stay blocked — not on FF
     "Wholesale Prices m/m",
     "Wholesale Prices y/y",
     "Global Supply Chain Pressure Index",
@@ -298,7 +298,8 @@ def is_event_blacklisted(title: str, currency: Optional[str] = None) -> bool:
         return True
 
     # 10. Retail Sales m/m for EUR / non-US
-    if "retail sales m/m" in t_lower and (curr == "EUR" or t_lower == "retail sales m/m") and "italian" not in t_lower:
+    # NOTE: 'German Retail Sales m/m' is valid on FF (Aug 3 confirmed) — exclude from blacklist
+    if "retail sales m/m" in t_lower and (curr == "EUR" or t_lower == "retail sales m/m") and "italian" not in t_lower and "german" not in t_lower:
         return True
 
     # 11. Unemployment Rate noise cleanup
@@ -325,7 +326,8 @@ def is_event_blacklisted(title: str, currency: Optional[str] = None) -> bool:
         return True
 
     # 15. Minor bond auctions & PMI noise
-    if any(k in t_lower for k in ("letras auction", "schatz auction", "ragb auction", "gilt 2032", "tc auction", "logistics managers", "jolts job quits", "total household debt", "composite pmi", "fed balance sheet", "jobs/applications ratio", "vehicle sales", "bonos y obligations")):
+    # NOTE: 'vehicle sales' removed — 'Omdia Total Vehicle Sales' (USD, Low) is valid on FF (Aug 3 All-Day confirmed)
+    if any(k in t_lower for k in ("letras auction", "schatz auction", "ragb auction", "gilt 2032", "tc auction", "logistics managers", "jolts job quits", "total household debt", "composite pmi", "fed balance sheet", "jobs/applications ratio", "bonos y obligations")):
         return True
 
     # 16. Drop JPY Services PMI

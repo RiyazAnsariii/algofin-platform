@@ -485,7 +485,7 @@ def _format_title_forex_factory_style(title: str, country: str = "") -> str:
         return f"CPI {period}"
     if "manufacturing pmi" in t_lower and "ism" not in t_lower and "ratingdog" not in t_lower and "caixin" not in t_lower:
         is_final = "final" in t_lower
-        if country in ("Japan", "JP", "Eurozone", "EU", "United Kingdom", "GB", "United States", "US"):
+        if country in ("Japan", "JP", "Eurozone", "EU", "United Kingdom", "GB", "United States", "US", "Australia", "AU", "New Zealand", "NZ"):
             return "Final Manufacturing PMI" if is_final else "Manufacturing PMI"
         if country in ("France", "FR"):
             return "French Final Manufacturing PMI" if is_final else "French Manufacturing PMI"
