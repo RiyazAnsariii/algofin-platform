@@ -930,6 +930,19 @@ export default function EventsPage() {
                     const nextTime = nextEvt ? formatTimeOnly(nextEvt.event_time) : null;
                     const isLastInTimeGroup = nextTime !== thisTime;
 
+                    // ── Time-based status (overrides backend) ────────────────────────────
+                    const nowMs = Date.now();
+                    const evtMs = new Date(evt.event_time).getTime();
+                    const diffMs = nowMs - evtMs; // positive = past
+                    const LIVE_WINDOW_BEFORE = 2 * 60 * 1000;   // 2 min before
+                    const LIVE_WINDOW_AFTER  = 30 * 60 * 1000;  // 30 min after
+                    const effectiveStatus =
+                      diffMs >= -LIVE_WINDOW_BEFORE && diffMs <= LIVE_WINDOW_AFTER
+                        ? "Ongoing"      // LIVE window
+                        : diffMs > LIVE_WINDOW_AFTER
+                        ? "Completed"    // past → Done
+                        : "Upcoming";   // future → no badge
+
                     return (
                       <tr
                         key={evt.id}
@@ -983,12 +996,12 @@ export default function EventsPage() {
                         <td className="py-2.5 px-4 font-semibold text-foreground group-hover:text-cyan-300 transition-colors">
                           <div className="flex items-center gap-2">
                             <span>{evt.title}</span>
-                            {evt.status === "Ongoing" && (
+                            {effectiveStatus === "Ongoing" && (
                               <span className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/40 animate-pulse">
                                 Live
                               </span>
                             )}
-                            {evt.status === "Completed" && (
+                            {effectiveStatus === "Completed" && (
                               <span className="px-1.5 py-0.5 rounded text-[9px] font-medium uppercase tracking-wider bg-emerald-500/10 text-emerald-400/80 border border-emerald-500/20">
                                 Done
                               </span>
