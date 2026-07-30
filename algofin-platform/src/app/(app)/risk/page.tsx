@@ -611,7 +611,7 @@ export default function RiskPage() {
   const blockedOrdersCount = violations.filter((v) => v.action_taken === "order_rejected").length;
 
   return (
-    <div className="page-content space-y-6">
+    <div className="page-content sm:pl-8 space-y-6">
       {/* ── Top Header ────────────────────────────────────────────── */}
       <div className="flex items-start justify-between gap-4">
         <div>

@@ -335,7 +335,7 @@ export default function SettingsPage() {
   const isGoogleUser = !!(user as any)?.google_id;
 
   return (
-    <div className="page-content"><div className="max-w-2xl mx-auto space-y-6">
+    <div className="page-content sm:pl-8"><div className="max-w-2xl mx-auto space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-foreground">Settings</h1>
         <p className="text-sm text-muted-foreground mt-1">Manage your account and preferences</p>

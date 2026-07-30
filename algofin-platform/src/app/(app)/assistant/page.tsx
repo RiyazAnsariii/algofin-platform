@@ -1385,7 +1385,7 @@ export default function AssistantPage() {
   return (
     <div className="flex flex-col w-full max-w-[1440px] mx-auto gap-3 h-full">
       {/* ── Header Row ─────────────────────────────────────────────────── */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 shrink-0">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 shrink-0 px-5 sm:px-8">
         <div>
           <div className="flex items-center gap-3">
             <h1 className="text-xl font-bold text-foreground">AI Assistant</h1>

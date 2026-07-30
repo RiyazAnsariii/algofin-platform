@@ -453,7 +453,7 @@ export default function StrategyPage() {
   };
 
   return (
-    <div className="page-content space-y-6">
+    <div className="page-content sm:pl-8 space-y-6">
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
         <div>
