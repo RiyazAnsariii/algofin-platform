@@ -191,7 +191,7 @@ export default function AlertsPage() {
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold text-foreground">Alerts</h1>
-        <p className="text-sm text-muted-foreground mt-1">
+        <p className="text-xs text-muted-foreground mt-0.5">
           Get notified on Telegram when orders fill, risks trigger, or prices cross your thresholds.
         </p>
       </div>

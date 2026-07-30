@@ -761,7 +761,7 @@ export default function JournalPage() {
       {/* ── Top Header Row ───────────────────────────────────────────────── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl font-bold text-foreground">Journal & Analytics</h1>
+          <h1 className="text-2xl font-bold text-foreground">Journal & Analytics</h1>
           <p className="text-xs text-muted-foreground mt-0.5">
             Track your trading performance and document your thought process.
           </p>

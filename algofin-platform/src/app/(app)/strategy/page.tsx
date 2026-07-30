@@ -458,7 +458,7 @@ export default function StrategyPage() {
       <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Strategy Engine</h1>
-          <p className="text-sm text-muted-foreground mt-1">
+          <p className="text-xs text-muted-foreground mt-0.5">
             Automate order placement with price breakout triggers or manual one-click templates.
           </p>
         </div>

@@ -755,7 +755,7 @@ export default function WebhookStrategyPage() {
             <span className="text-3xl">⚡</span>
             <h1 className="text-2xl font-bold text-foreground">Webhook Strategies</h1>
           </div>
-          <p className="text-sm text-muted-foreground mt-1 ml-10">
+          <p className="text-xs text-muted-foreground mt-0.5 ml-10">
             Receive signals from TradingView Pine Script alerts and auto-execute orders on your connected exchange.
           </p>
         </div>

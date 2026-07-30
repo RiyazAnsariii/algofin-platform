@@ -671,7 +671,7 @@ export default function EventsPage() {
       {/* ── Header Title & Refresh Status ──────────────────────────────────── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl font-bold tracking-tight">Economic Calendar</h1>
+          <h1 className="text-2xl font-bold text-foreground">Economic Calendar</h1>
           <p className="text-xs text-muted-foreground mt-0.5">
             Track high-impact macroeconomic events, interest rate decisions, and market catalysts.
             {dataAgeMinutes > 0 ? (
