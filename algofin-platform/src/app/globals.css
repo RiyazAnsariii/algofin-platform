@@ -195,6 +195,26 @@
     color: oklch(0.95 0.005 220);
   }
 
+  /* ── Cursor control ── prevent I-beam text cursor on non-interactive elements */
+  * {
+    cursor: default;
+  }
+  a, button, [role="button"], [tabindex]:not([tabindex="-1"]),
+  label[for], select {
+    cursor: pointer;
+  }
+  input[type="text"], input[type="email"], input[type="password"],
+  input[type="search"], input[type="number"], input[type="tel"],
+  input[type="url"], textarea, [contenteditable="true"] {
+    cursor: text;
+  }
+  input[type="checkbox"], input[type="radio"] {
+    cursor: pointer;
+  }
+  [disabled], [aria-disabled="true"] {
+    cursor: not-allowed;
+  }
+
   ::-webkit-scrollbar { width: 6px; height: 6px; }
   ::-webkit-scrollbar-track { background: oklch(0.11 0.009 237); }
   ::-webkit-scrollbar-thumb { background: oklch(0.25 0.015 235); border-radius: 999px; }
