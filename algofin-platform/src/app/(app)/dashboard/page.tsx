@@ -211,7 +211,7 @@ function StaleBanner({ freshness }: { freshness: PortfolioSummary["data_freshnes
 // ── No exchange section (balanced full-screen fit down to sign out line) ─────────────
 function NoExchangeSection() {
   return (
-    <div className="flex-1 flex flex-col justify-between space-y-4 animate-fade-in pt-1">
+    <div className="h-full flex flex-col justify-between space-y-4 animate-fade-in">
       {/* Hero Card */}
       <div className="relative surface-card flex-1 min-h-[220px] py-8 px-6 text-center flex flex-col justify-center items-center overflow-hidden border border-white/8 rounded-2xl bg-[#0f1117]/80">
         <div className="relative z-10 space-y-4 max-w-md mx-auto flex flex-col items-center">
@@ -433,9 +433,9 @@ export default function DashboardPage() {
   const estFee = pnlMtd > 0 ? pnlMtd * 0.2 : 0;
 
   return (
-    <div className="page-content sm:pl-8 flex flex-col min-h-full space-y-6">
+    <div className="w-full max-w-[1440px] mx-auto pl-5 sm:pl-8 pr-5 sm:pr-8 h-[calc(100vh-3rem)] flex flex-col gap-4 text-foreground overflow-hidden">
       {/* Header */}
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex items-start justify-between gap-4 shrink-0 pt-6">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Dashboard</h1>
           <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
@@ -449,7 +449,7 @@ export default function DashboardPage() {
         </div>
         <button
           onClick={() => { setLoading(true); fetchData(); }}
-          className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors px-3 py-1.5 rounded-lg hover:bg-white/5 border border-white/6"
+          className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors px-3 py-1.5 rounded-lg hover:bg-white/5 border border-white/6 shrink-0 mt-6"
         >
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15" />
@@ -458,139 +458,137 @@ export default function DashboardPage() {
         </button>
       </div>
 
-      {/* Loading state */}
-      {loading && showSkeleton && (
-        <div className="flex-1 flex flex-col justify-between space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            {[1,2,3,4].map(i => (
-              <div key={i} className="surface-card p-4 space-y-2">
-                <div className="skeleton h-3 w-24" />
-                <div className="skeleton h-7 w-28" />
-                <div className="skeleton h-3 w-16" />
+      {/* Stat cards — always shrink to their natural size */}
+      {!loading && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 animate-fade-in shrink-0">
+          <StatCard
+            icon={
+              <div className="w-6 h-6 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400 shrink-0">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M20 12V8H6a2 2 0 0 1-2-2c0-1.1.9-2 2-2h12v4" />
+                  <path d="M4 6v12c0 1.1.9 2 2 2h14v-4" />
+                  <path d="M18 12a2 2 0 0 0-2 2c0 1.1.9 2 2 2h4v-4h-4z" />
+                </svg>
               </div>
-            ))}
-          </div>
-          <div className="surface-card overflow-hidden flex-1 p-8 text-center flex flex-col justify-center items-center space-y-4">
+            }
+            label="Portfolio Value"
+            value={`$${fmt(summary?.total_value_usdt ?? 0)}`}
+            sub="USDT-M Futures"
+            loading={false}
+          />
+          <StatCard
+            icon={
+              <div className="w-6 h-6 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 shrink-0">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" />
+                  <polyline points="17 6 23 6 23 12" />
+                </svg>
+              </div>
+            }
+            label="Realized PnL (MTD)"
+            value={fmtPnl(pnlMtd)}
+            sub="Month to date"
+            valueClass={pnlPositive ? "pnl-positive" : "pnl-negative"}
+            loading={false}
+          />
+          <StatCard
+            icon={
+              <div className="w-6 h-6 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 shrink-0">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <line x1="19" y1="5" x2="5" y2="19" />
+                  <circle cx="6.5" cy="6.5" r="2.5" />
+                  <circle cx="17.5" cy="17.5" r="2.5" />
+                </svg>
+              </div>
+            }
+            label="Est. Monthly Fee"
+            value={`$${fmt(estFee)}`}
+            sub="20% of profit · display only"
+            valueClass="text-muted-foreground"
+            loading={false}
+          />
+          <StatCard
+            icon={
+              <div className="w-6 h-6 rounded-lg bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 shrink-0">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <rect x="2" y="7" width="20" height="14" rx="2" ry="2" />
+                  <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
+                </svg>
+              </div>
+            }
+            label="Open Positions"
+            value={summary?.open_positions ?? 0}
+            sub={`${summary?.connected_accounts ?? 0} account(s) connected`}
+            loading={false}
+          />
+        </div>
+      )}
+
+      {/* Loading skeleton stat cards */}
+      {loading && showSkeleton && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 shrink-0">
+          {[1,2,3,4].map(i => (
+            <div key={i} className="surface-card p-4 space-y-2">
+              <div className="skeleton h-3 w-24" />
+              <div className="skeleton h-7 w-28" />
+              <div className="skeleton h-3 w-16" />
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Middle — flex-1 fills remaining space */}
+      <div className="flex-1 min-h-0 overflow-hidden">
+        {loading && showSkeleton ? (
+          <div className="h-full surface-card p-8 text-center flex flex-col justify-center items-center space-y-4">
             <div className="skeleton h-12 w-12 rounded-full mx-auto" />
             <div className="skeleton h-5 w-48 mx-auto" />
             <div className="skeleton h-4 w-64 mx-auto" />
           </div>
-        </div>
-      )}
+        ) : noExchange ? (
+          <NoExchangeSection />
+        ) : (
+          <div className="h-full flex flex-col space-y-4 overflow-y-auto pb-4">
+            {/* Stale banner */}
+            {summary && <StaleBanner freshness={summary.data_freshness} />}
 
-      {/* Loaded state */}
-      {!loading && (
-        <div className="flex-1 flex flex-col justify-between space-y-4">
-          {/* Stat cards — with icons matching reference UI */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 animate-fade-in shrink-0">
-            <StatCard
-              icon={
-                <div className="w-6 h-6 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400 shrink-0">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M20 12V8H6a2 2 0 0 1-2-2c0-1.1.9-2 2-2h12v4" />
-                    <path d="M4 6v12c0 1.1.9 2 2 2h14v-4" />
-                    <path d="M18 12a2 2 0 0 0-2 2c0 1.1.9 2 2 2h4v-4h-4z" />
-                  </svg>
-                </div>
-              }
-              label="Portfolio Value"
-              value={`$${fmt(summary?.total_value_usdt ?? 0)}`}
-              sub="USDT-M Futures"
-              loading={false}
-            />
-            <StatCard
-              icon={
-                <div className="w-6 h-6 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 shrink-0">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" />
-                    <polyline points="17 6 23 6 23 12" />
-                  </svg>
-                </div>
-              }
-              label="Realized PnL (MTD)"
-              value={fmtPnl(pnlMtd)}
-              sub="Month to date"
-              valueClass={pnlPositive ? "pnl-positive" : "pnl-negative"}
-              loading={false}
-            />
-            <StatCard
-              icon={
-                <div className="w-6 h-6 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 shrink-0">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <line x1="19" y1="5" x2="5" y2="19" />
-                    <circle cx="6.5" cy="6.5" r="2.5" />
-                    <circle cx="17.5" cy="17.5" r="2.5" />
-                  </svg>
-                </div>
-              }
-              label="Est. Monthly Fee"
-              value={`$${fmt(estFee)}`}
-              sub="20% of profit · display only"
-              valueClass="text-muted-foreground"
-              loading={false}
-            />
-            <StatCard
-              icon={
-                <div className="w-6 h-6 rounded-lg bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 shrink-0">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <rect x="2" y="7" width="20" height="14" rx="2" ry="2" />
-                    <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
-                  </svg>
-                </div>
-              }
-              label="Open Positions"
-              value={summary?.open_positions ?? 0}
-              sub={`${summary?.connected_accounts ?? 0} account(s) connected`}
-              loading={false}
-            />
-          </div>
+            {/* Data freshness row */}
+            {summary && (
+              <div className="flex flex-wrap gap-2">
+                <FreshnessBadge item={summary.data_freshness.balances}  label="Balances" />
+                <FreshnessBadge item={summary.data_freshness.positions} label="Positions" />
+                <FreshnessBadge item={summary.data_freshness.trades}    label="Trades" />
+              </div>
+            )}
 
-          {/* If no exchange connected, show full section matching reference design */}
-          {noExchange ? (
-            <NoExchangeSection />
-          ) : (
-            <>
-              {/* Stale banner */}
-              {summary && <StaleBanner freshness={summary.data_freshness} />}
-
-              {/* Data freshness row */}
-              {summary && (
-                <div className="flex flex-wrap gap-2">
-                  <FreshnessBadge item={summary.data_freshness.balances}  label="Balances" />
-                  <FreshnessBadge item={summary.data_freshness.positions} label="Positions" />
-                  <FreshnessBadge item={summary.data_freshness.trades}    label="Trades" />
-                </div>
-              )}
-
-              {/* Open positions */}
-              <div className="surface-card overflow-hidden">
-                <div className="px-4 py-3 border-b border-white/6 flex items-center justify-between">
-                  <h2 className="text-sm font-semibold text-foreground">Open Positions</h2>
-                  {positions.length > 0 && (
-                    <span className="text-xs text-muted-foreground">{positions.length} positions</span>
-                  )}
-                </div>
-                {positions.length > 0 ? (
-                  <div className="divide-y divide-white/4 animate-fade-in">
-                    {positions.map((p) => (
-                      <PositionRow
-                        key={p.id}
-                        pos={p}
-                        liveMarkPrice={prices[p.symbol]?.markPrice ?? null}
-                        livePnl={calcEstLivePnl(p.symbol, p.entry_price, p.size, p.side)}
-                      />
-                    ))}
-                  </div>
-                ) : (
-                  <div className="px-4 py-8 text-center text-sm text-muted-foreground">
-                    No open positions
-                  </div>
+            {/* Open positions */}
+            <div className="surface-card overflow-hidden">
+              <div className="px-4 py-3 border-b border-white/6 flex items-center justify-between">
+                <h2 className="text-sm font-semibold text-foreground">Open Positions</h2>
+                {positions.length > 0 && (
+                  <span className="text-xs text-muted-foreground">{positions.length} positions</span>
                 )}
               </div>
-            </>
-          )}
-        </div>
-      )}
+              {positions.length > 0 ? (
+                <div className="divide-y divide-white/4 animate-fade-in">
+                  {positions.map((p) => (
+                    <PositionRow
+                      key={p.id}
+                      pos={p}
+                      liveMarkPrice={prices[p.symbol]?.markPrice ?? null}
+                      livePnl={calcEstLivePnl(p.symbol, p.entry_price, p.size, p.side)}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="px-4 py-8 text-center text-sm text-muted-foreground">
+                  No open positions
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
