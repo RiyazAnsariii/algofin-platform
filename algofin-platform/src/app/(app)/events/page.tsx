@@ -667,7 +667,7 @@ export default function EventsPage() {
   };
 
   return (
-    <div className="page-content sm:pl-8 space-y-6">
+    <div className="page-content sm:pl-8 min-h-full space-y-6">
       {/* ── Header Title & Refresh Status ──────────────────────────────────── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>

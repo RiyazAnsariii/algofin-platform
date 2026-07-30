@@ -747,7 +747,7 @@ export default function WebhookStrategyPage() {
   const filtered = filter === "all" ? strategies : strategies.filter(s => s.status === filter);
 
   return (
-    <div className="page-content sm:pl-8 space-y-6">
+    <div className="page-content sm:pl-8 min-h-full space-y-6">
       {/* Page header */}
       <div className="flex items-start justify-between gap-4">
         <div>
