@@ -1860,39 +1860,40 @@ export default function AssistantPage() {
               {quickAccessItems.map((item) => {
                 const isActive = activeQuickAccess === item.title;
                 return (
-                  <Link
-                    key={item.title}
-                    href={item.href}
-                    onClick={() => setActiveQuickAccess(item.title)}
-                    className={`flex-1 px-2 py-1.5 rounded-xl border transition-all flex items-center justify-between group min-h-0 ${
-                      isActive
-                        ? "border-cyan-500/50 bg-cyan-950/20 shadow-[0_0_12px_rgba(6,182,212,0.15)]"
-                        : "surface-card border-white/8 hover:border-cyan-500/30"
-                    }`}
-                  >
-                    <div className="flex items-center gap-2 min-w-0">
-                      <div className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 border transition-colors ${
+                  <div key={item.title} className="flex-1 min-h-0">
+                    <Link
+                      href={item.href}
+                      onClick={() => setActiveQuickAccess(item.title)}
+                      className={`h-full px-3 py-2 rounded-xl border transition-all flex items-center justify-between group ${
                         isActive
-                          ? "bg-cyan-500/20 border-cyan-500/40 text-cyan-400"
-                          : "bg-cyan-500/10 border-cyan-500/20 text-cyan-400 group-hover:bg-cyan-500/20"
-                      }`}>
-                        {item.icon}
-                      </div>
-                      <div className="space-y-0 min-w-0">
-                        <span className={`text-[11px] font-bold block transition-colors truncate ${
-                          isActive ? "text-cyan-400" : "text-foreground group-hover:text-cyan-400"
+                          ? "border-cyan-500/50 bg-cyan-950/20 shadow-[0_0_12px_rgba(6,182,212,0.15)]"
+                          : "surface-card border-white/8 hover:border-cyan-500/30"
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 border transition-colors ${
+                          isActive
+                            ? "bg-cyan-500/20 border-cyan-500/40 text-cyan-400"
+                            : "bg-cyan-500/10 border-cyan-500/20 text-cyan-400 group-hover:bg-cyan-500/20"
                         }`}>
-                          {item.title}
-                        </span>
-                        <span className="text-[9px] text-muted-foreground block leading-tight truncate">
-                          {item.subtitle}
-                        </span>
+                          {item.icon}
+                        </div>
+                        <div className="min-w-0">
+                          <span className={`text-[11px] font-bold block transition-colors truncate ${
+                            isActive ? "text-cyan-400" : "text-foreground group-hover:text-cyan-400"
+                          }`}>
+                            {item.title}
+                          </span>
+                          <span className="text-[9px] text-muted-foreground block leading-tight truncate">
+                            {item.subtitle}
+                          </span>
+                        </div>
                       </div>
-                    </div>
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-muted-foreground group-hover:text-cyan-400 transition-colors shrink-0 ml-1">
-                      <polyline points="9 18 15 12 9 6" />
-                    </svg>
-                  </Link>
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-muted-foreground group-hover:text-cyan-400 transition-colors shrink-0 ml-1">
+                        <polyline points="9 18 15 12 9 6" />
+                      </svg>
+                    </Link>
+                  </div>
                 );
               })}
             </div>
