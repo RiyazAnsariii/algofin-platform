@@ -1742,7 +1742,7 @@ export default function AssistantPage() {
         </div>
 
         {/* ── Right Sidebar Column (~25% width) ─── */}
-        <div className="lg:col-span-4 xl:col-span-3 h-full flex flex-col justify-between overflow-y-auto gap-2">
+        <div className="lg:col-span-4 xl:col-span-3 h-full flex flex-col gap-2 overflow-hidden">
           {/* Widget 1: Portfolio Summary */}
           {(() => {
             const totalBalance = portfolioSummary?.total_value_usdt ?? 0;
@@ -1843,7 +1843,7 @@ export default function AssistantPage() {
           })()}
 
           {/* Widget 2: Quick Access Links */}
-          <div className="space-y-1.5 shrink-0 flex-1 flex flex-col justify-between min-h-0">
+          <div className="flex-1 flex flex-col gap-1.5 min-h-0">
             <div className="flex items-center gap-1.5 px-0.5">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-muted-foreground">
                 <circle cx="9" cy="5" r="1.5" fill="currentColor" />
@@ -1856,7 +1856,7 @@ export default function AssistantPage() {
               <h3 className="text-xs font-bold text-foreground">Quick Access</h3>
             </div>
 
-            <div className="space-y-1 flex-1 flex flex-col justify-between">
+            <div className="flex-1 flex flex-col gap-1 min-h-0">
               {quickAccessItems.map((item) => {
                 const isActive = activeQuickAccess === item.title;
                 return (
@@ -1864,7 +1864,7 @@ export default function AssistantPage() {
                     key={item.title}
                     href={item.href}
                     onClick={() => setActiveQuickAccess(item.title)}
-                    className={`px-2 py-1.5 rounded-xl border transition-all flex items-center justify-between group ${
+                    className={`flex-1 px-2 py-1.5 rounded-xl border transition-all flex items-center justify-between group min-h-0 ${
                       isActive
                         ? "border-cyan-500/50 bg-cyan-950/20 shadow-[0_0_12px_rgba(6,182,212,0.15)]"
                         : "surface-card border-white/8 hover:border-cyan-500/30"
