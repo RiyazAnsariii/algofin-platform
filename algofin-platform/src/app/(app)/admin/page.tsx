@@ -747,11 +747,11 @@ function UserActionsDropdown({
             {removeStep === 1 && (
               <>
                 <div className="px-5 py-5 space-y-4">
-                  <div className="flex items-center gap-3 px-4 py-3.5 rounded-xl bg-white/3 border border-white/8">
+                  <div className="flex items-center gap-3 px-4 py-3.5 rounded-xl bg-white/3 border border-white/8 select-text cursor-text">
                     <Avatar name={user.full_name} email={user.email} id={user.id} size="md" />
-                    <div className="min-w-0 flex-1">
+                    <div className="min-w-0 flex-1 select-text">
                       <p className="text-sm font-semibold text-foreground truncate">{user.full_name || "—"}</p>
-                      <p className="text-xs text-muted-foreground/70 truncate">{user.email}</p>
+                      <p className="text-xs text-muted-foreground/70 truncate select-all cursor-text">{user.email}</p>
                     </div>
                     <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold flex-shrink-0 ${
                       user.role === "admin" ? "bg-rose-500/15 text-rose-400 border border-rose-500/25" : "bg-white/5 text-muted-foreground"
@@ -785,9 +785,9 @@ function UserActionsDropdown({
             {removeStep === 2 && (
               <>
                 <div className="px-5 py-5 space-y-4">
-                  <div className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl bg-white/3 border border-white/8">
+                  <div className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl bg-white/3 border border-white/8 select-text cursor-text">
                     <Avatar name={user.full_name} email={user.email} id={user.id} size="sm" />
-                    <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+                    <p className="text-xs text-muted-foreground select-all cursor-text">{user.email}</p>
                   </div>
                   <div>
                     <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider block mb-1.5">
