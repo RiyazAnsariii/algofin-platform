@@ -6,6 +6,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import api from "@/lib/api";
 import { useAuthStore } from "@/stores/auth.store";
 import { relativeTime } from "@/lib/staleness";
@@ -681,6 +682,21 @@ export default function AdminPage() {
       {tab === "sync"     && <SyncTab />}
       {tab === "billing"  && <BillingTab />}
       {tab === "activity" && <ActivityTab />}
+
+      {/* Quick links */}
+      <div className="surface-card p-5">
+        <p className="text-sm font-semibold text-foreground mb-3">Platform Modules</p>
+        <div className="flex flex-wrap gap-3">
+          <Link href="/admin/influencer" className="flex items-center gap-2 px-4 py-2.5 rounded-xl
+            bg-cyan-500/8 border border-cyan-500/20 text-cyan-400 text-sm font-medium hover:bg-cyan-500/15 transition-all">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <polyline points="22 7 13.5 15.5 8.5 10.5 2 17" />
+              <polyline points="16 7 22 7 22 13" />
+            </svg>
+            Influencer Strategies
+          </Link>
+        </div>
+      </div>
     </div>
   );
 }

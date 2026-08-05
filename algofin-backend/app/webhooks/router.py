@@ -2,8 +2,9 @@
 # AlgoFin v2 — Phase M: Webhook router
 #
 # Endpoints:
-#   POST /webhooks/tv/{strategy_id}         — TradingView webhook receiver
+#   POST /webhooks/tv/{strategy_id}         — TradingView webhook receiver (Phase M)
 #   POST /webhooks/tv/{strategy_id}?test=1  — Test mode (logs but never executes)
+#   POST /webhooks/inf/{strategy_id}        — Influencer strategy webhook (Phase INF)
 #   GET  /webhooks/health                   — Queue + worker health (authenticated)
 #
 # Architecture rules enforced here:
@@ -119,6 +120,80 @@ async def tradingview_webhook(
 
     # Always HTTP 200 — TradingView must receive 200 or it retries
     return JSONResponse(status_code=200, content=result)
+
+
+# ── Influencer Webhook Receiver (Phase INF) ───────────────────────────────────
+
+
+@router.post(
+    "/inf/{strategy_id}",
+    summary="Influencer strategy webhook receiver",
+    description=(
+        "Receives signals from TradingView Pine Script alerts for influencer strategies.\n\n"
+        "Always returns HTTP 200 — TradingView retries on non-200 responses.\n\n"
+        "**Authentication**: per-strategy secret in payload body (bcrypt verified).\n\n"
+        "**Signal actions**: ENTER_LONG | EXIT_LONG | ENTER_SHORT | EXIT_SHORT"
+    ),
+)
+async def influencer_webhook(
+    strategy_id: str,
+    request: Request,
+    db: DbSession,
+) -> JSONResponse:
+    """
+    Influencer strategy webhook endpoint.
+
+    Security layers (in order):
+    1. Content-Length check (< 10 KB) — before JSON parse
+    2. IP allowlist — TradingView's 4 known server IPs
+    3. Rate limit — 100 signals/min per strategy (Redis)
+    4. Strategy active check
+    5. bcrypt secret verification
+    6. Action validation (ENTER_LONG / EXIT_LONG / ENTER_SHORT / EXIT_SHORT)
+    7. Replay detection (tv_timestamp age)
+    8. Idempotency (Redis SETNX + DB UNIQUE constraint)
+
+    Always HTTP 200 — errors returned as {"status": "rejected"|"error", "reason": "..."}
+    """
+    # ── Content-Length guard ──────────────────────────────────────────────────
+    content_length = request.headers.get("content-length")
+    if content_length and int(content_length) > settings.webhook_payload_max_bytes:
+        logger.warning(f"[InfWebhook] Payload too large for strategy {strategy_id}")
+        return JSONResponse(status_code=200, content={"status": "invalid"})
+
+    # ── Parse JSON body ───────────────────────────────────────────────────────
+    try:
+        raw_payload = await request.json()
+        if not isinstance(raw_payload, dict):
+            return JSONResponse(status_code=200, content={"status": "invalid"})
+    except Exception:
+        return JSONResponse(status_code=200, content={"status": "invalid"})
+
+    # ── Extract sender IP ─────────────────────────────────────────────────────
+    sender_ip = _get_sender_ip(request)
+
+    # ── Delegate to InfluencerSignalService ───────────────────────────────────
+    try:
+        redis = await get_redis_client()
+    except Exception:
+        redis = None
+
+    try:
+        from app.influencer.signal_service import receive as inf_receive
+        result = await inf_receive(
+            strategy_id=strategy_id,
+            raw_payload=raw_payload,
+            sender_ip=sender_ip,
+            db=db,
+            redis=redis,
+        )
+    except Exception as exc:
+        logger.exception(f"[InfWebhook] Unhandled error for strategy {strategy_id}: {exc}")
+        result = {"status": "error"}
+
+    # Always HTTP 200
+    return JSONResponse(status_code=200, content=result)
+
 
 
 # ── Webhook Health (authenticated) ───────────────────────────────────────────

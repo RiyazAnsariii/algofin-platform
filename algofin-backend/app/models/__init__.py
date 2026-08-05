@@ -27,6 +27,12 @@ from app.models.strategy import (  # v2 Phase F + Phase M
     DomainEventOutbox,
 )
 from app.models.journal import JournalEntry  # v2 Phase G
+from app.models.influencer import (  # Phase INF
+    InfluencerStrategy,
+    InfluencerSubscription,
+    InfluencerSignal,
+    InfluencerSubscriberExecution,
+)
 
 __all__ = [
     "User",
@@ -60,4 +66,9 @@ __all__ = [
     "StrategyTarget",  # v2 Phase M
     "DomainEventOutbox",  # v2 Phase M
     "JournalEntry",  # v2 Phase G
+    # Phase INF
+    "InfluencerStrategy",
+    "InfluencerSubscription",
+    "InfluencerSignal",
+    "InfluencerSubscriberExecution",
 ]

@@ -35,6 +35,8 @@ from app.journal.router import router as journal_router  # v2 Phase G
 from app.portfolio.router import router as portfolio_router
 from app.webhooks.router import router as webhooks_router  # v2 Phase M
 from app.webhooks.worker import start_webhook_worker, stop_webhook_worker  # v2 Phase M
+from app.influencer.router import router as influencer_router  # Phase INF
+from app.influencer.fanout_worker import start_influencer_worker, stop_influencer_worker  # Phase INF
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s %(message)s")
 logger = logging.getLogger(__name__)
@@ -121,6 +123,7 @@ app.include_router(journal_router, prefix="/api")  # Direct /api prefix compatib
 app.include_router(
     webhooks_router, prefix=API_PREFIX
 )  # v2 Phase M: TradingView webhooks
+app.include_router(influencer_router, prefix=API_PREFIX)  # Phase INF: Influencer strategies
 
 
 # ── Health check ──────────────────────────────────────────────────
@@ -233,6 +236,13 @@ async def startup() -> None:
     except Exception as exc:
         logger.warning(f"[WebhookWorker] Could not start webhook worker: {exc}")
 
+    # Phase INF: start influencer fan-out worker
+    try:
+        start_influencer_worker()
+        logger.info("[InfWorker] Influencer fan-out worker started.")
+    except Exception as exc:
+        logger.warning(f"[InfWorker] Could not start influencer worker: {exc}")
+
     # Economic Calendar cold-start sync safeguard
     try:
         from app.database import get_redis_client, AsyncSessionLocal
@@ -289,6 +299,7 @@ async def shutdown() -> None:
     from app.marketdata.binance_user_stream import stop_all_user_streams
 
     stop_webhook_worker()  # v2 Phase M
+    await stop_influencer_worker()  # Phase INF
     stop_strategy_engine()  # v2 Phase F
     stop_alert_dispatcher()  # v2 Phase E
     await stop_all_user_streams()
