@@ -408,3 +408,44 @@ async def demote_from_admin(
     user.role = "user"
     await db.commit()
     return SuccessResponse(data={"message": f"{user.email} demoted to user"})
+
+
+# ── Bootstrap first admin (one-time setup) ────────────────────────────────────
+# Protected by SECRET_KEY header — no JWT required.
+# Use once to promote the first admin account, then this endpoint stays
+# but is harmless (requires knowing the server's SECRET_KEY).
+
+
+@router.post("/bootstrap-admin", response_model=SuccessResponse[dict], tags=["admin-setup"])
+async def bootstrap_admin(
+    db: DbSession,
+    email: str,
+    secret: str,
+) -> SuccessResponse[dict]:
+    """
+    Promote any email to admin using the server's SECRET_KEY.
+    No JWT required — for first-admin bootstrap only.
+
+    Usage:
+      POST /api/v1/admin/bootstrap-admin?email=<email>&secret=<SECRET_KEY>
+    """
+    from app.config import settings
+
+    if secret != settings.secret_key:
+        raise HTTPException(status_code=403, detail="Invalid secret")
+
+    result = await db.execute(select(User).where(User.email == email))
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=404, detail=f"No user with email: {email}")
+
+    old_role = user.role
+    user.role = "admin"
+    await db.commit()
+    return SuccessResponse(
+        data={
+            "message": f"{user.email} promoted from '{old_role}' to 'admin'",
+            "user_id": str(user.id),
+        }
+    )
+
