@@ -641,10 +641,11 @@ function UserActionsDropdown({
   };
 
   const handleRemove = () => {
-    setConfirm(null);
+    // Don't close modal early — keep component mounted so onRefresh() fires properly
     run(async () => {
       await api.delete(`/admin/users/${user.id}?confirm_email=${encodeURIComponent(removeEmail)}`);
       setRemoveEmail("");
+      setRemoveStep(1);
       showToast(`✓ ${user.email} permanently removed`);
       onRefresh();
     });
@@ -922,9 +923,9 @@ function UsersTable({ currentUserId, onViewDetails }: { currentUserId: string; o
 
   const load = useCallback(() => {
     setLoading(true);
-    api.get<{ data: AdminUser[] }>("/admin/users")
+    api.get<{ data: AdminUser[] }>(`/admin/users?_t=${Date.now()}`)
       .then((r) => setUsers(r.data.data))
-      .catch(() => {})
+      .catch((e) => console.error("Failed to load admin users:", e))
       .finally(() => setLoading(false));
   }, []);
 
