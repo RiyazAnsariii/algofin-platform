@@ -163,6 +163,13 @@ function Sidebar({
   onLogout: () => void;
 }) {
   const pathname = usePathname();
+  const isAdminPath = pathname.startsWith("/admin");
+  const [adminOpen, setAdminOpen] = useState(isAdminPath);
+
+  // Auto-expand when navigating to an admin route
+  useEffect(() => {
+    if (isAdminPath) setAdminOpen(true);
+  }, [isAdminPath]);
 
   return (
     <aside className="w-60 flex-shrink-0 hidden lg:flex flex-col border-r border-white/6 bg-sidebar h-screen fixed top-0 left-0 z-30">
@@ -213,23 +220,29 @@ function Sidebar({
         {/* Admin section — only visible to admins */}
         {user?.role === "admin" && (
           <div className="mt-2">
-            {/* Admin parent link */}
-            <Link
-              href="/admin"
-              className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all border
-                ${pathname.startsWith("/admin")
+            {/* Admin toggle button */}
+            <button
+              onClick={() => setAdminOpen((o) => !o)}
+              className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all border
+                ${isAdminPath
                   ? "bg-rose-500/10 text-rose-400 border-rose-500/20 font-medium"
                   : "text-muted-foreground hover:text-rose-400 hover:bg-rose-500/5 border-transparent"
                 }`}
             >
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={pathname.startsWith("/admin") ? 2 : 1.5}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={isAdminPath ? 2 : 1.5}>
                 <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
               </svg>
-              Admin
-            </Link>
+              <span className="flex-1 text-left">Admin</span>
+              {/* Chevron indicator */}
+              <svg
+                width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                className={`transition-transform duration-200 opacity-50 ${adminOpen ? "rotate-180" : ""}`}>
+                <polyline points="6 9 12 15 18 9" />
+              </svg>
+            </button>
 
-            {/* Sub-nav — shown when on any /admin route */}
-            {pathname.startsWith("/admin") && (
+            {/* Sub-nav — toggled by clicking Admin */}
+            {adminOpen && (
               <div className="ml-5 mt-0.5 border-l border-white/8 pl-3 space-y-0.5">
                 {[
                   { label: "Overview",   hash: "" },
