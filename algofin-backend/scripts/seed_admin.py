@@ -4,12 +4,15 @@
 # Usage (on Render shell or local with production env):
 #
 #   python scripts/seed_admin.py mdriyazansari2005@gmail.com
+#   python scripts/seed_admin.py --email mdriyazansari2005@gmail.com
 #
 # Safe to run multiple times — idempotent.
+# DO NOT add this to startCommand in render.yaml — run manually from shell.
 
+import argparse
 import asyncio
-import sys
 import os
+import sys
 
 
 async def promote(email: str) -> None:
@@ -47,8 +50,24 @@ async def promote(email: str) -> None:
 
 
 if __name__ == "__main__":
-    if len(sys.argv) != 2:
+    parser = argparse.ArgumentParser(description="Promote a user to admin role")
+    parser.add_argument(
+        "email",
+        nargs="?",
+        help="Email address of the user to promote (positional)",
+    )
+    parser.add_argument(
+        "--email",
+        dest="email_flag",
+        help="Email address of the user to promote (flag)",
+    )
+    args = parser.parse_args()
+
+    target_email = args.email_flag or args.email
+    if not target_email:
         print("Usage: python scripts/seed_admin.py <email>")
+        print("   or: python scripts/seed_admin.py --email <email>")
         sys.exit(1)
 
-    asyncio.run(promote(sys.argv[1]))
+    asyncio.run(promote(target_email))
+
