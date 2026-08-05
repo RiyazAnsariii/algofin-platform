@@ -19,10 +19,9 @@ import uuid
 from datetime import datetime, timezone
 
 import bcrypt
-from sqlalchemy import select, update
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.config import settings
 from app.models.influencer import (
     InfluencerSignal,
     InfluencerStrategy,
@@ -30,16 +29,10 @@ from app.models.influencer import (
     InfluencerSubscriberExecution,
 )
 from app.influencer.schemas import (
-    InfluencerStrategyAdminResponse,
     InfluencerStrategyCreate,
-    InfluencerStrategyPublicResponse,
     InfluencerStrategyUpdate,
-    RotateSecretResponse,
     SubscriptionCreate,
-    SubscriptionResponse,
     SubscriptionUpdate,
-    SubscriberExecutionResponse,
-    InfluencerSignalResponse,
     AdminSubscriberRow,
 )
 
@@ -58,8 +51,8 @@ def _generate_plain_secret() -> str:
 
 
 def _webhook_url(strategy_id: str) -> str:
-    base = settings.frontend_url.replace("algofin-platform.vercel.app", "algofin-api.onrender.com")
     return f"https://algofin-api.onrender.com/api/v1/webhooks/inf/{strategy_id}"
+
 
 
 # ── Admin: Strategy management ────────────────────────────────────────────────

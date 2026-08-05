@@ -327,7 +327,6 @@ async def _do_execute(
     risk_result = "PASS"
     risk_rule_id = None
     try:
-        from app.database import get_redis_client as _grc
         from app.orders.schemas import PlaceOrderRequest
         from app.risk.engine import RiskViolationError, evaluate_rules
         from app.models.exchange import UserExchangeAccount
