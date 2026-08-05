@@ -2,7 +2,7 @@
 // src/app/(app)/admin/page.tsx
 // AlgoFin v1 — Admin Panel (Premium redesign matching screenshot)
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import api from "@/lib/api";
@@ -324,8 +324,259 @@ function UserDetailModal({ userId, onClose, onRefresh }: {
   );
 }
 
+
+// ── Confirm Modal ─────────────────────────────────────────────────
+function ConfirmModal({
+  title, message, confirmLabel, confirmCls, onConfirm, onCancel, loading,
+}: {
+  title: string; message: string; confirmLabel: string;
+  confirmCls?: string; onConfirm: () => void; onCancel: () => void; loading?: boolean;
+}) {
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/75 backdrop-blur-md" onClick={onCancel}>
+      <div className="w-full max-w-sm bg-[#0f1117] border border-white/12 rounded-2xl shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        <div className="px-5 py-4 border-b border-white/8">
+          <p className="font-semibold text-foreground text-sm">{title}</p>
+        </div>
+        <div className="px-5 py-4">
+          <p className="text-sm text-muted-foreground leading-relaxed">{message}</p>
+        </div>
+        <div className="px-5 py-3 border-t border-white/8 flex items-center justify-end gap-2">
+          <button onClick={onCancel} disabled={loading}
+            className="px-4 py-1.5 rounded-lg bg-white/5 border border-white/10 text-xs font-semibold text-muted-foreground hover:text-foreground hover:bg-white/8 transition-all disabled:opacity-50">
+            Cancel
+          </button>
+          <button onClick={onConfirm} disabled={loading}
+            className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition-all disabled:opacity-50 flex items-center gap-1.5 ${confirmCls ?? "bg-primary text-black hover:bg-primary/90"}`}>
+            {loading && <span className="w-3 h-3 border border-current/30 border-t-current rounded-full animate-spin" />}
+            {confirmLabel}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── User Actions Dropdown ─────────────────────────────────────────
+type ConfirmType = "role" | "exchange" | "disable" | null;
+
+function UserActionsDropdown({
+  user, currentUserId, onViewDetails, onRefresh,
+}: {
+  user: AdminUser; currentUserId: string;
+  onViewDetails: () => void; onRefresh: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [confirm, setConfirm] = useState<ConfirmType>(null);
+  const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
+  const [busy, setBusy] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const isMe = user.id === currentUserId;
+
+  // Close on outside click
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
+  const showToast = (msg: string, ok = true) => {
+    setToast({ msg, ok });
+    setTimeout(() => setToast(null), 3500);
+  };
+
+  const run = async (fn: () => Promise<void>) => {
+    setBusy(true);
+    try { await fn(); } finally { setBusy(false); setConfirm(null); setOpen(false); }
+  };
+
+  const handleTriggerSync = () => {
+    setOpen(false);
+    run(async () => {
+      // Sync all exchange accounts for this user via admin endpoint
+      const detail = await api.get<{ data: any }>(`/admin/users/${user.id}`);
+      const accounts = detail.data.data.exchange_accounts as { id: string }[];
+      if (accounts.length === 0) { showToast("No exchange accounts to sync.", false); return; }
+      await Promise.all(accounts.map((a) => api.post(`/admin/sync/trigger/${a.id}`)));
+      showToast(`✓ Sync triggered for ${accounts.length} account(s)`);
+      onRefresh();
+    });
+  };
+
+  const handleForceLogout = () => {
+    setOpen(false);
+    run(async () => {
+      const res = await api.post<{ data: { message: string; tokens_revoked: number } }>(`/admin/users/${user.id}/force-logout`);
+      showToast(`✓ ${res.data.data.message} (${res.data.data.tokens_revoked} sessions)`);
+    });
+  };
+
+  const handleDisconnectExchange = async () => {
+    setConfirm(null);
+    run(async () => {
+      const detail = await api.get<{ data: any }>(`/admin/users/${user.id}`);
+      const accounts = detail.data.data.exchange_accounts as { id: string; label: string }[];
+      if (accounts.length === 0) { showToast("No exchange accounts connected.", false); return; }
+      // Disconnect all accounts via admin endpoint
+      await Promise.all(accounts.map((a) =>
+        api.delete(`/admin/users/${user.id}/exchange/${a.id}`)
+      ));
+      showToast(`✓ ${accounts.length} exchange account(s) disconnected`);
+      onRefresh();
+    });
+  };
+
+  const handleChangeRole = async () => {
+    setConfirm(null);
+    run(async () => {
+      const action = user.role === "admin" ? "demote" : "promote";
+      const res = await api.post<{ data: { message: string } }>(`/admin/users/${user.id}/${action}`);
+      showToast(`✓ ${res.data.data.message}`);
+      onRefresh();
+    });
+  };
+
+  const handleDisableAccount = async () => {
+    setConfirm(null);
+    run(async () => {
+      const res = await api.post<{ data: { message: string; is_active: boolean } }>(`/admin/users/${user.id}/toggle-active`);
+      showToast(`✓ ${res.data.data.message}`);
+      onRefresh();
+    });
+  };
+
+  const menuItem = (
+    icon: React.ReactNode, label: string, onClick: () => void,
+    cls = "text-foreground/80 hover:text-foreground hover:bg-white/5"
+  ) => (
+    <button onClick={(e) => { e.stopPropagation(); onClick(); }}
+      className={`w-full flex items-center gap-2.5 px-3 py-2 text-xs transition-all text-left ${cls}`}>
+      <span className="w-3.5 flex-shrink-0 flex items-center justify-center opacity-70">{icon}</span>
+      {label}
+    </button>
+  );
+
+  const Divider = () => <div className="my-1 border-t border-white/6" />;
+
+  return (
+    <div className="relative" ref={ref} onClick={(e) => e.stopPropagation()}>
+      {/* Toast */}
+      {toast && (
+        <div className={`fixed bottom-5 right-5 z-[70] px-4 py-2.5 rounded-xl text-xs font-medium shadow-lg border ${
+          toast.ok ? "bg-emerald-950 border-emerald-500/30 text-emerald-400" : "bg-amber-950 border-amber-500/30 text-amber-400"
+        }`}>
+          {toast.ok ? "✓" : "⚠"} {toast.msg}
+        </div>
+      )}
+
+      {/* Confirm modals */}
+      {confirm === "role" && (
+        <ConfirmModal
+          title={user.role === "admin" ? "Demote to User?" : "Promote to Admin?"}
+          message={user.role === "admin"
+            ? `${user.email} will lose all admin privileges immediately. Their active sessions remain valid but they will no longer be able to access the admin panel.`
+            : `${user.email} will gain full admin access — they can view all users, billing data, and trigger syncs. Only grant this to trusted team members.`}
+          confirmLabel={user.role === "admin" ? "Demote to User" : "Promote to Admin"}
+          confirmCls={user.role === "admin"
+            ? "bg-amber-500/10 border border-amber-500/20 text-amber-400 hover:bg-amber-500/20"
+            : "bg-rose-500/10 border border-rose-500/20 text-rose-400 hover:bg-rose-500/20"}
+          loading={busy}
+          onConfirm={handleChangeRole}
+          onCancel={() => setConfirm(null)}
+        />
+      )}
+      {confirm === "exchange" && (
+        <ConfirmModal
+          title="Disconnect Exchange?"
+          message={`This will remove all exchange API credentials for ${user.email}. Their trade history and billing records will be preserved, but live sync will stop. This cannot be undone without the user reconnecting.`}
+          confirmLabel="Disconnect Exchange"
+          confirmCls="bg-amber-500/10 border border-amber-500/20 text-amber-400 hover:bg-amber-500/20"
+          loading={busy}
+          onConfirm={handleDisconnectExchange}
+          onCancel={() => setConfirm(null)}
+        />
+      )}
+      {confirm === "disable" && (
+        <ConfirmModal
+          title={user.is_active ? "Disable Account?" : "Enable Account?"}
+          message={user.is_active
+            ? `${user.email} will immediately lose access to AlgoFin. No data will be deleted. You can re-enable this account at any time.`
+            : `${user.email} will regain access to AlgoFin.`}
+          confirmLabel={user.is_active ? "Disable Account" : "Enable Account"}
+          confirmCls={user.is_active
+            ? "bg-rose-500/10 border border-rose-500/20 text-rose-400 hover:bg-rose-500/20"
+            : "bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/20"}
+          loading={busy}
+          onConfirm={handleDisableAccount}
+          onCancel={() => setConfirm(null)}
+        />
+      )}
+
+      {/* Trigger button */}
+      <button
+        onClick={(e) => { e.stopPropagation(); setOpen((o) => !o); }}
+        className="w-7 h-7 rounded-lg bg-white/0 hover:bg-white/8 flex items-center justify-center transition-all text-muted-foreground opacity-0 group-hover:opacity-100">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
+          <circle cx="5" cy="12" r="2" /><circle cx="12" cy="12" r="2" /><circle cx="19" cy="12" r="2" />
+        </svg>
+      </button>
+
+      {/* Dropdown */}
+      {open && (
+        <div className="absolute right-0 top-8 z-50 w-52 bg-[#0f1117] border border-white/10 rounded-xl shadow-2xl overflow-hidden py-1">
+          {menuItem(
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="13" height="13"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>,
+            "View User Details",
+            () => { setOpen(false); onViewDetails(); }
+          )}
+          {menuItem(
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="13" height="13"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.95"/></svg>,
+            "Trigger Sync",
+            handleTriggerSync
+          )}
+          {menuItem(
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="13" height="13"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>,
+            "Force Logout",
+            handleForceLogout
+          )}
+          <Divider />
+          {menuItem(
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="13" height="13"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>,
+            "Disconnect Exchange",
+            () => { setOpen(false); setConfirm("exchange"); },
+            user.exchange_accounts === 0
+              ? "text-muted-foreground/30 cursor-not-allowed"
+              : "text-foreground/80 hover:text-foreground hover:bg-white/5"
+          )}
+          {!isMe && menuItem(
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="13" height="13"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>,
+            user.role === "admin" ? "Change Role → User" : "Change Role → Admin",
+            () => { setOpen(false); setConfirm("role"); }
+          )}
+          {!isMe && (
+            <>
+              <Divider />
+              {menuItem(
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="13" height="13"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>,
+                user.is_active ? "Disable Account" : "Enable Account",
+                () => { setOpen(false); setConfirm("disable"); },
+                user.is_active
+                  ? "text-rose-400 hover:bg-rose-500/8"
+                  : "text-emerald-400 hover:bg-emerald-500/8"
+              )}
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Users Table ───────────────────────────────────────────────────
-function UsersTable({ currentUserId }: { currentUserId: string }) {
+function UsersTable({ currentUserId, onViewDetails }: { currentUserId: string; onViewDetails?: (userId: string) => void }) {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<string | null>(null);
@@ -456,13 +707,12 @@ function UsersTable({ currentUserId }: { currentUserId: string }) {
                   {new Date(u.created_at).toLocaleDateString("en-US", { month: "short", day: "2-digit", year: "numeric" })}
                 </span>
                 {/* Actions */}
-                <button
-                  className="w-6 h-6 rounded-lg bg-white/0 hover:bg-white/8 flex items-center justify-center transition-all text-muted-foreground opacity-0 group-hover:opacity-100"
-                  onClick={(e) => { e.stopPropagation(); setSelected(u.id); }}>
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
-                    <circle cx="5" cy="12" r="2" /><circle cx="12" cy="12" r="2" /><circle cx="19" cy="12" r="2" />
-                  </svg>
-                </button>
+                <UserActionsDropdown
+                  user={u}
+                  currentUserId={currentUserId}
+                  onViewDetails={() => setSelected(u.id)}
+                  onRefresh={load}
+                />
               </div>
             );
           })}

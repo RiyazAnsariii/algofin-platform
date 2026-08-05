@@ -410,6 +410,105 @@ async def demote_from_admin(
     return SuccessResponse(data={"message": f"{user.email} demoted to user"})
 
 
+# ── Toggle account active/disabled ───────────────────────────────
+
+
+@router.post("/users/{user_id}/toggle-active", response_model=SuccessResponse[dict])
+async def toggle_user_active(
+    user_id: str,
+    current_user: CurrentUser,
+    db: DbSession,
+) -> SuccessResponse[dict]:
+    """Enable or disable a user account without deleting any data."""
+    require_admin(current_user)
+
+    if str(current_user.id) == user_id:
+        raise HTTPException(status_code=400, detail="Cannot disable your own account")
+
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    user.is_active = not user.is_active
+    await db.commit()
+    action = "enabled" if user.is_active else "disabled"
+    return SuccessResponse(data={"message": f"{user.email} {action}", "is_active": user.is_active})
+
+
+# ── Force logout (revoke all refresh tokens) ──────────────────────
+
+
+@router.post("/users/{user_id}/force-logout", response_model=SuccessResponse[dict])
+async def force_logout_user(
+    user_id: str,
+    current_user: CurrentUser,
+    db: DbSession,
+) -> SuccessResponse[dict]:
+    """Invalidate all active refresh tokens for a user, forcing re-login."""
+    require_admin(current_user)
+
+    from app.models.user import RefreshToken
+    from datetime import datetime, timezone
+
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # Revoke all non-expired refresh tokens for this user
+    tokens_result = await db.execute(
+        select(RefreshToken).where(
+            RefreshToken.user_id == user_id,
+            RefreshToken.revoked == False,  # noqa: E712
+        )
+    )
+    tokens = tokens_result.scalars().all()
+    revoked_count = 0
+    for tok in tokens:
+        tok.revoked = True
+        tok.revoked_at = datetime.now(timezone.utc)
+        revoked_count += 1
+
+    await db.commit()
+    logger.info(f"Admin {current_user.email} force-logged-out {user.email} ({revoked_count} tokens revoked)")
+    return SuccessResponse(
+        data={"message": f"{user.email} force-logged out", "tokens_revoked": revoked_count}
+    )
+
+
+# ── Admin disconnect exchange account ─────────────────────────────
+
+
+@router.delete("/users/{user_id}/exchange/{account_id}", response_model=SuccessResponse[dict])
+async def admin_disconnect_exchange(
+    user_id: str,
+    account_id: str,
+    current_user: CurrentUser,
+    db: DbSession,
+) -> SuccessResponse[dict]:
+    """Admin: revoke a specific exchange account for any user."""
+    require_admin(current_user)
+
+    result = await db.execute(
+        select(UserExchangeAccount).where(
+            UserExchangeAccount.id == account_id,
+            UserExchangeAccount.user_id == user_id,
+        )
+    )
+    account = result.scalar_one_or_none()
+    if not account:
+        raise HTTPException(status_code=404, detail="Exchange account not found")
+
+    label = account.label
+    await db.delete(account)
+    await db.commit()
+    logger.info(f"Admin {current_user.email} disconnected exchange '{label}' for user {user_id}")
+    return SuccessResponse(data={"message": f"Exchange account '{label}' disconnected"})
+
+
+
+
 # ── Bootstrap first admin (one-time setup) ────────────────────────────────────
 # Protected by SECRET_KEY header — no JWT required.
 # Use once to promote the first admin account, then this endpoint stays
