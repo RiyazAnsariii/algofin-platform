@@ -573,7 +573,18 @@ function UserActionsDropdown({
 
   const run = async (fn: () => Promise<void>) => {
     setBusy(true);
-    try { await fn(); } finally { setBusy(false); setConfirm(null); setOpen(false); }
+    try {
+      await fn();
+    } catch (err: unknown) {
+      const msg =
+        (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail ||
+        "An error occurred. Please try again.";
+      showToast(`✗ ${msg}`, false);
+    } finally {
+      setBusy(false);
+      setConfirm(null);
+      setOpen(false);
+    }
   };
 
   const handleTriggerSync = () => {

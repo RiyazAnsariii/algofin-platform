@@ -14,8 +14,7 @@ from decimal import Decimal
 from typing import Optional
 
 from fastapi import APIRouter, HTTPException, status
-from sqlalchemy import desc, func, select
-
+from sqlalchemy import desc, func, select, text
 from app.common.deps import CurrentUser, DbSession
 from app.common.schemas import SuccessResponse
 from app.models.exchange import ExchangeSyncRun, UserExchangeAccount
@@ -444,11 +443,17 @@ async def remove_user(
         )
 
     email_snapshot = user.email
-    await db.delete(user)
+    name_snapshot = user.full_name
+
+    # Use raw SQL DELETE so the DB-level ON DELETE CASCADE fires for ALL child
+    # tables (exchange_accounts, strategies, orders, billing, etc.) without
+    # needing every relationship eagerly loaded by the SQLAlchemy ORM session.
+    await db.execute(text("DELETE FROM users WHERE id = :uid"), {"uid": str(user_id)})
     await db.commit()
+
     logger.warning(
         f"ADMIN ACTION: {current_user.email} permanently deleted user "
-        f"{email_snapshot} (id={user_id})"
+        f"{email_snapshot} ({name_snapshot}) (id={user_id})"
     )
     return SuccessResponse(data={"message": f"User {email_snapshot} permanently removed"})
 
