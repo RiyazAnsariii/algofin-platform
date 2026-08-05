@@ -20,6 +20,8 @@ interface AdminUser {
   exchange_accounts: number;
   last_sync_status: string | null;
   last_sync_at: string | null;
+  suspended_until: string | null;
+  is_permanently_blocked: boolean;
 }
 
 interface UserDetail {
@@ -325,6 +327,183 @@ function UserDetailModal({ userId, onClose, onRefresh }: {
 }
 
 
+
+// ── Suspend Modal ─────────────────────────────────────────────────
+function SuspendModal({
+  user, onClose, onSuccess,
+}: {
+  user: AdminUser; onClose: () => void; onSuccess: () => void;
+}) {
+  const [mode, setMode] = useState<"temporary" | "permanent">("temporary");
+  const [days, setDays] = useState(1);
+  const [hours, setHours] = useState(0);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  const totalHours = days * 24 + hours;
+  const expiry = new Date(Date.now() + totalHours * 3600_000);
+  const expiryStr = expiry.toLocaleString("en-US", {
+    month: "short", day: "numeric", year: "numeric",
+    hour: "2-digit", minute: "2-digit", timeZoneName: "short",
+  });
+
+  const handleSubmit = async () => {
+    if (mode === "temporary" && totalHours <= 0) {
+      setErr("Set at least 1 hour."); return;
+    }
+    setBusy(true); setErr(null);
+    try {
+      const params = mode === "permanent"
+        ? `permanent=true`
+        : `days=${days}&hours=${hours}`;
+      await api.post(`/admin/users/${user.id}/suspend?${params}`);
+      onSuccess();
+    } catch (e: any) {
+      setErr(e?.response?.data?.detail ?? "Request failed.");
+    } finally { setBusy(false); }
+  };
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/75 backdrop-blur-md" onClick={onClose}>
+      <div className="w-full max-w-md bg-[#0f1117] border border-white/12 rounded-2xl shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        {/* Header */}
+        <div className="flex items-center gap-3 px-5 py-4 border-b border-white/8">
+          <div className="w-8 h-8 rounded-xl bg-rose-500/15 border border-rose-500/20 flex items-center justify-center flex-shrink-0">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-rose-400">
+              <circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/>
+            </svg>
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-foreground">Disable Account</p>
+            <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+          </div>
+          <button onClick={onClose} className="ml-auto w-7 h-7 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center transition-all">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
+          </button>
+        </div>
+
+        <div className="p-5 space-y-4">
+          {/* Mode selector */}
+          <div className="grid grid-cols-2 gap-2">
+            <button onClick={() => setMode("temporary")}
+              className={`flex flex-col items-start gap-1 px-4 py-3 rounded-xl border text-left transition-all ${
+                mode === "temporary" ? "bg-amber-500/10 border-amber-500/30 text-amber-400" : "bg-white/3 border-white/8 text-muted-foreground hover:border-white/15"
+              }`}>
+              <span className="text-xs font-semibold">Temporary Suspension</span>
+              <span className="text-[10px] opacity-70">Set duration in days &amp; hours</span>
+            </button>
+            <button onClick={() => setMode("permanent")}
+              className={`flex flex-col items-start gap-1 px-4 py-3 rounded-xl border text-left transition-all ${
+                mode === "permanent" ? "bg-rose-500/10 border-rose-500/30 text-rose-400" : "bg-white/3 border-white/8 text-muted-foreground hover:border-white/15"
+              }`}>
+              <span className="text-xs font-semibold">Permanent Block</span>
+              <span className="text-[10px] opacity-70">No time limit — manual unblock only</span>
+            </button>
+          </div>
+
+          {/* Duration pickers — only for temporary */}
+          {mode === "temporary" && (
+            <div className="space-y-3">
+              <div className="flex gap-3">
+                {/* Days */}
+                <div className="flex-1">
+                  <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider block mb-1.5">Days</label>
+                  <div className="flex items-center rounded-xl bg-white/4 border border-white/8 overflow-hidden">
+                    <button onClick={() => setDays(Math.max(0, days - 1))}
+                      className="w-9 h-9 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-white/5 transition-all text-lg font-light flex-shrink-0">−</button>
+                    <input type="number" min={0} max={365} value={days}
+                      onChange={(e) => setDays(Math.max(0, Math.min(365, parseInt(e.target.value) || 0)))}
+                      className="flex-1 bg-transparent text-center text-sm font-semibold text-foreground outline-none w-0 py-2" />
+                    <button onClick={() => setDays(Math.min(365, days + 1))}
+                      className="w-9 h-9 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-white/5 transition-all text-lg font-light flex-shrink-0">+</button>
+                  </div>
+                </div>
+                {/* Hours */}
+                <div className="flex-1">
+                  <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider block mb-1.5">Hours</label>
+                  <div className="flex items-center rounded-xl bg-white/4 border border-white/8 overflow-hidden">
+                    <button onClick={() => setHours(Math.max(0, hours - 1))}
+                      className="w-9 h-9 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-white/5 transition-all text-lg font-light flex-shrink-0">−</button>
+                    <input type="number" min={0} max={23} value={hours}
+                      onChange={(e) => setHours(Math.max(0, Math.min(23, parseInt(e.target.value) || 0)))}
+                      className="flex-1 bg-transparent text-center text-sm font-semibold text-foreground outline-none w-0 py-2" />
+                    <button onClick={() => setHours(Math.min(23, hours + 1))}
+                      className="w-9 h-9 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-white/5 transition-all text-lg font-light flex-shrink-0">+</button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Quick presets */}
+              <div className="flex gap-1.5 flex-wrap">
+                {[
+                  { label: "1h", d: 0, h: 1 }, { label: "6h", d: 0, h: 6 },
+                  { label: "24h", d: 1, h: 0 }, { label: "3d", d: 3, h: 0 },
+                  { label: "7d", d: 7, h: 0 }, { label: "30d", d: 30, h: 0 },
+                ].map((p) => (
+                  <button key={p.label} onClick={() => { setDays(p.d); setHours(p.h); }}
+                    className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all border ${
+                      days === p.d && hours === p.h
+                        ? "bg-amber-500/15 border-amber-500/25 text-amber-400"
+                        : "bg-white/4 border-white/8 text-muted-foreground hover:text-foreground hover:bg-white/8"
+                    }`}>
+                    {p.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Expiry preview */}
+              {totalHours > 0 && (
+                <div className="px-3.5 py-2.5 rounded-xl bg-amber-500/8 border border-amber-500/15">
+                  <p className="text-[11px] text-amber-300">
+                    <span className="font-semibold">Expires:</span> {expiryStr}
+                  </p>
+                  <p className="text-[10px] text-amber-400/60 mt-0.5">
+                    Total: {days > 0 ? `${days}d ` : ""}{hours > 0 ? `${hours}h` : ""}
+                    {days === 0 && hours === 0 ? "0h" : ""}
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Permanent warning */}
+          {mode === "permanent" && (
+            <div className="px-3.5 py-3 rounded-xl bg-rose-500/8 border border-rose-500/15 space-y-1">
+              <p className="text-[11px] text-rose-400 font-semibold">⚠ Permanent block</p>
+              <p className="text-[11px] text-rose-400/70 leading-relaxed">
+                {user.email} will be immediately and indefinitely blocked from accessing AlgoFin. 
+                No data is deleted. You can unblock manually at any time.
+              </p>
+            </div>
+          )}
+
+          {err && <p className="text-xs text-rose-400 px-1">{err}</p>}
+        </div>
+
+        {/* Footer */}
+        <div className="px-5 py-3.5 border-t border-white/8 flex items-center justify-between">
+          <p className="text-[11px] text-muted-foreground/50">No data will be deleted</p>
+          <div className="flex gap-2">
+            <button onClick={onClose} disabled={busy}
+              className="px-4 py-1.5 rounded-lg bg-white/5 border border-white/10 text-xs font-semibold text-muted-foreground hover:text-foreground transition-all disabled:opacity-50">
+              Cancel
+            </button>
+            <button onClick={handleSubmit} disabled={busy || (mode === "temporary" && totalHours <= 0)}
+              className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition-all disabled:opacity-50 flex items-center gap-1.5 ${
+                mode === "permanent"
+                  ? "bg-rose-500/15 border border-rose-500/25 text-rose-400 hover:bg-rose-500/25"
+                  : "bg-amber-500/15 border border-amber-500/25 text-amber-400 hover:bg-amber-500/25"
+              }`}>
+              {busy && <span className="w-3 h-3 border border-current/30 border-t-current rounded-full animate-spin" />}
+              {mode === "permanent" ? "Permanently Block" : "Suspend Account"}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Confirm Modal ─────────────────────────────────────────────────
 function ConfirmModal({
   title, message, confirmLabel, confirmCls, onConfirm, onCancel, loading,
@@ -358,7 +537,7 @@ function ConfirmModal({
 }
 
 // ── User Actions Dropdown ─────────────────────────────────────────
-type ConfirmType = "role" | "exchange" | "disable" | null;
+type ConfirmType = "role" | "exchange" | "suspend" | "unblock" | null;
 
 function UserActionsDropdown({
   user, currentUserId, onViewDetails, onRefresh,
@@ -368,10 +547,12 @@ function UserActionsDropdown({
 }) {
   const [open, setOpen] = useState(false);
   const [confirm, setConfirm] = useState<ConfirmType>(null);
+  const [showSuspend, setShowSuspend] = useState(false);
   const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
   const [busy, setBusy] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const isMe = user.id === currentUserId;
+  const isBlocked = user.is_permanently_blocked || !user.is_active;
 
   // Close on outside click
   useEffect(() => {
@@ -448,6 +629,15 @@ function UserActionsDropdown({
     });
   };
 
+  const handleUnblock = () => {
+    setConfirm(null);
+    run(async () => {
+      const res = await api.post<{ data: { message: string } }>(`/admin/users/${user.id}/unblock`);
+      showToast(`✓ ${res.data.data.message}`);
+      onRefresh();
+    });
+  };
+
   const menuItem = (
     icon: React.ReactNode, label: string, onClick: () => void,
     cls = "text-foreground/80 hover:text-foreground hover:bg-white/5"
@@ -499,18 +689,21 @@ function UserActionsDropdown({
           onCancel={() => setConfirm(null)}
         />
       )}
-      {confirm === "disable" && (
+      {showSuspend && (
+        <SuspendModal
+          user={user}
+          onClose={() => setShowSuspend(false)}
+          onSuccess={() => { setShowSuspend(false); showToast("✓ Account suspended"); onRefresh(); }}
+        />
+      )}
+      {confirm === "unblock" && (
         <ConfirmModal
-          title={user.is_active ? "Disable Account?" : "Enable Account?"}
-          message={user.is_active
-            ? `${user.email} will immediately lose access to AlgoFin. No data will be deleted. You can re-enable this account at any time.`
-            : `${user.email} will regain access to AlgoFin.`}
-          confirmLabel={user.is_active ? "Disable Account" : "Enable Account"}
-          confirmCls={user.is_active
-            ? "bg-rose-500/10 border border-rose-500/20 text-rose-400 hover:bg-rose-500/20"
-            : "bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/20"}
+          title="Reinstate Account?"
+          message={`This will lift all suspensions and blocks for ${user.email}. They will immediately regain full access to AlgoFin.`}
+          confirmLabel="Reinstate Account"
+          confirmCls="bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/20"
           loading={busy}
-          onConfirm={handleDisableAccount}
+          onConfirm={handleUnblock}
           onCancel={() => setConfirm(null)}
         />
       )}
@@ -551,22 +744,29 @@ function UserActionsDropdown({
               ? "text-muted-foreground/30 cursor-not-allowed"
               : "text-foreground/80 hover:text-foreground hover:bg-white/5"
           )}
-          {!isMe && menuItem(
+          {!isMe && user.role === "admin" && menuItem(
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="13" height="13"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>,
-            user.role === "admin" ? "Change Role → User" : "Change Role → Admin",
-            () => { setOpen(false); setConfirm("role"); }
+            "Demote to User",
+            () => { setOpen(false); setConfirm("role"); },
+            "text-amber-400 hover:bg-amber-500/8"
           )}
           {!isMe && (
             <>
               <Divider />
-              {menuItem(
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="13" height="13"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>,
-                user.is_active ? "Disable Account" : "Enable Account",
-                () => { setOpen(false); setConfirm("disable"); },
-                user.is_active
-                  ? "text-rose-400 hover:bg-rose-500/8"
-                  : "text-emerald-400 hover:bg-emerald-500/8"
-              )}
+              {isBlocked
+                ? menuItem(
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="13" height="13"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 11 12 14 22 4"/></svg>,
+                    "Unblock Account",
+                    () => { setOpen(false); setConfirm("unblock"); },
+                    "text-emerald-400 hover:bg-emerald-500/8"
+                  )
+                : menuItem(
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="13" height="13"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>,
+                    "Disable Account",
+                    () => { setOpen(false); setShowSuspend(true); },
+                    "text-rose-400 hover:bg-rose-500/8"
+                  )
+              }
             </>
           )}
         </div>
@@ -678,8 +878,27 @@ function UsersTable({ currentUserId, onViewDetails }: { currentUserId: string; o
                 </div>
                 {/* Status */}
                 <div className="flex items-center gap-1.5">
-                  <span className={`w-1.5 h-1.5 rounded-full ${u.is_active ? "bg-emerald-400" : "bg-white/15"}`} />
-                  <span className={`text-xs ${u.is_active ? "text-emerald-400" : "text-muted-foreground/40"}`}>{u.is_active ? "Active" : "Inactive"}</span>
+                  {u.is_permanently_blocked ? (
+                    <>
+                      <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
+                      <span className="text-xs text-rose-400 font-medium">Blocked</span>
+                    </>
+                  ) : u.suspended_until ? (
+                    <>
+                      <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+                      <span className="text-xs text-amber-400 font-medium">Suspended</span>
+                    </>
+                  ) : u.is_active ? (
+                    <>
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                      <span className="text-xs text-emerald-400">Active</span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="w-1.5 h-1.5 rounded-full bg-white/15" />
+                      <span className="text-xs text-muted-foreground/40">Inactive</span>
+                    </>
+                  )}
                 </div>
                 {/* Exchange */}
                 <div className="flex items-center gap-1.5">

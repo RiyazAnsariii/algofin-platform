@@ -44,6 +44,18 @@ class User(Base):
     avatar_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+
+    # ── Suspension / block ────────────────────────────────────────
+    # Temporary: suspended_until is set to a future UTC datetime
+    # Permanent: is_permanently_blocked = True
+    # Auth must reject login when either condition is active.
+    suspended_until: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True, default=None
+    )
+    is_permanently_blocked: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False
+    )
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )

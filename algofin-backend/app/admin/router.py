@@ -9,8 +9,9 @@
 # POST /admin/sync/trigger/{account_id} — manual sync trigger
 
 import logging
-from datetime import date
+from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
+from typing import Optional
 
 from fastapi import APIRouter, HTTPException, status
 from sqlalchemy import desc, func, select
@@ -44,7 +45,7 @@ async def list_users(
     require_admin(current_user)
 
     result = await db.execute(
-        select(User).where(User.is_active == True).order_by(User.created_at.desc())  # noqa: E712
+        select(User).order_by(User.created_at.desc())  # include inactive/blocked users
     )
     users = result.scalars().all()
 
@@ -84,6 +85,8 @@ async def list_users(
                 "last_sync_at": latest_sync.started_at.isoformat()
                 if latest_sync
                 else None,
+                "suspended_until": u.suspended_until.isoformat() if u.suspended_until else None,
+                "is_permanently_blocked": u.is_permanently_blocked,
             }
         )
 
@@ -434,6 +437,87 @@ async def toggle_user_active(
     await db.commit()
     action = "enabled" if user.is_active else "disabled"
     return SuccessResponse(data={"message": f"{user.email} {action}", "is_active": user.is_active})
+
+
+# ── Suspend account (timed or permanent) ─────────────────────────────
+
+
+@router.post("/users/{user_id}/suspend", response_model=SuccessResponse[dict])
+async def suspend_user(
+    user_id: str,
+    permanent: bool = False,
+    days: Optional[int] = 0,
+    hours: Optional[int] = 0,
+    current_user: CurrentUser = None,
+    db: DbSession = None,
+) -> SuccessResponse[dict]:
+    """Suspend a user account.
+    - permanent=True  → permanent block (is_permanently_blocked + is_active=False)
+    - days/hours      → temporary suspension until now+duration
+    """
+    require_admin(current_user)
+
+    if str(current_user.id) == user_id:
+        raise HTTPException(status_code=400, detail="Cannot suspend your own account")
+
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    user.is_active = False
+
+    if permanent:
+        user.is_permanently_blocked = True
+        user.suspended_until = None
+        msg = f"{user.email} permanently blocked"
+        logger.warning(f"Admin {current_user.email} permanently blocked {user.email}")
+    else:
+        total_hours = (days or 0) * 24 + (hours or 0)
+        if total_hours <= 0:
+            raise HTTPException(status_code=400, detail="Provide days or hours > 0 for a temporary suspension")
+        expires = datetime.now(timezone.utc) + timedelta(hours=total_hours)
+        user.suspended_until = expires
+        user.is_permanently_blocked = False
+        parts = []
+        if days: parts.append(f"{days}d")
+        if hours: parts.append(f"{hours}h")
+        duration_str = " ".join(parts)
+        msg = f"{user.email} suspended for {duration_str} (until {expires.strftime('%Y-%m-%d %H:%M UTC')})"
+        logger.info(f"Admin {current_user.email} temporarily suspended {user.email} for {total_hours}h")
+
+    await db.commit()
+    return SuccessResponse(data={
+        "message": msg,
+        "is_active": user.is_active,
+        "is_permanently_blocked": user.is_permanently_blocked,
+        "suspended_until": user.suspended_until.isoformat() if user.suspended_until else None,
+    })
+
+
+# ── Unblock / reinstate account ─────────────────────────────────
+
+
+@router.post("/users/{user_id}/unblock", response_model=SuccessResponse[dict])
+async def unblock_user(
+    user_id: str,
+    current_user: CurrentUser = None,
+    db: DbSession = None,
+) -> SuccessResponse[dict]:
+    """Lift any suspension/block and fully reinstate the account."""
+    require_admin(current_user)
+
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    user.is_active = True
+    user.suspended_until = None
+    user.is_permanently_blocked = False
+    await db.commit()
+    logger.info(f"Admin {current_user.email} unblocked {user.email}")
+    return SuccessResponse(data={"message": f"{user.email} reinstated", "is_active": True})
 
 
 # ── Force logout (revoke all refresh tokens) ──────────────────────
