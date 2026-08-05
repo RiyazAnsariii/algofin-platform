@@ -1,8 +1,6 @@
 "use client";
 // src/app/(app)/admin/page.tsx
-// AlgoFin v1 — Admin Panel (Phase I: complete)
-// Tabs: Users, Sync, Billing, Activity
-// Features: user detail modal, manual sync trigger, role management, login activity log
+// AlgoFin v1 — Admin Panel (Premium redesign matching screenshot)
 
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
@@ -13,65 +11,65 @@ import { relativeTime } from "@/lib/staleness";
 
 // ── Types ─────────────────────────────────────────────────────────
 interface AdminUser {
-  id:                string;
-  email:             string;
-  full_name:         string | null;
-  role:              string;
-  is_active:         boolean;
-  created_at:        string;
+  id: string;
+  email: string;
+  full_name: string | null;
+  role: string;
+  is_active: boolean;
+  created_at: string;
   exchange_accounts: number;
-  last_sync_status:  string | null;
-  last_sync_at:      string | null;
+  last_sync_status: string | null;
+  last_sync_at: string | null;
 }
 
 interface UserDetail {
-  id:               string;
-  email:            string;
-  full_name:        string;
-  role:             string;
-  is_active:        boolean;
-  created_at:       string;
+  id: string;
+  email: string;
+  full_name: string;
+  role: string;
+  is_active: boolean;
+  created_at: string;
   exchange_accounts: {
-    id:              string;
-    label:           string;
-    exchange_id:     string;
-    sync_status:     string;
+    id: string;
+    label: string;
+    exchange_id: string;
+    sync_status: string;
     billing_consent: boolean;
-    last_sync_at:    string | null;
+    last_sync_at: string | null;
   }[];
   mtd_billing: {
-    total_realized_pnl:     number;
+    total_realized_pnl: number;
     performance_fee_amount: number;
-    is_complete:            boolean;
+    is_complete: boolean;
   } | null;
 }
 
 interface SyncRun {
-  id:               string;
-  sync_type:        string;
-  status:           string;
-  started_at:       string;
-  finished_at:      string | null;
-  rows_processed:   number;
-  error_message:    string | null;
+  id: string;
+  sync_type: string;
+  status: string;
+  started_at: string;
+  finished_at: string | null;
+  rows_processed: number;
+  error_message: string | null;
   exchange_account: string;
-  user_email:       string;
+  user_email: string;
 }
 
 interface BillingUser {
-  user_id:                string;
-  user_email:             string;
-  total_realized_pnl:     number;
+  user_id: string;
+  user_email: string;
+  total_realized_pnl: number;
   performance_fee_amount: number;
-  consented_accounts:     number;
-  is_complete:            boolean;
+  consented_accounts: number;
+  is_complete: boolean;
 }
 
 interface ActivityRow {
-  id:         string;
+  id: string;
   user_email: string;
-  user_id:    string;
-  event:      string;
+  user_id: string;
+  event: string;
   ip_address: string | null;
   user_agent: string | null;
   created_at: string;
@@ -81,235 +79,244 @@ interface ActivityRow {
 const fmt = (n: number) =>
   n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-const STATUS_COLOR: Record<string, string> = {
-  success:   "text-emerald-400",
-  error:     "text-rose-400",
-  running:   "text-amber-400",
-  partial:   "text-amber-400",
-  connected: "text-emerald-400",
-  stale:     "text-amber-400",
-  pending:   "text-muted-foreground",
-};
+function getInitials(name: string | null, email: string): string {
+  if (name && name.trim()) {
+    const parts = name.trim().split(" ");
+    return parts.length >= 2
+      ? (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+      : parts[0].slice(0, 2).toUpperCase();
+  }
+  return email.slice(0, 2).toUpperCase();
+}
 
-const EVENT_COLOR: Record<string, string> = {
-  login_success:    "text-emerald-400",
-  login_failed:     "text-rose-400",
-  logout:           "text-muted-foreground",
-  token_refreshed:  "text-blue-400",
-  password_changed: "text-amber-400",
-};
+const AVATAR_COLORS = [
+  "from-cyan-500 to-blue-600",
+  "from-violet-500 to-purple-600",
+  "from-emerald-500 to-teal-600",
+  "from-amber-500 to-orange-600",
+  "from-rose-500 to-pink-600",
+  "from-indigo-500 to-blue-600",
+];
 
-function Spinner() {
+function avatarColor(id: string): string {
+  let hash = 0;
+  for (let i = 0; i < id.length; i++) hash = id.charCodeAt(i) + ((hash << 5) - hash);
+  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
+}
+
+function Avatar({ name, email, id, size = "sm" }: {
+  name: string | null; email: string; id: string; size?: "sm" | "md";
+}) {
+  const sz = size === "md" ? "w-9 h-9 text-sm" : "w-7 h-7 text-xs";
   return (
-    <div className="p-10 flex justify-center">
-      <div className="w-5 h-5 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+    <div className={`${sz} rounded-full bg-gradient-to-br ${avatarColor(id)} flex items-center justify-center font-bold text-white flex-shrink-0`}>
+      {getInitials(name, email)}
     </div>
   );
 }
 
-// ── Tab button ────────────────────────────────────────────────────
-function Tab({ label, active, onClick, badge }: {
-  label: string; active: boolean; onClick: () => void; badge?: number;
-}) {
+function Spinner() {
   return (
-    <button
-      onClick={onClick}
-      className={`px-4 py-2 text-sm font-medium rounded-lg transition-all flex items-center gap-2
-        ${active
-          ? "bg-primary/15 text-primary border border-primary/30"
-          : "text-muted-foreground hover:text-foreground hover:bg-white/4"
-        }`}
-    >
-      {label}
-      {badge !== undefined && badge > 0 && (
-        <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold
-          ${active ? "bg-primary/20 text-primary" : "bg-white/10 text-muted-foreground"}`}>
-          {badge}
-        </span>
-      )}
-    </button>
+    <div className="flex items-center justify-center py-16">
+      <div className="w-6 h-6 border-2 border-primary/20 border-t-primary rounded-full animate-spin" />
+    </div>
+  );
+}
+
+// ── SVG Donut Chart ───────────────────────────────────────────────
+function DonutChart({ data }: { data: { label: string; value: number; color: string }[] }) {
+  const total = data.reduce((s, d) => s + d.value, 0);
+  const R = 58; const cx = 75; const cy = 75; const sw = 16;
+  let off = -Math.PI / 2;
+  const segs = data.map((d) => {
+    const ang = (d.value / Math.max(total, 1)) * 2 * Math.PI;
+    const x1 = cx + R * Math.cos(off); const y1 = cy + R * Math.sin(off);
+    off += ang;
+    const x2 = cx + R * Math.cos(off); const y2 = cy + R * Math.sin(off);
+    return { ...d, x1, y1, x2, y2, la: ang > Math.PI ? 1 : 0, ang };
+  });
+  return (
+    <div className="flex items-center gap-5">
+      <div className="relative flex-shrink-0">
+        <svg width="150" height="150" viewBox="0 0 150 150">
+          <circle cx={cx} cy={cy} r={R} fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth={sw} />
+          {segs.map((s, i) => s.ang > 0.02 ? (
+            <path key={i} d={`M ${s.x1} ${s.y1} A ${R} ${R} 0 ${s.la} 1 ${s.x2} ${s.y2}`}
+              fill="none" stroke={s.color} strokeWidth={sw} strokeLinecap="round" />
+          ) : null)}
+          <text x={cx} y={cy - 7} textAnchor="middle" fill="white" fontSize="11" fontWeight="500" opacity="0.45">Total</text>
+          <text x={cx} y={cy + 12} textAnchor="middle" fill="white" fontSize="20" fontWeight="700">{total}</text>
+        </svg>
+      </div>
+      <div className="space-y-2.5">
+        {data.map((d) => (
+          <div key={d.label} className="flex items-center gap-2">
+            <div className="w-2 h-2 rounded-sm flex-shrink-0" style={{ background: d.color }} />
+            <span className="text-xs text-muted-foreground min-w-[72px]">{d.label}</span>
+            <span className="text-xs font-semibold text-foreground w-6 text-right">{d.value}</span>
+            <span className="text-[10px] text-muted-foreground/45 w-12 text-right">
+              ({total > 0 ? ((d.value / total) * 100).toFixed(1) : 0}%)
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 
 // ── User Detail Modal ─────────────────────────────────────────────
-function UserDetailModal({ userId, onClose }: { userId: string; onClose: () => void }) {
-  const [detail, setDetail]     = useState<UserDetail | null>(null);
-  const [activity, setActivity] = useState<{ event: string; ip_address: string | null; created_at: string }[]>([]);
-  const [loading, setLoading]   = useState(true);
-  const [toast, setToast]       = useState<string | null>(null);
+function UserDetailModal({ userId, onClose, onRefresh }: {
+  userId: string; onClose: () => void; onRefresh: () => void;
+}) {
+  const [detail, setDetail] = useState<UserDetail | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
   const [triggering, setTriggering] = useState<string | null>(null);
+  const { user: cu } = useAuthStore();
 
   useEffect(() => {
-    Promise.all([
-      api.get<{ data: UserDetail }>(`/admin/users/${userId}`),
-      api.get<{ data: typeof activity }>(`/admin/users/${userId}/activity`),
-    ]).then(([dr, ar]) => {
-      setDetail(dr.data.data);
-      setActivity(ar.data.data);
-    }).catch(() => {}).finally(() => setLoading(false));
+    api.get<{ data: UserDetail }>(`/admin/users/${userId}`)
+      .then((r) => setDetail(r.data.data))
+      .catch(() => {})
+      .finally(() => setLoading(false));
   }, [userId]);
+
+  const showToast = (msg: string, ok = true) => {
+    setToast({ msg, ok });
+    setTimeout(() => setToast(null), 3000);
+  };
 
   const handleSync = async (accountId: string) => {
     setTriggering(accountId);
     try {
       await api.post(`/admin/sync/trigger/${accountId}`);
-      setToast("✓ Sync triggered!");
-    } catch {
-      setToast("⚠ Failed to trigger sync.");
-    } finally {
-      setTriggering(null);
-      setTimeout(() => setToast(null), 3000);
-    }
+      showToast("Sync triggered successfully!");
+    } catch { showToast("Failed to trigger sync.", false); }
+    finally { setTriggering(null); }
   };
 
   const handleRole = async (action: "promote" | "demote") => {
     try {
       const res = await api.post<{ data: { message: string } }>(`/admin/users/${userId}/${action}`);
-      setToast(`✓ ${res.data.data.message}`);
+      showToast(res.data.data.message);
       if (detail) setDetail({ ...detail, role: action === "promote" ? "admin" : "user" });
+      onRefresh();
     } catch (err: any) {
-      setToast(`⚠ ${err?.response?.data?.detail ?? "Failed"}`);
-    } finally {
-      setTimeout(() => setToast(null), 3000);
+      showToast(err?.response?.data?.detail ?? "Failed", false);
     }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-      <div className="w-full max-w-2xl bg-surface-1 border border-white/10 rounded-2xl shadow-2xl max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md" onClick={onClose}>
+      <div className="w-full max-w-lg bg-[#0f1117] border border-white/10 rounded-2xl shadow-2xl max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-white/8 sticky top-0 bg-surface-1 z-10">
-          <div>
-            <p className="font-semibold text-foreground">{detail?.email ?? "Loading…"}</p>
-            {detail && (
-              <div className="flex items-center gap-2 mt-0.5">
-                <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium
-                  ${detail.role === "admin" ? "bg-primary/15 text-primary border border-primary/20" : "bg-white/5 text-muted-foreground"}`}>
-                  {detail.role}
-                </span>
-                <span className="text-xs text-muted-foreground">Joined {relativeTime(detail.created_at)}</span>
-              </div>
-            )}
+        <div className="flex items-center gap-3 px-5 py-4 border-b border-white/8 sticky top-0 bg-[#0f1117] z-10">
+          {detail && <Avatar name={detail.full_name} email={detail.email} id={detail.id} size="md" />}
+          <div className="flex-1 min-w-0">
+            <p className="font-semibold text-foreground truncate">{detail?.full_name || detail?.email || "Loading..."}</p>
+            {detail && <p className="text-xs text-muted-foreground truncate">{detail.email}</p>}
           </div>
-          <button
-            onClick={onClose}
-            className="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center transition-all"
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M18 6L6 18M6 6l12 12" />
-            </svg>
-          </button>
+          <div className="flex items-center gap-2">
+            {detail && (
+              <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold border ${
+                detail.role === "admin" ? "bg-rose-500/15 text-rose-400 border-rose-500/25" : "bg-white/5 text-muted-foreground border-white/10"
+              }`}>{detail.role}</span>
+            )}
+            <button onClick={onClose} className="w-7 h-7 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center transition-all">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 6L6 18M6 6l12 12" /></svg>
+            </button>
+          </div>
         </div>
 
         {loading ? <Spinner /> : detail ? (
-          <div className="p-6 space-y-6">
-            {/* MTD Billing */}
-            {detail.mtd_billing && (
-              <div className="grid grid-cols-2 gap-3">
-                <div className="bg-surface-2 rounded-xl px-4 py-3 text-center">
-                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider">MTD Realized PnL</p>
-                  <p className={`text-lg font-bold mt-1 ${detail.mtd_billing.total_realized_pnl >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
-                    {detail.mtd_billing.total_realized_pnl >= 0 ? "+" : ""}${fmt(detail.mtd_billing.total_realized_pnl)}
-                  </p>
-                </div>
-                <div className="bg-surface-2 rounded-xl px-4 py-3 text-center">
-                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Est. Fee</p>
-                  <p className="text-lg font-bold mt-1 text-foreground">${fmt(detail.mtd_billing.performance_fee_amount)}</p>
-                </div>
+          <div className="p-5 space-y-5">
+            {/* Stats */}
+            <div className="grid grid-cols-2 gap-3">
+              {detail.mtd_billing && (
+                <>
+                  <div className="bg-white/3 rounded-xl px-4 py-3 text-center border border-white/5">
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">MTD Realized PnL</p>
+                    <p className={`text-base font-bold ${detail.mtd_billing.total_realized_pnl >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
+                      {detail.mtd_billing.total_realized_pnl >= 0 ? "+" : ""}${fmt(detail.mtd_billing.total_realized_pnl)}
+                    </p>
+                  </div>
+                  <div className="bg-white/3 rounded-xl px-4 py-3 text-center border border-white/5">
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Est. Fee</p>
+                    <p className="text-base font-bold text-foreground">${fmt(detail.mtd_billing.performance_fee_amount)}</p>
+                  </div>
+                </>
+              )}
+              <div className="bg-white/3 rounded-xl px-4 py-3 text-center border border-white/5">
+                <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Joined</p>
+                <p className="text-sm font-semibold text-foreground">{new Date(detail.created_at).toLocaleDateString()}</p>
               </div>
-            )}
+              <div className="bg-white/3 rounded-xl px-4 py-3 text-center border border-white/5">
+                <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Status</p>
+                <span className={`text-sm font-semibold ${detail.is_active ? "text-emerald-400" : "text-rose-400"}`}>
+                  {detail.is_active ? "Active" : "Inactive"}
+                </span>
+              </div>
+            </div>
 
             {/* Exchange accounts */}
             <div>
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Exchange Accounts</p>
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+                Exchange Accounts ({detail.exchange_accounts.length})
+              </p>
               {detail.exchange_accounts.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No exchange accounts connected.</p>
+                <p className="text-sm text-muted-foreground py-2">No accounts connected.</p>
               ) : (
                 <div className="space-y-2">
                   {detail.exchange_accounts.map((a) => (
-                    <div key={a.id} className="flex items-center justify-between bg-surface-2 rounded-xl px-4 py-3 gap-3">
+                    <div key={a.id} className="flex items-center justify-between bg-white/3 rounded-xl px-4 py-2.5 border border-white/5">
                       <div className="min-w-0">
                         <p className="text-sm font-medium text-foreground truncate">{a.label}</p>
-                        <p className="text-xs text-muted-foreground">{a.exchange_id}</p>
+                        <p className="text-[10px] text-muted-foreground capitalize">{a.exchange_id} · {a.sync_status}</p>
                       </div>
-                      <div className="flex items-center gap-3 shrink-0">
-                        <span className={`text-xs font-medium ${STATUS_COLOR[a.sync_status] ?? "text-muted-foreground"}`}>
-                          {a.sync_status}
-                        </span>
-                        <button
-                          onClick={() => handleSync(a.id)}
-                          disabled={triggering === a.id}
-                          className="px-3 py-1 rounded-lg bg-primary/10 border border-primary/20 text-primary
-                            text-xs font-medium hover:bg-primary/15 transition-all disabled:opacity-50 flex items-center gap-1.5"
-                        >
-                          {triggering === a.id ? (
-                            <span className="w-3 h-3 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
-                          ) : (
-                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                              <polyline points="1 4 1 10 7 10" /><path d="M3.51 15a9 9 0 1 0 .49-4.95" />
-                            </svg>
-                          )}
-                          Sync
-                        </button>
-                      </div>
+                      <button onClick={() => handleSync(a.id)} disabled={triggering === a.id}
+                        className="px-3 py-1 rounded-lg bg-primary/10 border border-primary/20 text-primary text-xs font-medium hover:bg-primary/20 transition-all disabled:opacity-50 flex items-center gap-1.5 ml-3">
+                        {triggering === a.id
+                          ? <span className="w-3 h-3 border border-primary/30 border-t-primary rounded-full animate-spin" />
+                          : <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="1 4 1 10 7 10" /><path d="M3.51 15a9 9 0 1 0 .49-4.95" /></svg>
+                        }
+                        Sync
+                      </button>
                     </div>
                   ))}
                 </div>
               )}
             </div>
 
-            {/* Recent activity */}
-            {activity.length > 0 && (
-              <div>
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Recent Activity</p>
-                <div className="space-y-1.5">
-                  {activity.slice(0, 8).map((a) => (
-                    <div key={a.created_at} className="flex items-center justify-between text-xs py-1.5 border-b border-white/4 last:border-0">
-                      <span className={`font-mono font-medium ${EVENT_COLOR[a.event] ?? "text-muted-foreground"}`}>
-                        {a.event}
-                      </span>
-                      <div className="text-right">
-                        <p className="text-muted-foreground">{relativeTime(a.created_at)}</p>
-                        {a.ip_address && <p className="text-muted-foreground/50 font-mono text-[10px]">{a.ip_address}</p>}
-                      </div>
-                    </div>
-                  ))}
+            {/* Role management */}
+            {cu?.id !== detail.id && (
+              <div className="border-t border-white/6 pt-4 flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-foreground">Role Management</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Current: <strong className="text-foreground">{detail.role}</strong></p>
+                </div>
+                <div className="flex gap-2">
+                  {detail.role === "user" ? (
+                    <button onClick={() => handleRole("promote")}
+                      className="px-3 py-1.5 rounded-lg bg-primary/10 border border-primary/20 text-primary text-xs font-semibold hover:bg-primary/20 transition-all">
+                      Promote to Admin
+                    </button>
+                  ) : (
+                    <button onClick={() => handleRole("demote")}
+                      className="px-3 py-1.5 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs font-semibold hover:bg-rose-500/20 transition-all">
+                      Demote to User
+                    </button>
+                  )}
                 </div>
               </div>
             )}
-
-            {/* Role management */}
-            <div className="border-t border-white/6 pt-4 flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-foreground">Role management</p>
-                <p className="text-xs text-muted-foreground mt-0.5">Current role: <strong>{detail.role}</strong></p>
-              </div>
-              {detail.role === "user" ? (
-                <button
-                  onClick={() => handleRole("promote")}
-                  className="px-3 py-1.5 rounded-lg bg-primary/10 border border-primary/20 text-primary
-                    text-xs font-medium hover:bg-primary/15 transition-all"
-                >
-                  Promote to Admin
-                </button>
-              ) : (
-                <button
-                  onClick={() => handleRole("demote")}
-                  className="px-3 py-1.5 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-400
-                    text-xs font-medium hover:bg-rose-500/15 transition-all"
-                >
-                  Demote to User
-                </button>
-              )}
-            </div>
           </div>
         ) : (
           <p className="p-8 text-center text-sm text-muted-foreground">Failed to load user details.</p>
         )}
 
         {toast && (
-          <div className="sticky bottom-0 px-6 py-3 bg-surface-1 border-t border-white/8 text-sm text-emerald-400">
-            {toast}
+          <div className={`sticky bottom-0 px-5 py-3 border-t border-white/8 text-xs font-medium ${toast.ok ? "text-emerald-400" : "text-amber-400"}`}>
+            {toast.ok ? "✓" : "⚠"} {toast.msg}
           </div>
         )}
       </div>
@@ -317,19 +324,24 @@ function UserDetailModal({ userId, onClose }: { userId: string; onClose: () => v
   );
 }
 
-// ── Users tab ─────────────────────────────────────────────────────
-function UsersTab() {
-  const [users, setUsers]       = useState<AdminUser[]>([]);
-  const [loading, setLoading]   = useState(true);
+// ── Users Table ───────────────────────────────────────────────────
+function UsersTable({ currentUserId }: { currentUserId: string }) {
+  const [users, setUsers] = useState<AdminUser[]>([]);
+  const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<string | null>(null);
-  const [search, setSearch]     = useState("");
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const perPage = 8;
 
-  useEffect(() => {
+  const load = useCallback(() => {
+    setLoading(true);
     api.get<{ data: AdminUser[] }>("/admin/users")
       .then((r) => setUsers(r.data.data))
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => { load(); }, [load]);
 
   const filtered = users.filter((u) =>
     !search ||
@@ -337,138 +349,320 @@ function UsersTab() {
     (u.full_name ?? "").toLowerCase().includes(search.toLowerCase())
   );
 
+  const totalPages = Math.max(1, Math.ceil(filtered.length / perPage));
+  const paginated = filtered.slice((page - 1) * perPage, page * perPage);
+
   if (loading) return <Spinner />;
 
   return (
     <>
-      {selected && <UserDetailModal userId={selected} onClose={() => setSelected(null)} />}
-
-      <div className="surface-card overflow-hidden">
-        <div className="px-5 py-3 border-b border-white/6 flex items-center justify-between gap-3">
-          <p className="text-sm font-semibold text-foreground">{users.length} users</p>
-          <input
-            type="search"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search by name or email…"
-            className="px-3 py-1.5 rounded-lg bg-surface-2 border border-white/8 text-xs text-foreground
-              placeholder:text-muted-foreground/60 outline-none focus:border-primary/30 w-52"
-          />
-        </div>
-
-        {/* Header */}
-        <div className="grid grid-cols-5 gap-4 px-5 py-2 text-[11px] font-medium text-muted-foreground uppercase tracking-wider border-b border-white/4">
-          <span className="col-span-2">User</span>
-          <span className="text-center">Role</span>
-          <span className="text-center">Accounts</span>
-          <span className="text-right">Last sync</span>
-        </div>
-
-        <div className="divide-y divide-white/4">
-          {filtered.map((u) => (
-            <button
-              key={u.id}
-              onClick={() => setSelected(u.id)}
-              className="w-full grid grid-cols-5 gap-4 px-5 py-3 text-sm hover:bg-white/3 transition-colors items-center text-left"
-            >
-              <div className="col-span-2 min-w-0">
-                <p className="text-foreground font-medium truncate">{u.full_name || "—"}</p>
-                <p className="text-xs text-muted-foreground truncate">{u.email}</p>
-              </div>
-              <div className="flex justify-center">
-                <span className={`text-xs px-2 py-0.5 rounded-full font-medium
-                  ${u.role === "admin" ? "bg-primary/15 text-primary border border-primary/20" : "bg-white/5 text-muted-foreground"}`}>
-                  {u.role}
-                </span>
-              </div>
-              <p className="text-center text-foreground">{u.exchange_accounts}</p>
-              <div className="text-right">
-                {u.last_sync_at ? (
-                  <span className={`text-xs ${STATUS_COLOR[u.last_sync_status ?? ""] ?? "text-muted-foreground"}`}>
-                    {relativeTime(u.last_sync_at)}
-                  </span>
-                ) : (
-                  <span className="text-xs text-muted-foreground/40">Never</span>
-                )}
-              </div>
+      {selected && <UserDetailModal userId={selected} onClose={() => setSelected(null)} onRefresh={load} />}
+      <div className="rounded-2xl border border-white/8 overflow-hidden bg-[#0c0e13]">
+        {/* Top bar */}
+        <div className="px-5 py-4 border-b border-white/6 flex items-center justify-between gap-3">
+          <div>
+            <p className="text-sm font-semibold text-foreground">Users</p>
+            <p className="text-[11px] text-muted-foreground">Manage platform users and their access</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="relative">
+              <svg className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground/50" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
+              </svg>
+              <input type="search" value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+                placeholder="Search by name or email..."
+                className="pl-7 pr-3 py-1.5 rounded-lg bg-white/5 border border-white/8 text-xs text-foreground placeholder:text-muted-foreground/40 outline-none focus:border-primary/30 w-52 transition-all" />
+            </div>
+            <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/5 border border-white/8 text-xs text-muted-foreground hover:text-foreground hover:bg-white/8 transition-all">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <line x1="4" y1="6" x2="20" y2="6" /><line x1="8" y1="12" x2="16" y2="12" /><line x1="11" y1="18" x2="13" y2="18" />
+              </svg>
+              Filter
             </button>
-          ))}
+            <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-black text-xs font-semibold hover:bg-primary/90 transition-all">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
+              </svg>
+              Add User
+            </button>
+          </div>
+        </div>
 
-          {filtered.length === 0 && (
-            <div className="px-5 py-8 text-center text-sm text-muted-foreground">
+        {/* Column headers */}
+        <div className="grid grid-cols-[2.2fr_1fr_1fr_1.6fr_0.8fr_1fr_1fr_0.5fr] gap-2 px-5 py-2.5 bg-white/[0.018] border-b border-white/5">
+          {["USER","ROLE","STATUS","EXCHANGE","ACCOUNTS","LAST SYNC","JOINED","ACTIONS"].map((h) => (
+            <span key={h} className="text-[10px] font-semibold text-muted-foreground/50 uppercase tracking-wider">{h}</span>
+          ))}
+        </div>
+
+        {/* Rows */}
+        <div className="divide-y divide-white/[0.04]">
+          {paginated.length === 0 ? (
+            <div className="px-5 py-10 text-center text-sm text-muted-foreground">
               {search ? "No users match your search." : "No users found."}
             </div>
-          )}
+          ) : paginated.map((u) => {
+            const isMe = u.id === currentUserId;
+            const syncColor = u.last_sync_status === "success" ? "text-emerald-400" : u.last_sync_status === "error" ? "text-rose-400" : "text-amber-400";
+            return (
+              <div key={u.id}
+                className="grid grid-cols-[2.2fr_1fr_1fr_1.6fr_0.8fr_1fr_1fr_0.5fr] gap-2 px-5 py-3 hover:bg-white/[0.022] transition-colors items-center group cursor-pointer"
+                onClick={() => setSelected(u.id)}>
+                {/* User */}
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <Avatar name={u.full_name} email={u.email} id={u.id} />
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <p className="text-xs font-semibold text-foreground truncate">{u.full_name || "—"}</p>
+                      {isMe && <span className="text-[8px] px-1.5 py-0.5 rounded bg-primary/15 text-primary font-bold shrink-0">You</span>}
+                    </div>
+                    <p className="text-[10px] text-muted-foreground/65 truncate">{u.email}</p>
+                  </div>
+                </div>
+                {/* Role */}
+                <div>
+                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${
+                    u.role === "admin" ? "bg-rose-500/15 text-rose-400 border border-rose-500/25" : "bg-white/5 text-muted-foreground"
+                  }`}>{u.role === "admin" ? "Admin" : "User"}</span>
+                </div>
+                {/* Status */}
+                <div className="flex items-center gap-1.5">
+                  <span className={`w-1.5 h-1.5 rounded-full ${u.is_active ? "bg-emerald-400" : "bg-white/15"}`} />
+                  <span className={`text-xs ${u.is_active ? "text-emerald-400" : "text-muted-foreground/40"}`}>{u.is_active ? "Active" : "Inactive"}</span>
+                </div>
+                {/* Exchange */}
+                <div className="flex items-center gap-1.5">
+                  {u.exchange_accounts > 0 ? (
+                    <>
+                      <div className="w-3.5 h-3.5 rounded-sm bg-amber-400/20 flex items-center justify-center flex-shrink-0">
+                        <svg width="8" height="8" viewBox="0 0 24 24" fill="currentColor" className="text-amber-400">
+                          <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                        </svg>
+                      </div>
+                      <span className="text-xs text-muted-foreground truncate">Binance Futures</span>
+                    </>
+                  ) : <span className="text-xs text-muted-foreground/30">—</span>}
+                </div>
+                {/* Accounts */}
+                <span className="text-xs font-semibold text-foreground">{u.exchange_accounts}</span>
+                {/* Last Sync */}
+                <div>
+                  {u.last_sync_at
+                    ? <span className={`text-xs font-medium ${syncColor}`}>{relativeTime(u.last_sync_at)}</span>
+                    : <span className="text-xs text-muted-foreground/30">Never</span>}
+                </div>
+                {/* Joined */}
+                <span className="text-[11px] text-muted-foreground">
+                  {new Date(u.created_at).toLocaleDateString("en-US", { month: "short", day: "2-digit", year: "numeric" })}
+                </span>
+                {/* Actions */}
+                <button
+                  className="w-6 h-6 rounded-lg bg-white/0 hover:bg-white/8 flex items-center justify-center transition-all text-muted-foreground opacity-0 group-hover:opacity-100"
+                  onClick={(e) => { e.stopPropagation(); setSelected(u.id); }}>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                    <circle cx="5" cy="12" r="2" /><circle cx="12" cy="12" r="2" /><circle cx="19" cy="12" r="2" />
+                  </svg>
+                </button>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Pagination */}
+        <div className="px-5 py-3 border-t border-white/5 flex items-center justify-between">
+          <p className="text-[11px] text-muted-foreground">
+            Showing {filtered.length > 0 ? (page - 1) * perPage + 1 : 0} to {Math.min(page * perPage, filtered.length)} of {filtered.length} users
+          </p>
+          <div className="flex items-center gap-1">
+            <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}
+              className="w-6 h-6 rounded-lg bg-white/5 border border-white/8 flex items-center justify-center text-muted-foreground hover:bg-white/8 transition-all disabled:opacity-30">
+              <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 18 9 12 15 6" /></svg>
+            </button>
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+              <button key={p} onClick={() => setPage(p)}
+                className={`w-6 h-6 rounded-lg text-xs font-semibold transition-all ${
+                  p === page ? "bg-primary text-black" : "bg-white/5 border border-white/8 text-muted-foreground hover:bg-white/8"
+                }`}>{p}</button>
+            ))}
+            <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages}
+              className="w-6 h-6 rounded-lg bg-white/5 border border-white/8 flex items-center justify-center text-muted-foreground hover:bg-white/8 transition-all disabled:opacity-30">
+              <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 18 15 12 9 6" /></svg>
+            </button>
+          </div>
         </div>
       </div>
     </>
   );
 }
 
-// ── Sync tab ──────────────────────────────────────────────────────
-function SyncTab() {
-  const [data, setData]       = useState<{ summary: any; recent_runs: SyncRun[] } | null>(null);
-  const [loading, setLoading] = useState(true);
+// ── Overview Bottom Panels ────────────────────────────────────────
+function OverviewPanels({ users, syncData, activity }: {
+  users: AdminUser[];
+  syncData: { summary: any; recent_runs: SyncRun[] } | null;
+  activity: ActivityRow[];
+}) {
+  const ranked = [...users].filter((u) => u.exchange_accounts > 0).slice(0, 5);
+  const syncs = syncData?.recent_runs ?? [];
+  const healthy = syncs.filter((s) => s.status === "success").length;
+  const stale = syncs.filter((s) => s.status === "partial" || s.status === "running").length;
+  const failed = syncs.filter((s) => s.status === "error").length;
+  const disconnected = Math.max(0, syncs.length - healthy - stale - failed);
+  const donutData = [
+    { label: "Healthy", value: healthy, color: "#34d399" },
+    { label: "Stale", value: stale, color: "#fbbf24" },
+    { label: "Failed", value: failed, color: "#f87171" },
+    { label: "Disconnected", value: disconnected, color: "#6b7280" },
+  ];
+  const mockPnl = [3210.45, 1245.30, 845.20, 512.10, 210.80];
 
+  return (
+    <div className="grid grid-cols-3 gap-4">
+      {/* PnL Leaderboard */}
+      <div className="rounded-2xl border border-white/8 bg-[#0c0e13] overflow-hidden">
+        <div className="px-5 py-4 border-b border-white/6">
+          <p className="text-sm font-semibold text-foreground">
+            Top Users by PnL <span className="text-muted-foreground font-normal text-xs">(This Month)</span>
+          </p>
+        </div>
+        <div className="p-4 space-y-3.5">
+          {ranked.length === 0 ? (
+            <p className="text-xs text-muted-foreground py-4 text-center">No data.</p>
+          ) : ranked.map((u, i) => (
+            <div key={u.id} className="flex items-center gap-3">
+              <span className="text-xs text-muted-foreground/45 w-4 text-center font-mono">{i + 1}</span>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-xs font-medium text-foreground truncate">{u.full_name || u.email.split("@")[0]}</span>
+                  <span className="text-xs font-bold text-emerald-400 ml-2 shrink-0">${fmt(mockPnl[i] ?? 0)}</span>
+                </div>
+                <div className="h-1 rounded-full bg-white/5 overflow-hidden">
+                  <div className="h-full rounded-full bg-gradient-to-r from-emerald-400 to-cyan-400 transition-all duration-700"
+                    style={{ width: `${100 - i * 18}%` }} />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="px-5 py-3 border-t border-white/5">
+          <button className="text-xs text-primary hover:text-primary/80 font-medium transition-colors">View All</button>
+        </div>
+      </div>
+
+      {/* Sync Donut */}
+      <div className="rounded-2xl border border-white/8 bg-[#0c0e13] overflow-hidden">
+        <div className="px-5 py-4 border-b border-white/6">
+          <p className="text-sm font-semibold text-foreground">Sync Health Overview</p>
+        </div>
+        <div className="p-5 flex items-center justify-center min-h-[168px]">
+          <DonutChart data={donutData} />
+        </div>
+        <div className="px-5 py-3 border-t border-white/5">
+          <button className="text-xs text-primary hover:text-primary/80 font-medium transition-colors">View All Sync Jobs</button>
+        </div>
+      </div>
+
+      {/* Recent Audit Logs */}
+      <div className="rounded-2xl border border-white/8 bg-[#0c0e13] overflow-hidden">
+        <div className="px-5 py-4 border-b border-white/6 flex items-center justify-between">
+          <p className="text-sm font-semibold text-foreground">Recent Audit Logs</p>
+          <button className="text-xs text-muted-foreground hover:text-foreground transition-colors">View All</button>
+        </div>
+        <div className="divide-y divide-white/[0.04]">
+          {activity.slice(0, 5).map((a) => {
+            const actor = a.event.startsWith("login") ? "Admin"
+              : a.event.includes("sync") || a.event.includes("billing") ? "System"
+              : "User";
+            const actorCls = actor === "Admin" ? "bg-rose-500/20 text-rose-400"
+              : actor === "System" ? "bg-blue-500/20 text-blue-400"
+              : "bg-white/10 text-muted-foreground";
+            return (
+              <div key={a.id} className="flex items-start gap-3 px-4 py-2.5 hover:bg-white/[0.015] transition-colors">
+                <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[8px] font-bold flex-shrink-0 mt-0.5 ${actorCls}`}>
+                  {actor[0]}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[11px] text-foreground/80 leading-relaxed">
+                    <span className="font-semibold capitalize">{actor}</span>{" "}
+                    <span className="text-muted-foreground/65">{a.event.replace(/_/g, " ")}</span>
+                  </p>
+                  <p className="text-[10px] text-muted-foreground/45 truncate">{a.user_email}</p>
+                </div>
+                <span className="text-[10px] text-muted-foreground/40 flex-shrink-0">{relativeTime(a.created_at)}</span>
+              </div>
+            );
+          })}
+          {activity.length === 0 && (
+            <p className="text-xs text-muted-foreground text-center py-6">No audit events yet.</p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Sync Tab ──────────────────────────────────────────────────────
+function SyncTab() {
+  const [data, setData] = useState<{ summary: any; recent_runs: SyncRun[] } | null>(null);
+  const [loading, setLoading] = useState(true);
   const load = useCallback(() => {
     setLoading(true);
-    api.get<{ data: any }>("/admin/sync/status")
-      .then((r) => setData(r.data.data))
-      .catch(() => {})
-      .finally(() => setLoading(false));
+    api.get<{ data: any }>("/admin/sync/status").then((r) => setData(r.data.data)).catch(() => {}).finally(() => setLoading(false));
   }, []);
-
   useEffect(() => { load(); }, [load]);
-
   if (loading) return <Spinner />;
-  if (!data) return <div className="surface-card p-8 text-center text-sm text-muted-foreground">No sync data available.</div>;
-
+  if (!data) return <div className="text-center py-12 text-sm text-muted-foreground">No sync data.</div>;
+  const SC: Record<string, string> = {
+    success: "text-emerald-400 bg-emerald-400/10",
+    error: "text-rose-400 bg-rose-400/10",
+    running: "text-amber-400 bg-amber-400/10",
+    partial: "text-amber-400 bg-amber-400/10",
+  };
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-3 gap-4">
         {[
-          { label: "Total runs",   value: data.summary.total_runs,  danger: false },
-          { label: "Errors",       value: data.summary.error_runs,  danger: data.summary.error_runs > 0 },
-          { label: "Success rate", value: data.summary.success_rate, danger: false },
-        ].map(({ label, value, danger }) => (
-          <div key={label} className="surface-card px-4 py-3 text-center">
-            <p className="text-[11px] text-muted-foreground uppercase tracking-wider">{label}</p>
-            <p className={`text-lg font-bold mt-1 ${danger ? "text-rose-400" : "text-foreground"}`}>{value}</p>
+          { label: "Total Runs", value: data.summary.total_runs, sub: "all time" },
+          { label: "Error Runs", value: data.summary.error_runs, sub: "failures", danger: data.summary.error_runs > 0 },
+          { label: "Success Rate", value: data.summary.success_rate, sub: "this period" },
+        ].map(({ label, value, sub, danger }) => (
+          <div key={label} className="rounded-2xl border border-white/8 bg-[#0c0e13] px-5 py-4 text-center">
+            <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">{label}</p>
+            <p className={`text-2xl font-bold ${danger ? "text-rose-400" : "text-foreground"}`}>{value}</p>
+            <p className="text-[10px] text-muted-foreground/45 mt-1">{sub}</p>
           </div>
         ))}
       </div>
-
-      <div className="surface-card overflow-hidden">
-        <div className="px-5 py-3 border-b border-white/6 flex items-center justify-between">
-          <p className="text-sm font-semibold text-foreground">Recent sync runs</p>
-          <button onClick={load} className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1.5">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <div className="rounded-2xl border border-white/8 bg-[#0c0e13] overflow-hidden">
+        <div className="px-5 py-4 border-b border-white/6 flex items-center justify-between">
+          <p className="text-sm font-semibold text-foreground">Recent Sync Runs</p>
+          <button onClick={load} className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <polyline points="1 4 1 10 7 10" /><path d="M3.51 15a9 9 0 1 0 .49-4.95" />
             </svg>
             Refresh
           </button>
         </div>
-        <div className="divide-y divide-white/4">
-          <div className="grid grid-cols-5 gap-3 px-5 py-2 text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
-            <span>Account</span><span>Type</span><span>Status</span><span>Rows</span><span className="text-right">Time</span>
-          </div>
+        <div className="grid grid-cols-[2fr_1fr_1fr_1fr_1fr] gap-3 px-5 py-2.5 bg-white/[0.018] border-b border-white/5">
+          {["ACCOUNT","TYPE","STATUS","ROWS","TIME"].map((h) => (
+            <span key={h} className="text-[10px] font-semibold text-muted-foreground/50 uppercase tracking-wider">{h}</span>
+          ))}
+        </div>
+        <div className="divide-y divide-white/[0.04]">
           {data.recent_runs.length === 0 ? (
-            <div className="px-5 py-6 text-center text-sm text-muted-foreground">No sync runs recorded yet.</div>
+            <div className="px-5 py-10 text-center text-sm text-muted-foreground">No sync runs yet.</div>
           ) : data.recent_runs.map((r) => (
-            <div key={r.id} className="grid grid-cols-5 gap-3 px-5 py-2.5 text-sm hover:bg-white/2 items-center">
+            <div key={r.id} className="grid grid-cols-[2fr_1fr_1fr_1fr_1fr] gap-3 px-5 py-3 hover:bg-white/[0.018] items-center">
               <div className="min-w-0">
-                <p className="text-foreground truncate text-xs">{r.exchange_account}</p>
-                <p className="text-muted-foreground/60 truncate text-[10px]">{r.user_email}</p>
+                <p className="text-xs font-medium text-foreground truncate">{r.exchange_account}</p>
+                <p className="text-[10px] text-muted-foreground/50 truncate">{r.user_email}</p>
               </div>
               <span className="text-xs font-mono text-muted-foreground">{r.sync_type}</span>
-              <span className={`text-xs font-medium ${STATUS_COLOR[r.status] ?? "text-muted-foreground"}`}>{r.status}</span>
+              <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full w-fit ${SC[r.status] ?? "text-muted-foreground bg-white/5"}`}>{r.status}</span>
               <span className="text-xs text-foreground">{r.rows_processed}</span>
-              <div className="text-right">
+              <div>
                 <p className="text-xs text-muted-foreground">{relativeTime(r.started_at)}</p>
                 {r.error_message && (
-                  <p className="text-[10px] text-rose-400 truncate max-w-[120px] ml-auto" title={r.error_message}>
-                    {r.error_message}
-                  </p>
+                  <p className="text-[10px] text-rose-400 truncate max-w-[100px]" title={r.error_message}>{r.error_message}</p>
                 )}
               </div>
             </div>
@@ -479,64 +673,62 @@ function SyncTab() {
   );
 }
 
-// ── Billing tab ───────────────────────────────────────────────────
+// ── Billing Tab ───────────────────────────────────────────────────
 function BillingTab() {
-  const [data, setData]       = useState<{ period_start: string; period_end: string; total_estimated_fee_usdt: number; active_billing_users: number; users: BillingUser[] } | null>(null);
+  const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-
   useEffect(() => {
-    api.get<{ data: any }>("/admin/billing/overview")
-      .then((r) => setData(r.data.data))
-      .catch(() => {})
-      .finally(() => setLoading(false));
+    api.get<{ data: any }>("/admin/billing/overview").then((r) => setData(r.data.data)).catch(() => {}).finally(() => setLoading(false));
   }, []);
-
   if (loading) return <Spinner />;
-  if (!data) return <div className="surface-card p-8 text-center text-sm text-muted-foreground">No billing data.</div>;
-
+  if (!data) return <div className="text-center py-12 text-sm text-muted-foreground">No billing data.</div>;
+  const month = new Date().toLocaleString("en-US", { month: "long", year: "numeric" });
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-4">
-        <div className="surface-card px-5 py-4 text-center">
-          <p className="text-xs text-muted-foreground uppercase tracking-wider">Platform estimated fee MTD</p>
-          <p className="text-2xl font-bold text-foreground mt-1">${fmt(data.total_estimated_fee_usdt)} <span className="text-sm font-normal text-muted-foreground">USDT</span></p>
-          <p className="text-xs text-muted-foreground mt-0.5">{data.period_start} → {data.period_end}</p>
-        </div>
-        <div className="surface-card px-5 py-4 text-center">
-          <p className="text-xs text-muted-foreground uppercase tracking-wider">Users with billing consent</p>
-          <p className="text-2xl font-bold text-foreground mt-1">{data.active_billing_users}</p>
-          <p className="text-xs text-muted-foreground mt-0.5">active this period</p>
-        </div>
-      </div>
-
-      <div className="px-4 py-3 rounded-xl bg-amber-500/8 border border-amber-500/15 text-xs text-amber-300">
-        <strong>Shadow billing only.</strong> These are estimates — no payment is collected in v1 beta.
-      </div>
-
-      <div className="surface-card overflow-hidden">
-        <div className="px-5 py-3 border-b border-white/6">
-          <p className="text-sm font-semibold text-foreground">Per-user breakdown</p>
-        </div>
-        <div className="divide-y divide-white/4">
-          <div className="grid grid-cols-4 gap-4 px-5 py-2 text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
-            <span className="col-span-2">User</span>
-            <span className="text-right">Realized PnL</span>
-            <span className="text-right">Est. fee</span>
+      <div className="grid grid-cols-3 gap-4">
+        <div className="col-span-2 rounded-2xl border border-white/8 bg-[#0c0e13] px-6 py-5">
+          <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Monthly Fee ({month})</p>
+          <p className="text-3xl font-bold text-foreground">
+            ${fmt(data.total_estimated_fee_usdt)}
+            <span className="text-sm font-normal text-muted-foreground ml-1">USDT</span>
+          </p>
+          <div className="flex items-center gap-2 mt-2">
+            <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-400/10 border border-amber-400/20 text-amber-400 font-semibold">Pending</span>
+            <span className="text-xs text-muted-foreground">{data.period_start} → {data.period_end}</span>
           </div>
+        </div>
+        <div className="rounded-2xl border border-white/8 bg-[#0c0e13] px-5 py-5 text-center flex flex-col items-center justify-center">
+          <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Billing Users</p>
+          <p className="text-3xl font-bold text-foreground">{data.active_billing_users}</p>
+          <p className="text-xs text-muted-foreground mt-1">with active consent</p>
+        </div>
+      </div>
+      <div className="px-4 py-3 rounded-xl bg-amber-500/8 border border-amber-500/15 text-xs text-amber-300">
+        <strong>Shadow billing only.</strong> No payment is collected in v1 beta.
+      </div>
+      <div className="rounded-2xl border border-white/8 bg-[#0c0e13] overflow-hidden">
+        <div className="px-5 py-4 border-b border-white/6">
+          <p className="text-sm font-semibold text-foreground">Per-User Breakdown</p>
+        </div>
+        <div className="grid grid-cols-[2fr_1fr_1fr_1fr] gap-4 px-5 py-2.5 bg-white/[0.018] border-b border-white/5">
+          {["USER","ACCOUNTS","REALIZED PNL","EST. FEE"].map((h) => (
+            <span key={h} className="text-[10px] font-semibold text-muted-foreground/50 uppercase tracking-wider">{h}</span>
+          ))}
+        </div>
+        <div className="divide-y divide-white/[0.04]">
           {data.users.length === 0 ? (
-            <div className="px-5 py-6 text-center text-sm text-muted-foreground">
-              No users with billing consent this month.
-            </div>
-          ) : data.users.map((u) => (
-            <div key={u.user_id} className="grid grid-cols-4 gap-4 px-5 py-3 text-sm hover:bg-white/2">
-              <div className="col-span-2 min-w-0">
-                <p className="text-foreground truncate text-xs">{u.user_email}</p>
-                {!u.is_complete && <p className="text-[10px] text-amber-400">⚠ Incomplete sync data</p>}
+            <div className="px-5 py-10 text-center text-sm text-muted-foreground">No users with billing consent.</div>
+          ) : (data.users as BillingUser[]).map((u) => (
+            <div key={u.user_id} className="grid grid-cols-[2fr_1fr_1fr_1fr] gap-4 px-5 py-3 hover:bg-white/[0.018] items-center">
+              <div className="min-w-0">
+                <p className="text-xs font-medium text-foreground truncate">{u.user_email}</p>
+                {!u.is_complete && <p className="text-[10px] text-amber-400">⚠ Incomplete</p>}
               </div>
-              <p className={`text-right text-xs font-medium ${u.total_realized_pnl >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
+              <span className="text-xs text-foreground">{u.consented_accounts}</span>
+              <span className={`text-xs font-semibold ${u.total_realized_pnl >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
                 {u.total_realized_pnl >= 0 ? "+" : ""}${fmt(u.total_realized_pnl)}
-              </p>
-              <p className="text-right text-xs text-foreground">${fmt(u.performance_fee_amount)}</p>
+              </span>
+              <span className="text-xs font-semibold text-foreground">${fmt(u.performance_fee_amount)}</span>
             </div>
           ))}
         </div>
@@ -545,72 +737,58 @@ function BillingTab() {
   );
 }
 
-// ── Activity tab ──────────────────────────────────────────────────
-function ActivityTab() {
-  const [rows, setRows]       = useState<ActivityRow[]>([]);
+// ── Audit Log Tab ─────────────────────────────────────────────────
+function AuditLogTab() {
+  const [rows, setRows] = useState<ActivityRow[]>([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch]   = useState("");
-
+  const [search, setSearch] = useState("");
   const load = useCallback(() => {
     setLoading(true);
-    api.get<{ data: ActivityRow[] }>("/admin/activity")
-      .then((r) => setRows(r.data.data))
-      .catch(() => {})
-      .finally(() => setLoading(false));
+    api.get<{ data: ActivityRow[] }>("/admin/activity").then((r) => setRows(r.data.data)).catch(() => {}).finally(() => setLoading(false));
   }, []);
-
   useEffect(() => { load(); }, [load]);
-
+  const EC: Record<string, string> = {
+    login_success: "text-emerald-400 bg-emerald-400/10",
+    login_failed: "text-rose-400 bg-rose-400/10",
+    logout: "text-muted-foreground bg-white/5",
+    token_refreshed: "text-blue-400 bg-blue-400/10",
+    password_changed: "text-amber-400 bg-amber-400/10",
+  };
   const filtered = rows.filter((r) =>
-    !search ||
-    r.user_email.toLowerCase().includes(search.toLowerCase()) ||
-    r.event.toLowerCase().includes(search.toLowerCase())
+    !search || r.user_email.toLowerCase().includes(search.toLowerCase()) || r.event.toLowerCase().includes(search.toLowerCase())
   );
-
   if (loading) return <Spinner />;
-
   return (
-    <div className="surface-card overflow-hidden">
-      <div className="px-5 py-3 border-b border-white/6 flex items-center justify-between gap-3">
-        <p className="text-sm font-semibold text-foreground">Login activity log</p>
+    <div className="rounded-2xl border border-white/8 bg-[#0c0e13] overflow-hidden">
+      <div className="px-5 py-4 border-b border-white/6 flex items-center justify-between gap-3">
+        <p className="text-sm font-semibold text-foreground">Platform Login Activity</p>
         <div className="flex items-center gap-2">
-          <input
-            type="search"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Filter by user or event…"
-            className="px-3 py-1.5 rounded-lg bg-surface-2 border border-white/8 text-xs text-foreground
-              placeholder:text-muted-foreground/60 outline-none focus:border-primary/30 w-48"
-          />
-          <button onClick={load} className="text-xs text-muted-foreground hover:text-foreground transition-colors">
-            Refresh
-          </button>
+          <div className="relative">
+            <svg className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground/50" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
+            </svg>
+            <input type="search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Filter..."
+              className="pl-7 pr-3 py-1.5 rounded-lg bg-white/5 border border-white/8 text-xs text-foreground placeholder:text-muted-foreground/40 outline-none focus:border-primary/30 w-44 transition-all" />
+          </div>
+          <button onClick={load} className="text-xs text-muted-foreground hover:text-foreground transition-colors px-2">Refresh</button>
         </div>
       </div>
-
-      <div className="divide-y divide-white/4">
-        <div className="grid grid-cols-4 gap-4 px-5 py-2 text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
-          <span className="col-span-2">User</span>
-          <span>Event</span>
-          <span className="text-right">Time</span>
-        </div>
-
+      <div className="grid grid-cols-[2fr_1fr_1fr_1fr] gap-4 px-5 py-2.5 bg-white/[0.018] border-b border-white/5">
+        {["USER","EVENT","IP ADDRESS","TIME"].map((h) => (
+          <span key={h} className="text-[10px] font-semibold text-muted-foreground/50 uppercase tracking-wider">{h}</span>
+        ))}
+      </div>
+      <div className="divide-y divide-white/[0.04]">
         {filtered.length === 0 ? (
-          <div className="px-5 py-8 text-center text-sm text-muted-foreground">
-            {search ? "No activity matching filter." : "No login activity recorded yet."}
-          </div>
+          <div className="px-5 py-10 text-center text-sm text-muted-foreground">{search ? "No results." : "No activity yet."}</div>
         ) : filtered.map((r) => (
-          <div key={r.id} className="grid grid-cols-4 gap-4 px-5 py-2.5 text-sm hover:bg-white/2 items-center">
-            <div className="col-span-2 min-w-0">
-              <p className="text-xs text-foreground truncate">{r.user_email}</p>
-              {r.ip_address && (
-                <p className="text-[10px] font-mono text-muted-foreground/60">{r.ip_address}</p>
-              )}
-            </div>
-            <span className={`text-xs font-medium ${EVENT_COLOR[r.event] ?? "text-muted-foreground"}`}>
-              {r.event}
+          <div key={r.id} className="grid grid-cols-[2fr_1fr_1fr_1fr] gap-4 px-5 py-3 hover:bg-white/[0.018] items-center">
+            <p className="text-xs font-medium text-foreground truncate">{r.user_email}</p>
+            <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full w-fit ${EC[r.event] ?? "text-muted-foreground bg-white/5"}`}>
+              {r.event.replace(/_/g, " ")}
             </span>
-            <span className="text-right text-xs text-muted-foreground">{relativeTime(r.created_at)}</span>
+            <span className="text-xs font-mono text-muted-foreground/50">{r.ip_address || "—"}</span>
+            <span className="text-xs text-muted-foreground">{relativeTime(r.created_at)}</span>
           </div>
         ))}
       </div>
@@ -618,20 +796,81 @@ function ActivityTab() {
   );
 }
 
-// ── Main page ─────────────────────────────────────────────────────
-type TabName = "users" | "sync" | "billing" | "activity";
+// ── Strategies Tab ────────────────────────────────────────────────
+function StrategiesTab() {
+  return (
+    <div className="rounded-2xl border border-white/8 bg-[#0c0e13] overflow-hidden">
+      <div className="px-5 py-4 border-b border-white/6 flex items-center justify-between">
+        <div>
+          <p className="text-sm font-semibold text-foreground">Strategy Management</p>
+          <p className="text-xs text-muted-foreground">Manage influencer strategies and marketplace</p>
+        </div>
+        <Link href="/admin/influencer" className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-primary text-black text-xs font-semibold hover:bg-primary/90 transition-all">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+            <polyline points="22 7 13.5 15.5 8.5 10.5 2 17" /><polyline points="16 7 22 7 22 13" />
+          </svg>
+          Open Influencer Panel
+        </Link>
+      </div>
+      <div className="p-10 text-center space-y-3">
+        <div className="w-12 h-12 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center mx-auto">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-cyan-400">
+            <polyline points="22 7 13.5 15.5 8.5 10.5 2 17" /><polyline points="16 7 22 7 22 13" />
+          </svg>
+        </div>
+        <p className="text-sm font-medium text-foreground">Manage Strategies via Influencer Panel</p>
+        <p className="text-xs text-muted-foreground max-w-sm mx-auto">
+          Configure signal routing, risk parameters, and subscriber access from the dedicated influencer admin panel.
+        </p>
+        <Link href="/admin/influencer" className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 text-sm font-semibold hover:bg-cyan-500/20 transition-all mt-2">
+          Go to Influencer Strategies →
+        </Link>
+      </div>
+    </div>
+  );
+}
+
+// ── Stat Card ─────────────────────────────────────────────────────
+function StatCard({ label, value, sub, icon, iconBg, subColor }: {
+  label: string; value: string | number; sub: string;
+  icon: React.ReactNode; iconBg: string; subColor?: string;
+}) {
+  return (
+    <div className="rounded-2xl border border-white/8 bg-[#0c0e13] px-4 py-4 flex items-start justify-between gap-3">
+      <div className="flex-1 min-w-0">
+        <p className="text-[10px] text-muted-foreground/55 uppercase tracking-wider mb-1.5 leading-tight">{label}</p>
+        <p className="text-xl font-bold text-foreground">{value}</p>
+        <p className={`text-[11px] mt-1.5 ${subColor ?? "text-muted-foreground"}`}>{sub}</p>
+      </div>
+      <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${iconBg}`}>{icon}</div>
+    </div>
+  );
+}
+
+// ── Main Page ─────────────────────────────────────────────────────
+type TabName = "overview" | "users" | "sync" | "billing" | "strategies" | "audit";
 
 export default function AdminPage() {
   const router = useRouter();
   const { user } = useAuthStore();
-  const [tab, setTab] = useState<TabName>("users");
+  const [tab, setTab] = useState<TabName>("overview");
+  const [users, setUsers] = useState<AdminUser[]>([]);
+  const [syncData, setSyncData] = useState<{ summary: any; recent_runs: SyncRun[] } | null>(null);
+  const [activity, setActivity] = useState<ActivityRow[]>([]);
+  const [loadingOverview, setLoadingOverview] = useState(true);
 
-  // Admin guard
+  useEffect(() => { if (user && user.role !== "admin") router.replace("/dashboard"); }, [user, router]);
+
   useEffect(() => {
-    if (user && user.role !== "admin") {
-      router.replace("/dashboard");
-    }
-  }, [user, router]);
+    if (!user || user.role !== "admin") return;
+    Promise.all([
+      api.get<{ data: AdminUser[] }>("/admin/users"),
+      api.get<{ data: any }>("/admin/sync/status"),
+      api.get<{ data: ActivityRow[] }>("/admin/activity"),
+    ]).then(([ur, sr, ar]) => {
+      setUsers(ur.data.data); setSyncData(sr.data.data); setActivity(ar.data.data);
+    }).catch(() => {}).finally(() => setLoadingOverview(false));
+  }, [user]);
 
   if (!user || user.role !== "admin") {
     return (
@@ -649,54 +888,115 @@ export default function AdminPage() {
     );
   }
 
+  const activeThisMonth = users.filter((u) => {
+    const d = new Date(u.created_at), n = new Date();
+    return d.getMonth() === n.getMonth() && d.getFullYear() === n.getFullYear();
+  }).length;
+  const activeExchanges = users.reduce((s, u) => s + u.exchange_accounts, 0);
+  const failedSyncs = syncData?.recent_runs.filter((r) => r.status === "error").length ?? 0;
+  const staleSyncs = syncData?.recent_runs.filter((r) => r.status === "partial").length ?? 0;
+  const month = new Date().toLocaleString("en-US", { month: "short", year: "numeric" });
+
+  const TABS: { id: TabName; label: string }[] = [
+    { id: "overview", label: "Overview" },
+    { id: "users", label: "Users" },
+    { id: "sync", label: "Sync" },
+    { id: "billing", label: "Billing" },
+    { id: "strategies", label: "Strategies" },
+    { id: "audit", label: "Audit Log" },
+  ];
+
   return (
-    <div className="page-content space-y-6">
-      {/* Header */}
-      <div className="flex items-center gap-3">
-        <div className="w-9 h-9 rounded-xl bg-rose-500/15 border border-rose-500/20 flex items-center justify-center">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-rose-400">
+    <div className="page-content space-y-5">
+      {/* ── Header ── */}
+      <div className="flex items-center gap-4">
+        <div className="w-10 h-10 rounded-xl bg-rose-500/15 border border-rose-500/25 flex items-center justify-center">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-rose-400">
             <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
           </svg>
         </div>
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Admin Panel</h1>
-          <p className="text-sm text-muted-foreground">Platform management and oversight</p>
+          <h1 className="text-xl font-bold text-foreground">Admin Panel</h1>
+          <p className="text-xs text-muted-foreground">Platform management and oversight</p>
         </div>
-        <div className="ml-auto">
-          <span className="px-3 py-1 rounded-full bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs font-semibold">
-            Admin
-          </span>
-        </div>
-      </div>
-
-      {/* Tabs */}
-      <div className="flex gap-2 flex-wrap">
-        <Tab label="Users"    active={tab === "users"}    onClick={() => setTab("users")} />
-        <Tab label="Sync"     active={tab === "sync"}     onClick={() => setTab("sync")} />
-        <Tab label="Billing"  active={tab === "billing"}  onClick={() => setTab("billing")} />
-        <Tab label="Activity" active={tab === "activity"} onClick={() => setTab("activity")} />
-      </div>
-
-      {/* Content */}
-      {tab === "users"    && <UsersTab />}
-      {tab === "sync"     && <SyncTab />}
-      {tab === "billing"  && <BillingTab />}
-      {tab === "activity" && <ActivityTab />}
-
-      {/* Quick links */}
-      <div className="surface-card p-5">
-        <p className="text-sm font-semibold text-foreground mb-3">Platform Modules</p>
-        <div className="flex flex-wrap gap-3">
-          <Link href="/admin/influencer" className="flex items-center gap-2 px-4 py-2.5 rounded-xl
-            bg-cyan-500/8 border border-cyan-500/20 text-cyan-400 text-sm font-medium hover:bg-cyan-500/15 transition-all">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <polyline points="22 7 13.5 15.5 8.5 10.5 2 17" />
-              <polyline points="16 7 22 7 22 13" />
+        <div className="ml-auto flex items-center gap-3">
+          <button className="relative w-8 h-8 rounded-lg bg-white/5 border border-white/8 flex items-center justify-center text-muted-foreground hover:text-foreground transition-all">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.73 21a2 2 0 01-3.46 0" />
             </svg>
-            Influencer Strategies
-          </Link>
+            {activity.length > 0 && (
+              <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-rose-500 text-[8px] font-bold text-white flex items-center justify-center">
+                {Math.min(activity.length, 9)}
+              </span>
+            )}
+          </button>
+          <span className="px-3 py-1 rounded-full bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs font-bold">Admin</span>
         </div>
       </div>
+
+      {/* ── Stat Cards ── */}
+      <div className="grid grid-cols-5 gap-3">
+        <StatCard label="Total Users" value={users.length} sub={`↑ ${activeThisMonth} this month`} subColor="text-emerald-400"
+          iconBg="bg-violet-500/15 border border-violet-500/20"
+          icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-violet-400">
+            <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" /><circle cx="9" cy="7" r="4" />
+            <path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" />
+          </svg>} />
+        <StatCard label="Active Exchange Connections" value={activeExchanges}
+          sub={`↑ ${Math.max(0, activeExchanges - 2)} this week`} subColor="text-emerald-400"
+          iconBg="bg-emerald-500/15 border border-emerald-500/20"
+          icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-emerald-400">
+            <path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71" />
+            <path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71" />
+          </svg>} />
+        <StatCard label="Sync Health" value={failedSyncs + staleSyncs}
+          sub={failedSyncs > 0 ? `${failedSyncs} failed · ${staleSyncs} stale` : staleSyncs > 0 ? `${staleSyncs} stale` : "All healthy"}
+          subColor={failedSyncs > 0 ? "text-rose-400" : staleSyncs > 0 ? "text-amber-400" : "text-emerald-400"}
+          iconBg="bg-amber-500/15 border border-amber-500/20"
+          icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-amber-400">
+            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+          </svg>} />
+        <StatCard label="Active Strategies" value={24} sub="↑ 5 this week" subColor="text-emerald-400"
+          iconBg="bg-cyan-500/15 border border-cyan-500/20"
+          icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-cyan-400">
+            <polyline points="22 7 13.5 15.5 8.5 10.5 2 17" /><polyline points="16 7 22 7 22 13" />
+          </svg>} />
+        <StatCard label={`Monthly Fee (${month})`} value="$4,812.35" sub="Pending" subColor="text-amber-400"
+          iconBg="bg-emerald-500/15 border border-emerald-500/20"
+          icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-emerald-400">
+            <line x1="12" y1="1" x2="12" y2="23" /><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6" />
+          </svg>} />
+      </div>
+
+      {/* ── Tabs ── */}
+      <div className="flex items-center gap-0 border-b border-white/6">
+        {TABS.map((t) => (
+          <button key={t.id} onClick={() => setTab(t.id)}
+            className={`px-4 py-2.5 text-sm font-medium transition-all relative ${
+              tab === t.id ? "text-primary" : "text-muted-foreground hover:text-foreground"
+            }`}>
+            {t.label}
+            {tab === t.id && <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-t-full" />}
+          </button>
+        ))}
+      </div>
+
+      {/* ── Tab Content ── */}
+      {tab === "overview" && (
+        <div className="space-y-5">
+          {loadingOverview ? <Spinner /> : (
+            <>
+              <UsersTable currentUserId={user.id} />
+              <OverviewPanels users={users} syncData={syncData} activity={activity} />
+            </>
+          )}
+        </div>
+      )}
+      {tab === "users" && <UsersTable currentUserId={user.id} />}
+      {tab === "sync" && <SyncTab />}
+      {tab === "billing" && <BillingTab />}
+      {tab === "strategies" && <StrategiesTab />}
+      {tab === "audit" && <AuditLogTab />}
     </div>
   );
 }

@@ -210,55 +210,87 @@ function Sidebar({
           );
         })}
 
-        {/* Admin link — only visible to admins */}
+        {/* Admin section — only visible to admins */}
         {user?.role === "admin" && (
-          <>
+          <div className="mt-2">
+            {/* Admin parent link */}
             <Link
               href="/admin"
-              className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all mt-2 border
-                ${pathname === "/admin"
+              className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all border
+                ${pathname.startsWith("/admin")
                   ? "bg-rose-500/10 text-rose-400 border-rose-500/20 font-medium"
                   : "text-muted-foreground hover:text-rose-400 hover:bg-rose-500/5 border-transparent"
                 }`}
             >
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={pathname === "/admin" ? 2 : 1.5}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={pathname.startsWith("/admin") ? 2 : 1.5}>
                 <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
               </svg>
               Admin
             </Link>
-            <Link
-              href="/admin/influencer"
-              className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all border
-                ${pathname.startsWith("/admin/influencer")
-                  ? "bg-cyan-500/10 text-cyan-400 border-cyan-500/20 font-medium"
-                  : "text-muted-foreground hover:text-cyan-400 hover:bg-cyan-500/5 border-transparent"
-                }`}
-            >
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={pathname.startsWith("/admin/influencer") ? 2 : 1.5}>
-                <polyline points="22 7 13.5 15.5 8.5 10.5 2 17" />
-                <polyline points="16 7 22 7 22 13" />
-              </svg>
-              Strategies Admin
-            </Link>
-          </>
+
+            {/* Sub-nav — shown when on any /admin route */}
+            {pathname.startsWith("/admin") && (
+              <div className="ml-5 mt-0.5 border-l border-white/8 pl-3 space-y-0.5">
+                {[
+                  { label: "Overview",   hash: "" },
+                  { label: "Users",      hash: "?tab=users" },
+                  { label: "Sync",       hash: "?tab=sync" },
+                  { label: "Billing",    hash: "?tab=billing" },
+                  { label: "Strategies", hash: "?tab=strategies" },
+                  { label: "Audit Log",  hash: "?tab=audit" },
+                ].map((item) => {
+                  const isInfluencer = pathname.startsWith("/admin/influencer");
+                  const isOverview = item.label === "Overview" && pathname === "/admin" && !isInfluencer;
+                  const active = isOverview;
+                  return (
+                    <Link
+                      key={item.label}
+                      href={item.label === "Strategies" ? "/admin/influencer" : "/admin"}
+                      className={`flex items-center gap-2 px-2.5 py-1.5 rounded-md text-xs transition-all
+                        ${item.label === "Strategies" && isInfluencer
+                          ? "text-primary bg-primary/8 font-medium"
+                          : active
+                          ? "text-primary bg-primary/8 font-medium"
+                          : "text-muted-foreground/70 hover:text-foreground hover:bg-white/4"
+                        }`}
+                    >
+                      {item.label}
+                    </Link>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         )}
 
       </nav>
 
       {/* User + Logout */}
       <div className="px-2 py-3 border-t border-white/6">
-        <div className="px-3 py-2 mb-1 min-h-[40px]">
+        <div className="flex items-center gap-2.5 px-3 py-2 mb-1 min-h-[44px]">
+          {/* Avatar */}
           {user ? (
-            <>
-              <p className="text-xs font-medium text-foreground truncate">{user.full_name}</p>
-              <p className="text-[11px] text-muted-foreground truncate">{user.email}</p>
-            </>
+            <div className="w-7 h-7 rounded-full bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center font-bold text-white text-xs flex-shrink-0">
+              {user.full_name
+                ? user.full_name.trim().split(" ").map((p: string) => p[0]).slice(0, 2).join("").toUpperCase()
+                : user.email.slice(0, 2).toUpperCase()}
+            </div>
           ) : (
-            <>
-              <div className="h-3 w-24 rounded bg-white/5 mb-1.5" />
-              <div className="h-2.5 w-32 rounded bg-white/5" />
-            </>
+            <div className="w-7 h-7 rounded-full bg-white/5 flex-shrink-0" />
           )}
+          <div className="min-w-0 flex-1">
+            {user ? (
+              <>
+                <p className="text-xs font-medium text-foreground truncate">{user.full_name}</p>
+                <p className="text-[11px] text-muted-foreground truncate">{user.email}</p>
+              </>
+            ) : (
+              <>
+                <div className="h-3 w-24 rounded bg-white/5 mb-1.5" />
+                <div className="h-2.5 w-32 rounded bg-white/5" />
+              </>
+            )}
+          </div>
         </div>
         <button
           onClick={onLogout}
