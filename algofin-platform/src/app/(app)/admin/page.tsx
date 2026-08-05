@@ -537,7 +537,7 @@ function ConfirmModal({
 }
 
 // ── User Actions Dropdown ─────────────────────────────────────────
-type ConfirmType = "role" | "exchange" | "suspend" | "unblock" | null;
+type ConfirmType = "role" | "exchange" | "suspend" | "unblock" | "remove" | null;
 
 function UserActionsDropdown({
   user, currentUserId, onViewDetails, onRefresh,
@@ -548,6 +548,7 @@ function UserActionsDropdown({
   const [open, setOpen] = useState(false);
   const [confirm, setConfirm] = useState<ConfirmType>(null);
   const [showSuspend, setShowSuspend] = useState(false);
+  const [removeEmail, setRemoveEmail] = useState("");
   const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
   const [busy, setBusy] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -638,6 +639,16 @@ function UserActionsDropdown({
     });
   };
 
+  const handleRemove = () => {
+    setConfirm(null);
+    run(async () => {
+      await api.delete(`/admin/users/${user.id}?confirm_email=${encodeURIComponent(removeEmail)}`);
+      setRemoveEmail("");
+      showToast(`✓ ${user.email} permanently removed`);
+      onRefresh();
+    });
+  };
+
   const menuItem = (
     icon: React.ReactNode, label: string, onClick: () => void,
     cls = "text-foreground/80 hover:text-foreground hover:bg-white/5"
@@ -707,6 +718,56 @@ function UserActionsDropdown({
           onCancel={() => setConfirm(null)}
         />
       )}
+      {confirm === "remove" && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md" onClick={() => { setConfirm(null); setRemoveEmail(""); }}>
+          <div className="w-full max-w-md bg-[#0f1117] border border-rose-500/20 rounded-2xl shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center gap-3 px-5 py-4 border-b border-white/8">
+              <div className="w-8 h-8 rounded-xl bg-rose-500/15 border border-rose-500/25 flex items-center justify-center flex-shrink-0">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-rose-400">
+                  <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/>
+                </svg>
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-foreground">Remove Account</p>
+                <p className="text-xs text-rose-400/70">This action is permanent and irreversible</p>
+              </div>
+            </div>
+            <div className="px-5 py-4 space-y-4">
+              <div className="px-3.5 py-3 rounded-xl bg-rose-500/8 border border-rose-500/15 space-y-1.5">
+                <p className="text-[11px] text-rose-400 font-semibold">⚠ Permanent deletion</p>
+                <p className="text-[11px] text-rose-400/70 leading-relaxed">
+                  All data for <span className="font-semibold text-rose-400">{user.email}</span> will be permanently erased — including exchange accounts, trade history, billing records, and audit logs. This cannot be undone.
+                </p>
+              </div>
+              <div>
+                <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider block mb-1.5">
+                  Type the user&apos;s email to confirm
+                </label>
+                <input
+                  type="email"
+                  value={removeEmail}
+                  onChange={(e) => setRemoveEmail(e.target.value)}
+                  placeholder={user.email}
+                  className="w-full px-3 py-2 rounded-lg bg-white/4 border border-white/10 text-xs text-foreground placeholder:text-muted-foreground/30 outline-none focus:border-rose-500/40 transition-all"
+                />
+              </div>
+            </div>
+            <div className="px-5 py-3.5 border-t border-white/8 flex items-center justify-end gap-2">
+              <button onClick={() => { setConfirm(null); setRemoveEmail(""); }} disabled={busy}
+                className="px-4 py-1.5 rounded-lg bg-white/5 border border-white/10 text-xs font-semibold text-muted-foreground hover:text-foreground transition-all disabled:opacity-50">
+                Cancel
+              </button>
+              <button
+                onClick={handleRemove}
+                disabled={busy || removeEmail.trim().toLowerCase() !== user.email.trim().toLowerCase()}
+                className="px-4 py-1.5 rounded-lg bg-rose-500/15 border border-rose-500/25 text-rose-400 text-xs font-semibold hover:bg-rose-500/25 transition-all disabled:opacity-30 flex items-center gap-1.5">
+                {busy && <span className="w-3 h-3 border border-rose-400/30 border-t-rose-400 rounded-full animate-spin" />}
+                Permanently Remove
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Trigger button */}
       <button
@@ -767,6 +828,13 @@ function UserActionsDropdown({
                     "text-rose-400 hover:bg-rose-500/8"
                   )
               }
+              <Divider />
+              {menuItem(
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="13" height="13"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>,
+                "Remove Account",
+                () => { setOpen(false); setRemoveEmail(""); setConfirm("remove"); },
+                "text-rose-500 hover:bg-rose-500/10 font-medium"
+              )}
             </>
           )}
         </div>

@@ -413,7 +413,44 @@ async def demote_from_admin(
     return SuccessResponse(data={"message": f"{user.email} demoted to user"})
 
 
-# ── Toggle account active/disabled ───────────────────────────────
+# ── Remove (hard-delete) user account ─────────────────────────────────
+
+
+@router.delete("/users/{user_id}", response_model=SuccessResponse[dict])
+async def remove_user(
+    user_id: str,
+    confirm_email: str,
+    current_user: CurrentUser,
+    db: DbSession,
+) -> SuccessResponse[dict]:
+    """Permanently delete a user and all their data.
+    Requires the caller to supply the user's exact email as confirm_email
+    to prevent accidental deletion.
+    """
+    require_admin(current_user)
+
+    if str(current_user.id) == user_id:
+        raise HTTPException(status_code=400, detail="Cannot delete your own account")
+
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    if confirm_email.strip().lower() != user.email.strip().lower():
+        raise HTTPException(
+            status_code=400,
+            detail="Confirmation email does not match — deletion aborted",
+        )
+
+    email_snapshot = user.email
+    await db.delete(user)
+    await db.commit()
+    logger.warning(
+        f"ADMIN ACTION: {current_user.email} permanently deleted user "
+        f"{email_snapshot} (id={user_id})"
+    )
+    return SuccessResponse(data={"message": f"User {email_snapshot} permanently removed"})
 
 
 @router.post("/users/{user_id}/toggle-active", response_model=SuccessResponse[dict])
