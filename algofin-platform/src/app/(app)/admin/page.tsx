@@ -549,6 +549,7 @@ function UserActionsDropdown({
   const [confirm, setConfirm] = useState<ConfirmType>(null);
   const [showSuspend, setShowSuspend] = useState(false);
   const [removeEmail, setRemoveEmail] = useState("");
+  const [removeStep, setRemoveStep] = useState<1 | 2>(1);
   const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
   const [busy, setBusy] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -719,52 +720,119 @@ function UserActionsDropdown({
         />
       )}
       {confirm === "remove" && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md" onClick={() => { setConfirm(null); setRemoveEmail(""); }}>
-          <div className="w-full max-w-md bg-[#0f1117] border border-rose-500/20 rounded-2xl shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md"
+          onClick={() => { setConfirm(null); setRemoveEmail(""); setRemoveStep(1); }}>
+          <div className="w-full max-w-md bg-[#0f1117] border border-rose-500/20 rounded-2xl shadow-2xl"
+            onClick={(e) => e.stopPropagation()}>
+            {/* Header */}
             <div className="flex items-center gap-3 px-5 py-4 border-b border-white/8">
               <div className="w-8 h-8 rounded-xl bg-rose-500/15 border border-rose-500/25 flex items-center justify-center flex-shrink-0">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-rose-400">
-                  <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/>
+                  <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/>
+                  <path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/>
                 </svg>
               </div>
-              <div>
+              <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-foreground">Remove Account</p>
-                <p className="text-xs text-rose-400/70">This action is permanent and irreversible</p>
+                <p className="text-xs text-rose-400/60">Step {removeStep} of 2 — {removeStep === 1 ? "Confirm target" : "Type email to verify"}</p>
+              </div>
+              <div className="flex gap-1.5 flex-shrink-0">
+                <span className={`w-1.5 h-1.5 rounded-full transition-colors ${removeStep >= 1 ? "bg-rose-400" : "bg-rose-400/25"}`} />
+                <span className={`w-1.5 h-1.5 rounded-full transition-colors ${removeStep >= 2 ? "bg-rose-400" : "bg-rose-400/25"}`} />
               </div>
             </div>
-            <div className="px-5 py-4 space-y-4">
-              <div className="px-3.5 py-3 rounded-xl bg-rose-500/8 border border-rose-500/15 space-y-1.5">
-                <p className="text-[11px] text-rose-400 font-semibold">⚠ Permanent deletion</p>
-                <p className="text-[11px] text-rose-400/70 leading-relaxed">
-                  All data for <span className="font-semibold text-rose-400">{user.email}</span> will be permanently erased — including exchange accounts, trade history, billing records, and audit logs. This cannot be undone.
-                </p>
-              </div>
-              <div>
-                <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider block mb-1.5">
-                  Type the user&apos;s email to confirm
-                </label>
-                <input
-                  type="email"
-                  value={removeEmail}
-                  onChange={(e) => setRemoveEmail(e.target.value)}
-                  placeholder={user.email}
-                  className="w-full px-3 py-2 rounded-lg bg-white/4 border border-white/10 text-xs text-foreground placeholder:text-muted-foreground/30 outline-none focus:border-rose-500/40 transition-all"
-                />
-              </div>
-            </div>
-            <div className="px-5 py-3.5 border-t border-white/8 flex items-center justify-end gap-2">
-              <button onClick={() => { setConfirm(null); setRemoveEmail(""); }} disabled={busy}
-                className="px-4 py-1.5 rounded-lg bg-white/5 border border-white/10 text-xs font-semibold text-muted-foreground hover:text-foreground transition-all disabled:opacity-50">
-                Cancel
-              </button>
-              <button
-                onClick={handleRemove}
-                disabled={busy || removeEmail.trim().toLowerCase() !== user.email.trim().toLowerCase()}
-                className="px-4 py-1.5 rounded-lg bg-rose-500/15 border border-rose-500/25 text-rose-400 text-xs font-semibold hover:bg-rose-500/25 transition-all disabled:opacity-30 flex items-center gap-1.5">
-                {busy && <span className="w-3 h-3 border border-rose-400/30 border-t-rose-400 rounded-full animate-spin" />}
-                Permanently Remove
-              </button>
-            </div>
+
+            {/* Step 1 — confirm target */}
+            {removeStep === 1 && (
+              <>
+                <div className="px-5 py-5 space-y-4">
+                  <div className="flex items-center gap-3 px-4 py-3.5 rounded-xl bg-white/3 border border-white/8">
+                    <Avatar name={user.full_name} email={user.email} id={user.id} size="md" />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold text-foreground truncate">{user.full_name || "—"}</p>
+                      <p className="text-xs text-muted-foreground/70 truncate">{user.email}</p>
+                    </div>
+                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold flex-shrink-0 ${
+                      user.role === "admin" ? "bg-rose-500/15 text-rose-400 border border-rose-500/25" : "bg-white/5 text-muted-foreground"
+                    }`}>{user.role === "admin" ? "Admin" : "User"}</span>
+                  </div>
+                  <div className="px-3.5 py-3 rounded-xl bg-rose-500/8 border border-rose-500/15">
+                    <p className="text-[11px] text-rose-400 font-semibold mb-1">⚠ Permanent deletion</p>
+                    <p className="text-[11px] text-rose-400/70 leading-relaxed">
+                      This will permanently erase all data for this account — exchange connections, trade history, billing records and audit logs.{" "}
+                      <span className="text-rose-400 font-medium">This cannot be undone.</span>
+                    </p>
+                  </div>
+                </div>
+                <div className="px-5 py-3.5 border-t border-white/8 flex items-center justify-between">
+                  <p className="text-[11px] text-muted-foreground/50">Do you want to remove this account?</p>
+                  <div className="flex gap-2">
+                    <button onClick={() => { setConfirm(null); setRemoveStep(1); }}
+                      className="px-4 py-1.5 rounded-lg bg-white/5 border border-white/10 text-xs font-semibold text-muted-foreground hover:text-foreground transition-all">
+                      No, Cancel
+                    </button>
+                    <button onClick={() => setRemoveStep(2)}
+                      className="px-4 py-1.5 rounded-lg bg-rose-500/15 border border-rose-500/25 text-rose-400 text-xs font-semibold hover:bg-rose-500/25 transition-all">
+                      Yes, Continue →
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* Step 2 — type email to confirm */}
+            {removeStep === 2 && (
+              <>
+                <div className="px-5 py-5 space-y-4">
+                  <div className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl bg-white/3 border border-white/8">
+                    <Avatar name={user.full_name} email={user.email} id={user.id} size="sm" />
+                    <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider block mb-1.5">
+                      Type the user&apos;s email to confirm removal
+                    </label>
+                    <input
+                      autoFocus
+                      type="email"
+                      value={removeEmail}
+                      onChange={(e) => setRemoveEmail(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && removeEmail.trim().toLowerCase() === user.email.trim().toLowerCase()) handleRemove();
+                      }}
+                      placeholder={user.email}
+                      className="w-full px-3 py-2.5 rounded-lg bg-white/4 border border-white/10 text-xs text-foreground placeholder:text-muted-foreground/25 outline-none focus:border-rose-500/40 transition-all"
+                    />
+                    {removeEmail.length > 0 && removeEmail.trim().toLowerCase() !== user.email.trim().toLowerCase() && (
+                      <p className="text-[10px] text-rose-400/70 mt-1.5 ml-0.5">Email does not match</p>
+                    )}
+                    {removeEmail.trim().toLowerCase() === user.email.trim().toLowerCase() && removeEmail.length > 0 && (
+                      <p className="text-[10px] text-emerald-400/70 mt-1.5 ml-0.5">✓ Email confirmed</p>
+                    )}
+                  </div>
+                </div>
+                <div className="px-5 py-3.5 border-t border-white/8 flex items-center justify-between">
+                  <button onClick={() => { setRemoveStep(1); setRemoveEmail(""); }} disabled={busy}
+                    className="text-xs text-muted-foreground hover:text-foreground transition-all flex items-center gap-1">
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+                    Back
+                  </button>
+                  <div className="flex gap-2">
+                    <button onClick={() => { setConfirm(null); setRemoveEmail(""); setRemoveStep(1); }} disabled={busy}
+                      className="px-4 py-1.5 rounded-lg bg-white/5 border border-white/10 text-xs font-semibold text-muted-foreground hover:text-foreground transition-all">
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleRemove}
+                      disabled={busy || removeEmail.trim().toLowerCase() !== user.email.trim().toLowerCase()}
+                      className="px-4 py-1.5 rounded-lg bg-rose-500/15 border border-rose-500/25 text-rose-400 text-xs font-semibold hover:bg-rose-500/25 transition-all disabled:opacity-30 flex items-center gap-1.5">
+                      {busy && <span className="w-3 h-3 border border-rose-400/30 border-t-rose-400 rounded-full animate-spin" />}
+                      Permanently Remove
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
@@ -832,7 +900,7 @@ function UserActionsDropdown({
               {menuItem(
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="13" height="13"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>,
                 "Remove Account",
-                () => { setOpen(false); setRemoveEmail(""); setConfirm("remove"); },
+                () => { setOpen(false); setRemoveEmail(""); setRemoveStep(1); setConfirm("remove"); },
                 "text-rose-500 hover:bg-rose-500/10 font-medium"
               )}
             </>
