@@ -212,20 +212,37 @@ function Sidebar({
 
         {/* Admin link — only visible to admins */}
         {user?.role === "admin" && (
-          <Link
-            href="/admin"
-            className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all mt-2 border
-              ${pathname === "/admin"
-                ? "bg-rose-500/10 text-rose-400 border-rose-500/20 font-medium"
-                : "text-muted-foreground hover:text-rose-400 hover:bg-rose-500/5 border-transparent"
-              }`}
-          >
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={pathname === "/admin" ? 2 : 1.5}>
-              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-            </svg>
-            Admin
-          </Link>
+          <>
+            <Link
+              href="/admin"
+              className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all mt-2 border
+                ${pathname === "/admin"
+                  ? "bg-rose-500/10 text-rose-400 border-rose-500/20 font-medium"
+                  : "text-muted-foreground hover:text-rose-400 hover:bg-rose-500/5 border-transparent"
+                }`}
+            >
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={pathname === "/admin" ? 2 : 1.5}>
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+              </svg>
+              Admin
+            </Link>
+            <Link
+              href="/admin/influencer"
+              className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all border
+                ${pathname.startsWith("/admin/influencer")
+                  ? "bg-cyan-500/10 text-cyan-400 border-cyan-500/20 font-medium"
+                  : "text-muted-foreground hover:text-cyan-400 hover:bg-cyan-500/5 border-transparent"
+                }`}
+            >
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={pathname.startsWith("/admin/influencer") ? 2 : 1.5}>
+                <polyline points="22 7 13.5 15.5 8.5 10.5 2 17" />
+                <polyline points="16 7 22 7 22 13" />
+              </svg>
+              Strategies Admin
+            </Link>
+          </>
         )}
+
       </nav>
 
       {/* User + Logout */}
