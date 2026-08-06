@@ -583,7 +583,7 @@ function UserActionsDropdown({
       const url = axiosErr?.response?.config?.url;
       console.error(`[AdminAction] ${status} ${method} ${url}`, axiosErr?.response?.data);
       const msg = axiosErr?.response?.data?.detail || "An error occurred. Please try again.";
-      showToast(`✗ ${msg}`, false);
+      showToast(`✗ ${msg} [${method} ${url?.split("/").slice(-2).join("/")}]`, false);
     } finally {
       setBusy(false);
       setConfirm(null);
