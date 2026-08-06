@@ -577,9 +577,12 @@ function UserActionsDropdown({
     try {
       await fn();
     } catch (err: unknown) {
-      const msg =
-        (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail ||
-        "An error occurred. Please try again.";
+      const axiosErr = err as { response?: { status?: number; data?: { detail?: string }; config?: { method?: string; url?: string } } };
+      const status = axiosErr?.response?.status;
+      const method = axiosErr?.response?.config?.method?.toUpperCase();
+      const url = axiosErr?.response?.config?.url;
+      console.error(`[AdminAction] ${status} ${method} ${url}`, axiosErr?.response?.data);
+      const msg = axiosErr?.response?.data?.detail || "An error occurred. Please try again.";
       showToast(`✗ ${msg}`, false);
     } finally {
       setBusy(false);
