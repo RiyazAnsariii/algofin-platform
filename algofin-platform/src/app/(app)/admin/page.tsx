@@ -544,7 +544,7 @@ function UserActionsDropdown({
 }: {
   user: AdminUser; currentUserId: string;
   onViewDetails: () => void; onRefresh: () => void;
-  onOptimisticDelete?: (userId: string) => () => void;
+  onOptimisticDelete?: (userId: string) => void;
 }) {
   const [open, setOpen] = useState(false);
   const [confirm, setConfirm] = useState<ConfirmType>(null);
@@ -653,18 +653,15 @@ function UserActionsDropdown({
   };
 
   const handleRemove = () => {
-    const rollback = onOptimisticDelete?.(user.id);
     run(async () => {
-      try {
-        await api.delete(`/admin/users/${user.id}?confirm_email=${encodeURIComponent(removeEmail)}`);
-        setRemoveEmail("");
-        setRemoveStep(1);
-        showToast(`✓ ${user.email} permanently removed`);
-        onRefresh();
-      } catch (err) {
-        rollback?.();
-        throw err;
-      }
+      await api.delete(`/admin/users/${user.id}?confirm_email=${encodeURIComponent(removeEmail)}`);
+      setRemoveEmail("");
+      setRemoveStep(1);
+      showToast(`✓ ${user.email} permanently removed`);
+      // Small delay so the success toast is visible before the row disappears
+      await new Promise((r) => setTimeout(r, 800));
+      onOptimisticDelete?.(user.id);
+      onRefresh();
     });
   };
 
@@ -946,10 +943,9 @@ function UsersTable({ currentUserId, onViewDetails }: { currentUserId: string; o
       .finally(() => setLoading(false));
   }, []);
 
-  // Optimistically remove a user instantly; returns rollback fn for errors
+  // Remove a user from the local list immediately after confirmed server deletion
   const optimisticDelete = (userId: string) => {
     setUsers((prev: AdminUser[]) => prev.filter((u: AdminUser) => u.id !== userId));
-    return () => setTimeout(load, 0);
   };
 
   useEffect(() => { load(); }, [load]);
